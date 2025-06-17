@@ -189,3 +189,31 @@ if args.action == "update":
     """)
     body = ",\n".join([f"    /*{n:>4}*/ {c:.8f}f" for n, c in zip(names, coeff)])
     print(template.format(inter=model.intercept_, coef_body=body, n=len(names)))
+
+    # ----------------------------------------------------------------------------
+    # 9. SAVE METRICS TO JSON
+    # ----------------------------------------------------------------------------
+    log_dir = Path("./logs")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    metrics_path = log_dir / 'model_metrics.json'
+
+    if metrics_path.exists():
+        with open(metrics_path, "r") as f:
+            metrics_list = json.load(f)
+    else:
+        metrics_list = []
+
+    metrics_list.append({
+        "timestamp": dt.datetime.now().isoformat(),
+        "action": args.action,
+        "model_id": args.model_id,
+        "csv": args.csv,
+        "r2": round(r2, 4),
+        "mae": round(mae, 2)
+    })
+
+    with open(metrics_path, "w") as f:
+        json.dump(metrics_list, f, indent=2)
+
+    print(f"Metrics saved to {metrics_path}")
+
