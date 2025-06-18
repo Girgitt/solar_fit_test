@@ -79,14 +79,14 @@ def fit_hourly_models(df: pd.DataFrame, model_id: str, log_dir = './logs'):
             "n_samples": len(x)
         })
 
-    hourly_path = log_dir / Path(f"hourly_models_{model_id}.json")
+    hourly_path = log_dir / Path(f"{model_id}.json")
     with open(hourly_path, "w") as f:
         json.dump(hourly_models, f, indent=2)
 
     print(f"Hourly calibration models saved to {hourly_path}")
 
 def execute_hourly_prediction(df: pd.DataFrame, model_id: str, log_dir = './logs') -> pd.DataFrame:
-    hourly_path = log_dir / Path(f"hourly_models_{model_id}.json")
+    hourly_path = log_dir / Path(f"{model_id}.json")
     with open(hourly_path, "r") as f:
         hourly_models = json.load(f)
 
@@ -111,32 +111,73 @@ def execute_hourly_prediction(df: pd.DataFrame, model_id: str, log_dir = './logs
     df["pred_reference_hourly"] = predictions
     return df
 
+import matplotlib.pyplot as plt
+from pathlib import Path
+import datetime as dt
+
 # ----------------------------------------------------------------------------
-# SAVE METRICS TO JSON
+# PLOTS
 # ----------------------------------------------------------------------------
 
-def save_model_metrics(dt, args, r2, mae, filename = 'model_name', model_name = 'linear_regression'):
-    log_dir = Path("./logs")
-    log_dir.mkdir(parents=True, exist_ok=True)
-    metrics_path = log_dir / Path(filename).with_suffix('.json')
+def plot_model_outputs(df, model_id="tmp_v1", out_dir=Path("./plots"), prefix="linear", show=True):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    if metrics_path.exists():
-        with open(metrics_path, "r") as f:
-            metrics_list = json.load(f)
-    else:
-        metrics_list = []
+    # Plot 1: Raw input series over time
+    plt.figure(figsize=(9, 4))
+    plt.plot(df["time"], df["power_hi.common@sensor_1:VALUE"], label="Power HI sensor", linewidth=0.9)
+    plt.plot(df["time"], df["power_reference.common@sensor_1:VALUE"], label="Power Reference (actual)", linewidth=0.9)
+    plt.title("Raw input series over time")
+    plt.xlabel("Time")
+    plt.ylabel("Power [W]")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    fname = out_dir / f"{prefix}_series_vs_time_{model_id}_{timestamp}.png"
+    plt.savefig(fname, dpi=300)
+    print("Saved:", fname)
+    if show:
+        plt.show()
+    plt.close()
 
-    metrics_list.append({
-        "model name": model_name,
-        "timestamp": dt.datetime.now().isoformat(),
-        "action": args.action,
-        "model_id": args.model_id,
-        "csv": args.csv,
-        "r2": round(r2, 4),
-        "mae": round(mae, 2)
-    })
+    if "pred_reference_hourly" in df:
+        df_sorted = df[df["pred_reference_hourly"].notna()].sort_values("power_hi.common@sensor_1:VALUE")
 
-    with open(metrics_path, "w") as f:
-        json.dump(metrics_list, f, indent=2)
+        # Plot 2: Prediction vs actual data
+        plt.figure(figsize=(6, 5))
+        plt.scatter(df["power_hi.common@sensor_1:VALUE"],
+                    df["power_reference.common@sensor_1:VALUE"],
+                    s=8, alpha=0.3, label="Actual reference")
+        plt.plot(df_sorted["power_hi.common@sensor_1:VALUE"],
+                 df_sorted["pred_reference_hourly"],
+                 linewidth=2, label="Hourly model prediction")
+        plt.title("Hourly model fit: output vs input")
+        plt.xlabel("Power HI sensor [W]")
+        plt.ylabel("Reference power [W]")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        fname = out_dir / f"{prefix}_fit_curve_{model_id}_{timestamp}.png"
+        plt.savefig(fname, dpi=300)
+        print("Saved:", fname)
+        if show:
+            plt.show()
+        plt.close()
 
-    print(f"Metrics saved to {metrics_path}")
+        # Plot 3: Predicted vs actual value over time
+        plt.figure(figsize=(9, 4))
+        plt.plot(df["time"], df["power_reference.common@sensor_1:VALUE"], label="Power Reference (actual)", linewidth=0.9)
+        plt.plot(df["time"], df["pred_reference_hourly"], label="Hourly model output", linewidth=0.9)
+        plt.title("Reference sensor vs hourly model over time")
+        plt.xlabel("Time")
+        plt.ylabel("Reference power [W]")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        fname = out_dir / f"{prefix}_reference_vs_fit_{model_id}_{timestamp}.png"
+        plt.savefig(fname, dpi=300)
+        print("Saved:", fname)
+        if show:
+            plt.show()
+        plt.close()
+
