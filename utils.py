@@ -1,8 +1,11 @@
 import math
 import json
-from pathlib import Path
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from pathlib import Path
+import datetime as dt
+
 from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -111,10 +114,6 @@ def execute_hourly_prediction(df: pd.DataFrame, model_id: str, log_dir = './logs
     df["pred_reference_hourly"] = predictions
     return df
 
-import matplotlib.pyplot as plt
-from pathlib import Path
-import datetime as dt
-
 # ----------------------------------------------------------------------------
 # PLOTS
 # ----------------------------------------------------------------------------
@@ -180,4 +179,106 @@ def plot_model_outputs(df, model_id="tmp_v1", out_dir=Path("./plots"), prefix="l
         if show:
             plt.show()
         plt.close()
+
+def identify_and_export_weak_hours(metrics_df, min_r2=0.8, max_mae=50.0, model_id="default", output_dir="./logs"):
+    """
+    Identifies model hours with weak fit based on R² and MAE thresholds.
+    Exports the list of weak timestamps to a JSON file.
+
+    Parameters:
+        metrics_df (pd.DataFrame): Must contain 'hour', 'r2', and 'mae' columns. 'hour' must be datetime or ISO strings.
+        min_r2 (float): Minimum acceptable R² score.
+        max_mae (float): Maximum acceptable MAE value.
+        model_id (str): Model identifier used for naming the output file.
+        output_dir (str or Path): Directory where the JSON file will be saved.
+
+    Returns:
+        List[str]: List of weak hours as ISO 8601 strings.
+    """
+
+    # Ensure datetime type for 'hour' column
+    df = metrics_df.copy()
+    df["hour"] = pd.to_datetime(df["hour"], errors="coerce")
+
+    # Filter weak rows
+    weak = df[(df["r2"] < min_r2) | (df["mae"] > max_mae)]
+
+    # Convert to list of ISO strings
+    weak_hours = [dt.isoformat() for dt in weak["hour"].dropna()]
+
+    # Export to JSON
+    output_path = Path(output_dir) / f"weak_hours_{model_id}.json"
+    with open(output_path, "w") as f:
+        json.dump(weak_hours, f, indent=2)
+
+    print(f"Weak hours exported to {output_path}")
+
+    return weak_hours
+
+
+def group_and_export_models(metrics_df, output_path, tol_a=0.02, tol_b=2.0):
+    """
+    Groups similar regression models based on coefficient similarity, and exports each group
+    with full timestamp information and averaged model metrics.
+
+    Parameters:
+        metrics_df (pd.DataFrame): DataFrame containing at least ['hour', 'a', 'b', 'r2', 'mae', 'n_samples'].
+                                   The 'hour' column must be parseable as datetime.
+        output_path (str or Path): Path to the output JSON file.
+        tol_a (float): Allowed difference in 'a' coefficient to consider two models similar.
+        tol_b (float): Allowed difference in 'b' coefficient to consider two models similar.
+
+    Returns:
+        List[Dict]: The list of grouped model summaries that was saved to JSON.
+    """
+
+    # Ensure hour column is in datetime format
+    metrics_df = metrics_df.copy()
+    metrics_df["hour"] = pd.to_datetime(metrics_df["hour"], errors="coerce")
+
+    # Convert each row to a dict
+    records = metrics_df.sort_values("hour").to_dict(orient="records")
+
+    used = set()
+    grouped_output = []
+
+    for group_id, base in enumerate(records):
+        base_key = base["hour"]
+        if base_key in used:
+            continue
+
+        group_rows = [base]
+        used.add(base_key)
+
+        for candidate in records:
+            candidate_key = candidate["hour"]
+            if candidate_key in used or candidate_key == base_key:
+                continue
+
+            if (
+                abs(base["a"] - candidate["a"]) <= tol_a and
+                abs(base["b"] - candidate["b"]) <= tol_b
+            ):
+                group_rows.append(candidate)
+                used.add(candidate_key)
+
+        # Compute average metrics for the group
+        group_df = pd.DataFrame(group_rows)
+
+        grouped_output.append({
+            "group_id": group_id,
+            "hours": [row["hour"].isoformat() for row in group_rows],
+            "avg_a": group_df["a"].mean(),
+            "avg_b": group_df["b"].mean(),
+            "avg_r2": group_df["r2"].mean(),
+            "avg_mae": group_df["mae"].mean(),
+            "total_samples": int(group_df["n_samples"].sum())
+        })
+
+    with open(output_path, "w") as f:
+        json.dump(grouped_output, f, indent=2)
+
+    return grouped_output
+
+
 

@@ -3,6 +3,11 @@
 # Adds sun-elevation & time-of-day features, supports model save/load via JSON
 # ========================================================================== #
 
+'''
+python main.py --action=update --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
+python main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
+'''
+
 import argparse
 
 from utils import *
@@ -63,15 +68,25 @@ def main():
         r2 = r2_score(y_true, y_pred)
         mae = mean_absolute_error(y_true, y_pred)
 
-        print(f"[Hourly models] R² = {r2:.3f}   MAE = {mae:.1f} W")
+        model_path = Path(f"./logs/{args.model_id}.json")
+        with open(model_path, "r") as f:
+            model_data = json.load(f)
+
+        df_metrics = pd.DataFrame(model_data)
+        df_metrics["hour"] = pd.to_datetime(df_metrics["hour"])
+        df_metrics = df_metrics.sort_values("hour")
+
+        weak_hours = identify_and_export_weak_hours(df_metrics, min_r2=0.8, max_mae=40.0, model_id=args.model_id)
+        grouped_summary = group_and_export_models(df_metrics, output_path=f"./logs/grouped_{args.model_id}.json", tol_a=0.02, tol_b=1.0)
+
+        with open(f"./logs/gropus_{args.model_id}.json", "w") as f:
+            json.dump(grouped_summary, f, indent=2)
 
     plot_model_outputs(df, model_id=args.model_id, prefix="linear", show=True)
-
 
 if __name__ == '__main__':
     main()
 
-    
 # ----------------------------------------------------------------------------
 # OPTIONAL: C++-friendly COEFF DUMP FOR MICROCONTROLLER
 # ----------------------------------------------------------------------------
