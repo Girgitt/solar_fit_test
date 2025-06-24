@@ -280,5 +280,94 @@ def group_and_export_models(metrics_df, output_path, tol_a=0.02, tol_b=2.0):
 
     return grouped_output
 
+def plot_weak_hourly_segments(df, weak_hours_path, model_data_path, output_dir="./plots/weak_hours"):
+    """
+    For each weak hour listed in a JSON file, plot three series:
+    - Raw power_hi sensor values
+    - Reference (calibrated) power values
+    - Regression output (a*x + b)
+
+    Parameters:
+        df (pd.DataFrame): Dataset with 'time', 'power_hi', 'power_reference'
+        weak_hours_path (str or Path): Path to weak_hours__{model_id}.json
+        model_data_path (str or Path): Path to data.json with regression coefficients
+        output_dir (str or Path): Output directory for PNG plots
+    """
+
+    # Ensure datetime parsing
+    df = df.copy()
+    df["time"] = pd.to_datetime(df["time"])
+
+    # Load weak hours
+    with open(weak_hours_path, "r") as f:
+        weak_hours = json.load(f)
+    weak_hours = [pd.to_datetime(ts) for ts in weak_hours]
+
+    # Load model data
+    with open(model_data_path, "r") as f:
+        model_data = json.load(f)
+
+    # Index model_data by timestamp for fast lookup
+    model_dict = {}
+    for entry in model_data:
+        if "hour" in entry:
+            try:
+                key = pd.to_datetime(entry["hour"])
+                model_dict[key] = entry
+            except Exception as e:
+                print(f"[!] Skipped invalid timestamp: {entry['hour']} -> {e}")
+        else:
+            print(f"[!] Entry missing 'hour' field: {entry}")
+
+    # Prepare output directory
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for timestamp in weak_hours:
+        hour_start = timestamp
+        hour_end = timestamp + pd.Timedelta(hours=1)
+
+        # Filter data segment for the given hour
+        segment = df[(df["time"] >= hour_start) & (df["time"] < hour_end)].copy()
+        if segment.empty:
+            continue
+
+        timestamp_dt = pd.to_datetime(timestamp)
+
+        # Find matching model coefficients
+        model_entry = model_dict.get(timestamp_dt, None)
+        if not model_entry:
+            print(f"No model found for {timestamp}")
+            continue
+
+        a = model_entry["a"]
+        b = model_entry["b"]
+
+        # Predict values using regression
+        segment["predicted"] = a * segment["power_hi.common@sensor_1:VALUE"] + b
+
+        # Plot all three series
+        plt.figure(figsize=(10, 5))
+        plt.plot(segment["time"], segment["power_hi.common@sensor_1:VALUE"],
+                 label="Power HI Sensor (raw)", linewidth=0.9)
+        plt.plot(segment["time"], segment["power_reference.common@sensor_1:VALUE"],
+                 label="Reference Sensor (actual)", linewidth=0.9)
+        plt.plot(segment["time"], segment["predicted"],
+                 label=f"Regression Output: y = {a:.2f}·x + {b:.1f}", linewidth=1.4, linestyle="--")
+
+        plt.title(f"Regression Fit – {timestamp.strftime('%Y-%m-%d %H:%M')}")
+        plt.xlabel("Time")
+        plt.ylabel("Power [W]")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+
+        # Save to file
+        fname = output_dir / f"regression_fail_{timestamp.strftime('%Y%m%d_%H')}.png"
+        plt.savefig(fname, dpi=300)
+        plt.close()
+        print(f"Saved: {fname}")
+
+
 
 

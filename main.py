@@ -78,6 +78,7 @@ def main():
 
         identify_and_export_weak_hours(df_metrics, min_r2=0.8, max_mae=40.0, model_id=args.model_id)
         group_and_export_models(df_metrics, output_path=f"./logs/grouped_{args.model_id}.json", tol_a=0.02, tol_b=1.0)
+        plot_weak_hourly_segments(df, weak_hours_path=f"./logs/weak_hours_{args.model_id}.json", model_data_path=f"./logs/{args.model_id}.json")
 
     plot_model_outputs(df, model_id=args.model_id, prefix="linear", show=True)
 
