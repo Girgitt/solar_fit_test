@@ -76,11 +76,8 @@ def main():
         df_metrics["hour"] = pd.to_datetime(df_metrics["hour"])
         df_metrics = df_metrics.sort_values("hour")
 
-        weak_hours = identify_and_export_weak_hours(df_metrics, min_r2=0.8, max_mae=40.0, model_id=args.model_id)
-        grouped_summary = group_and_export_models(df_metrics, output_path=f"./logs/grouped_{args.model_id}.json", tol_a=0.02, tol_b=1.0)
-
-        with open(f"./logs/gropus_{args.model_id}.json", "w") as f:
-            json.dump(grouped_summary, f, indent=2)
+        identify_and_export_weak_hours(df_metrics, min_r2=0.8, max_mae=40.0, model_id=args.model_id)
+        group_and_export_models(df_metrics, output_path=f"./logs/grouped_{args.model_id}.json", tol_a=0.02, tol_b=1.0)
 
     plot_model_outputs(df, model_id=args.model_id, prefix="linear", show=True)
 
