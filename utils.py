@@ -3,8 +3,10 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from pathlib import Path
 import datetime as dt
+
+from pathlib import Path
+from datetime import datetime, timedelta
 
 from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.linear_model import LinearRegression
@@ -367,6 +369,70 @@ def plot_weak_hourly_segments(df, weak_hours_path, model_data_path, output_dir="
         plt.savefig(fname, dpi=300)
         plt.close()
         print(f"Saved: {fname}")
+
+def smooth_models(models_list_path, blend_minutes, time_delta, output_path="smoothed_models.json"):
+    """
+    Generates smooth transitions between models for every minute (or every `time_delta`),
+    returning a list of smoothed models with blending.
+
+    Parameters:
+    - models_list: list of input models with keys ‘hour’, ‘a’, 'b'
+    - blend_minutes: width of the transition zone (e.g., 20 means 10 minutes for each side)
+    - time_delta: timedelta object (e.g. timedelta(minutes=5)) - time step
+    - output_path: path to save the resulting JSON
+    """
+
+    with open(models_list_path, "r") as f:
+        models_list = json.load(f)
+
+    model_dict = {
+        datetime.fromisoformat(m["hour"]): m for m in models_list
+    }
+
+    half_blend = blend_minutes // 2
+    step = time_delta
+    result = []
+
+    sorted_hours = sorted(model_dict.keys())
+
+    for i in range(len(sorted_hours) - 1):
+        t_curr = sorted_hours[i]
+        t_next = sorted_hours[i + 1]
+        model_curr = model_dict[t_curr]
+        model_next = model_dict[t_next]
+
+        t = t_curr + timedelta(minutes=60 - half_blend)
+        while t < t_curr + timedelta(hours=1):
+            w = (t - (t_curr + timedelta(minutes=60 - half_blend))).total_seconds() / (half_blend * 60)
+            a = (1 - w) * model_curr["a"] + w * model_next["a"]
+            b = (1 - w) * model_curr["b"] + w * model_next["b"]
+            result.append({
+                "hour": t.isoformat(),
+                "a": a,
+                "b": b
+            })
+            t += step
+
+        t = t_next
+        end = t_next + timedelta(minutes=half_blend)
+        while t < end:
+            w = (t - t_next).total_seconds() / (half_blend * 60)
+            a = (1 - w) * model_curr["a"] + w * model_next["a"]
+            b = (1 - w) * model_curr["b"] + w * model_next["b"]
+            result.append({
+                "hour": t.isoformat(),
+                "a": a,
+                "b": b
+            })
+            t += step
+
+    with open(output_path, "w") as f:
+        json.dump(result, f, indent=2)
+
+    print(f"Saved in: {output_path}")
+    return result
+
+
 
 
 
