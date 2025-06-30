@@ -37,6 +37,16 @@ def main():
     # LOAD AND PREPROCESS DATA
     # ----------------------------------------------------------------------------
     df = pd.read_csv(args.csv, parse_dates=["time"])
+
+    data_columns = [col for col in df.columns if col != "time"]
+
+    print("Available data columns:")
+    for i, col in enumerate(data_columns):
+        print(f"{i}: {col}")
+
+    print(data_columns[0])
+    print(data_columns[1])
+
     #df["power_hi.common@sensor_1:VALUE"] *= 2  # scale input by factor of 2
     df["sun_elev"] = df["time"].apply(lambda t: solar_elevation(52.2297, 21.0122, 2, t))
 
@@ -47,22 +57,34 @@ def main():
     hour_angle = 2 * np.pi * df["hour_decimal"] / 24
     df["hour_sin"] = np.sin(hour_angle)
     df["hour_cos"] = np.cos(hour_angle)
-    df = df.dropna(subset=["power_reference.common@sensor_1:VALUE", "power_hi.common@sensor_1:VALUE"])
 
-    X = df[["power_hi.common@sensor_1:VALUE", "sun_elev", "hour_sin", "hour_cos"]]
+    # Adjust proper header names considering readed csv file!
+    #df = df.dropna(subset=["power_reference.common@sensor_1:VALUE", "power_hi.common@sensor_1:VALUE"])
+    sensor_value_1 = data_columns[0]
+    sensor_value_ref = data_columns[1]
+    df = df.dropna(subset=[sensor_value_1, sensor_value_ref])
+
+    X = df[[sensor_value_1, "sun_elev", "hour_sin", "hour_cos"]]
 
     # ----------------------------------------------------------------------------
     # ACTION: UPDATE (fit and save model) or EXECUTE (load and predict)
     # ----------------------------------------------------------------------------
     if args.action == "update":
-        y = df["power_reference.common@sensor_1:VALUE"]
-        fit_hourly_models(df, args.model_id, log_dir='./logs')
+        y = df[sensor_value_1]
+        fit_hourly_models(df,
+                          args.model_id,
+                          log_dir='./logs',
+                          sensor_value_1=sensor_value_1,
+                          sensor_value_ref=sensor_value_ref,)
 
     elif args.action == "execute":
-        df = execute_hourly_prediction(df, args.model_id, log_dir='./logs')
+        df = execute_hourly_prediction(df,
+                                       args.model_id,
+                                       log_dir='./logs',
+                                       sensor_value_1=sensor_value_1,)
 
         mask = df["pred_reference_hourly"].notna()
-        y_true = df.loc[mask, "power_reference.common@sensor_1:VALUE"]
+        y_true = df.loc[mask, sensor_value_ref]
         y_pred = df.loc[mask, "pred_reference_hourly"]
 
         r2 = r2_score(y_true, y_pred)
@@ -88,14 +110,21 @@ def main():
 
         plot_weak_hourly_segments(df,
                                   weak_hours_path=f"./logs/weak_hours_{args.model_id}.json",
-                                  model_data_path=f"./logs/{args.model_id}.json")
+                                  model_data_path=f"./logs/{args.model_id}.json",
+                                  sensor_value_1=sensor_value_1,
+                                  sensor_value_ref=sensor_value_ref,)
 
         smooth_models(models_list_path=f"./logs/{args.model_id}.json",
                       blend_minutes=10,
                       time_delta=timedelta(minutes=1),
                       output_path=f"./logs/smoothed_{args.model_id}.json")
 
-    plot_model_outputs(df, model_id=args.model_id, prefix="linear", show=True)
+    plot_model_outputs(df,
+                       model_id=args.model_id,
+                       prefix="linear",
+                       show=True,
+                       sensor_value_1=sensor_value_1,
+                       sensor_value_ref=sensor_value_ref)
 
 if __name__ == '__main__':
     main()

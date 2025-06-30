@@ -53,14 +53,14 @@ def load_model_from_json(path):
 # CREATE ONE-HOUR TIME SLOTS AND FIT CORRECTIVE FUNCTION
 # ----------------------------------------------------------------------------
 
-def fit_hourly_models(df: pd.DataFrame, model_id: str, log_dir = './logs'):
+def fit_hourly_models(df: pd.DataFrame, model_id: str, log_dir = './logs', sensor_value_1='power_hi.common@sensor_1:VALUE', sensor_value_ref='power_reference.common@sensor_1:VALUE'):
     df = df.copy()
     df["hour"] = df["time"].dt.floor("H")
 
     hourly_models = []
     for hour, group in df.groupby("hour"):
-        x = group["power_hi.common@sensor_1:VALUE"].values.reshape(-1, 1)
-        y = group["power_reference.common@sensor_1:VALUE"].values
+        x = group[sensor_value_1].values.reshape(-1, 1)
+        y = group[sensor_value_ref].values
 
         if len(x) < 5:
             continue
@@ -90,7 +90,7 @@ def fit_hourly_models(df: pd.DataFrame, model_id: str, log_dir = './logs'):
 
     print(f"Hourly calibration models saved to {hourly_path}")
 
-def execute_hourly_prediction(df: pd.DataFrame, model_id: str, log_dir = './logs') -> pd.DataFrame:
+def execute_hourly_prediction(df: pd.DataFrame, model_id: str, log_dir = './logs', sensor_value_1='power_hi.common@sensor_1:VALUE') -> pd.DataFrame:
     hourly_path = log_dir / Path(f"{model_id}.json")
     with open(hourly_path, "r") as f:
         hourly_models = json.load(f)
@@ -106,7 +106,7 @@ def execute_hourly_prediction(df: pd.DataFrame, model_id: str, log_dir = './logs
         hour = row["time"].floor("H").isoformat()
         model = model_dict.get(hour)
         if model:
-            x = row["power_hi.common@sensor_1:VALUE"]
+            x = row[sensor_value_1]
             y_pred = model["a"] * x + model["b"]
         else:
             y_pred = np.nan
@@ -120,14 +120,14 @@ def execute_hourly_prediction(df: pd.DataFrame, model_id: str, log_dir = './logs
 # PLOTS
 # ----------------------------------------------------------------------------
 
-def plot_model_outputs(df, model_id="tmp_v1", out_dir=Path("./plots"), prefix="linear", show=True):
+def plot_model_outputs(df, model_id="tmp_v1", out_dir=Path("./plots"), prefix="linear", show=True, sensor_value_1='power_hi.common@sensor_1:VALUE', sensor_value_ref='power_reference.common@sensor_1:VALUE'):
     out_dir.mkdir(parents=True, exist_ok=True)
     timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Plot 1: Raw input series over time
     plt.figure(figsize=(9, 4))
-    plt.plot(df["time"], df["power_hi.common@sensor_1:VALUE"], label="Power HI sensor", linewidth=0.9)
-    plt.plot(df["time"], df["power_reference.common@sensor_1:VALUE"], label="Power Reference (actual)", linewidth=0.9)
+    plt.plot(df["time"], df[sensor_value_ref], label="Power HI sensor", linewidth=0.9)
+    plt.plot(df["time"], df[sensor_value_1], label="Power Reference (actual)", linewidth=0.9)
     plt.title("Raw input series over time")
     plt.xlabel("Time")
     plt.ylabel("Power [W]")
@@ -142,14 +142,14 @@ def plot_model_outputs(df, model_id="tmp_v1", out_dir=Path("./plots"), prefix="l
     plt.close()
 
     if "pred_reference_hourly" in df:
-        df_sorted = df[df["pred_reference_hourly"].notna()].sort_values("power_hi.common@sensor_1:VALUE")
+        df_sorted = df[df["pred_reference_hourly"].notna()].sort_values(sensor_value_1)
 
         # Plot 2: Prediction vs actual data
         plt.figure(figsize=(6, 5))
-        plt.scatter(df["power_hi.common@sensor_1:VALUE"],
-                    df["power_reference.common@sensor_1:VALUE"],
+        plt.scatter(df[sensor_value_1],
+                    df[sensor_value_ref],
                     s=8, alpha=0.3, label="Actual reference")
-        plt.plot(df_sorted["power_hi.common@sensor_1:VALUE"],
+        plt.plot(df_sorted[sensor_value_1],
                  df_sorted["pred_reference_hourly"],
                  linewidth=2, label="Hourly model prediction")
         plt.title("Hourly model fit: output vs input")
@@ -167,7 +167,7 @@ def plot_model_outputs(df, model_id="tmp_v1", out_dir=Path("./plots"), prefix="l
 
         # Plot 3: Predicted vs actual value over time
         plt.figure(figsize=(9, 4))
-        plt.plot(df["time"], df["power_reference.common@sensor_1:VALUE"], label="Power Reference (actual)", linewidth=0.9)
+        plt.plot(df["time"], df[sensor_value_ref], label="Power Reference (actual)", linewidth=0.9)
         plt.plot(df["time"], df["pred_reference_hourly"], label="Hourly model output", linewidth=0.9)
         plt.title("Reference sensor vs hourly model over time")
         plt.xlabel("Time")
@@ -282,7 +282,7 @@ def group_and_export_models(metrics_df, output_path, tol_a=0.02, tol_b=2.0):
 
     return grouped_output
 
-def plot_weak_hourly_segments(df, weak_hours_path, model_data_path, output_dir="./plots/weak_hours"):
+def plot_weak_hourly_segments(df, weak_hours_path, model_data_path, output_dir="./plots/weak_hours", sensor_value_1='power_hi.common@sensor_1:VALUE', sensor_value_ref='power_reference.common@sensor_1:VALUE'):
     """
     For each weak hour listed in a JSON file, plot three series:
     - Raw power_hi sensor values
@@ -346,13 +346,13 @@ def plot_weak_hourly_segments(df, weak_hours_path, model_data_path, output_dir="
         b = model_entry["b"]
 
         # Predict values using regression
-        segment["predicted"] = a * segment["power_hi.common@sensor_1:VALUE"] + b
+        segment["predicted"] = a * segment[sensor_value_1] + b
 
         # Plot all three series
         plt.figure(figsize=(10, 5))
-        plt.plot(segment["time"], segment["power_hi.common@sensor_1:VALUE"],
+        plt.plot(segment["time"], segment[sensor_value_1],
                  label="Power HI Sensor (raw)", linewidth=0.9)
-        plt.plot(segment["time"], segment["power_reference.common@sensor_1:VALUE"],
+        plt.plot(segment["time"], segment[sensor_value_1],
                  label="Reference Sensor (actual)", linewidth=0.9)
         plt.plot(segment["time"], segment["predicted"],
                  label=f"Regression Output: y = {a:.2f}·x + {b:.1f}", linewidth=1.4, linestyle="--")
