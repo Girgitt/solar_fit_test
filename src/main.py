@@ -7,16 +7,22 @@
 # ----------------------------------------------------------------------------
 
 '''
-python main.py --action=update --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
-python main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
+python src/main.py --action=update --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
+python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 '''
 import argparse
 
 from utils import *
 
 def main():
-    OUT_DIR = Path("../plots")  # all PNGs go here
-    OUT_DIR.mkdir(exist_ok=True)
+    ROOT_DIR = Path(__file__).resolve().parent.parent
+    LOG_DIR = ROOT_DIR / "logs"
+    PLOT_DIR = ROOT_DIR / "plots"
+    DATA_DIR = ROOT_DIR / "data"
+
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    PLOT_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     parser = argparse.ArgumentParser()
     args = argument_parsing(parser)
@@ -31,7 +37,8 @@ def main():
     model_parameters = ModelParameters(
         df=df,
         args = args,
-        log_dir ="../logs",
+        log_dir = LOG_DIR,
+        plot_dir = PLOT_DIR,
         sensor_values = sensor_values,
         sensor_value_ref = sensor_value_ref,
         min_r2 = 0.8,

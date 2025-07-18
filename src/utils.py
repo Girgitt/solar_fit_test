@@ -20,6 +20,7 @@ class ModelParameters:
     df: pd.DataFrame
     args: Namespace
     log_dir: str
+    plot_dir: str
     sensor_values: np.ndarray
     sensor_value_ref: np.ndarray
     min_r2: float
@@ -70,7 +71,7 @@ def execute_function(model_parameters: ModelParameters):
     df = execute_hourly_prediction(
         df=model_parameters.df,
         model_id=model_parameters.args.model_id,
-        log_dir="../logs",
+        log_dir=model_parameters.log_dir,
         sensor_values=model_parameters.sensor_values,
     )
 
@@ -93,24 +94,24 @@ def execute_function(model_parameters: ModelParameters):
 
         group_and_export_models(
             df_metrics,
-            output_path=f"./logs/grouped_{model_parameters.args.model_id}__{sensor.replace('@', '_').replace(':', '_')}.json",
+            output_path=f"{model_parameters.log_dir}/grouped_{model_parameters.args.model_id}__{sensor.replace('@', '_').replace(':', '_')}.json",
             tol_a=model_parameters.tolerance_min,
             tol_b=model_parameters.tolerance_max,
         )
 
     plot_weak_hourly_segments(
         df=model_parameters.df,
-        weak_hours_path=f"./logs/weak_hours_{model_parameters.args.model_id}.json",
-        model_data_path=f"./logs/{model_parameters.args.model_id}.json",
-        output_dir="../plots/weak_hours",
+        weak_hours_path=f"{model_parameters.log_dir}/weak_hours_{model_parameters.args.model_id}.json",
+        model_data_path=f"{model_parameters.log_dir}/{model_parameters.args.model_id}.json",
+        output_dir=f"{model_parameters.plot_dir}/weak_hours",
         sensor_values=model_parameters.sensor_values,
         sensor_value_ref=model_parameters.sensor_value_ref,
     )
 
-    smooth_models(models_list_path=f"./logs/{model_parameters.args.model_id}.json",
+    smooth_models(models_list_path=f"{model_parameters.log_dir}/{model_parameters.args.model_id}.json",
                   blend_minutes=model_parameters.blend_minutes,
                   time_delta=timedelta(minutes=model_parameters.timedelta),
-                  output_path=f"./logs/smoothed_{model_parameters.args.model_id}.json")
+                  output_path=f"{model_parameters.log_dir}/smoothed_{model_parameters.args.model_id}.json")
 
 def solar_elevation(lat, lon, tz_offset, dt_local):
     n = dt_local.timetuple().tm_yday
