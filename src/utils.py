@@ -1,34 +1,12 @@
 import math
-import json
-from argparse import Namespace
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import datetime as dt
-
-from pathlib import Path
 from datetime import datetime, timedelta
-
 from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from dataclasses import dataclass
 
-@dataclass
-class ModelParameters:
-    df: pd.DataFrame
-    args: Namespace
-    log_dir: str
-    plot_dir: str
-    sensor_values: np.ndarray
-    sensor_value_ref: np.ndarray
-    min_r2: float
-    max_mae: float
-    tolerance_min: float
-    tolerance_max: float
-    blend_minutes: int
-    timedelta: int
+from plotting_functions import *
+from model_params import *
 
 
 def argument_parsing(parser):
@@ -242,81 +220,6 @@ def execute_hourly_prediction(
 
     return df
 
-def plot_model_outputs(
-    df: pd.DataFrame,
-    model_id="tmp_v1",
-    out_dir=Path("../plots"),
-    prefix="linear",
-    show=True,
-    sensor_values: list[str] = None,
-    sensor_value_ref='sensor_ref'
-):
-    out_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    if sensor_values is None:
-        raise ValueError("Parameter 'sensor_values' must be a list of column names.")
-
-    # Plot 1: Raw input series over time
-    plt.figure(figsize=(9, 4))
-    plt.plot(df["time"], df[sensor_value_ref], label="Power Reference (actual)", linewidth=0.9)
-    for sensor_col in sensor_values:
-        plt.plot(df["time"], df[sensor_col], label=f"Sensor: {sensor_col}", linewidth=0.9)
-    plt.title("Raw input series over time")
-    plt.xlabel("Time")
-    plt.ylabel("Power [W]")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    fname = out_dir / f"{prefix}_series_vs_time_{model_id}_{timestamp}.png"
-    plt.savefig(fname, dpi=300)
-    print("Saved:", fname)
-    if show:
-        plt.show()
-    plt.close()
-
-    # For each sensor with prediction, plot comparison
-    for sensor_col in sensor_values:
-        pred_col = f"pred_reference_hourly__{sensor_col}"
-        if pred_col not in df:
-            continue
-
-        df_sorted = df[df[pred_col].notna()].sort_values(sensor_col)
-
-        # Plot 2: Prediction vs actual data (scatter + line)
-        plt.figure(figsize=(6, 5))
-        plt.scatter(df[sensor_col], df[sensor_value_ref], s=8, alpha=0.3, label="Actual reference")
-        plt.plot(df_sorted[sensor_col], df_sorted[pred_col], linewidth=2, label="Hourly model prediction")
-        plt.title(f"Hourly model fit: {sensor_col}")
-        plt.xlabel(f"{sensor_col} [W]")
-        plt.ylabel("Reference power [W]")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        fname = out_dir / f"{prefix}_fit_curve_{model_id}_{sensor_col}_{timestamp}.png"
-        plt.savefig(fname, dpi=300)
-        print("Saved:", fname)
-        if show:
-            plt.show()
-        plt.close()
-
-        # Plot 3: Predicted vs actual value over time
-        plt.figure(figsize=(9, 4))
-        plt.plot(df["time"], df[sensor_value_ref], label="Power Reference (actual)", linewidth=0.9)
-        plt.plot(df["time"], df[pred_col], label="Hourly model output", linewidth=0.9)
-        plt.title(f"Reference vs model: {sensor_col} over time")
-        plt.xlabel("Time")
-        plt.ylabel("Reference power [W]")
-        plt.legend()
-        plt.grid(True)
-        plt.tight_layout()
-        fname = out_dir / f"{prefix}_reference_vs_fit_{model_id}_{sensor_col}_{timestamp}.png"
-        plt.savefig(fname, dpi=300)
-        print("Saved:", fname)
-        if show:
-            plt.show()
-        plt.close()
-
 def identify_and_export_weak_hours(metrics_df, min_r2=0.8, max_mae=50.0, model_id="default", output_dir="./logs"):
     """
     Identifies model hours with weak fit based on R² and MAE thresholds.
@@ -416,89 +319,7 @@ def group_and_export_models(metrics_df, output_path, tol_a=0.02, tol_b=2.0):
 
     return grouped_output
 
-def plot_weak_hourly_segments(
-    df,
-    weak_hours_path,
-    model_data_path,
-    output_dir="./plots/weak_hours",
-    sensor_values=None,
-    sensor_value_ref='default_sensor_ref'
-):
-    """
-    For each weak hour listed in a JSON file, plot series for each sensor:
-    - Raw sensor values
-    - Reference (actual) values
-    - Regression output (a*x + b)
-    """
 
-    if sensor_values is None:
-        raise ValueError("Parameter 'sensor_values' must be a list of column names.")
-
-    df = df.copy()
-    df["time"] = pd.to_datetime(df["time"])
-
-    # Load weak hours
-    with open(weak_hours_path, "r") as f:
-        weak_hours = json.load(f)
-    weak_hours = [pd.to_datetime(ts) for ts in weak_hours]
-
-    # Load model data
-    with open(model_data_path, "r") as f:
-        model_data = json.load(f)
-
-    # Index model data by (hour, sensor)
-    model_dict = {}
-    for entry in model_data:
-        try:
-            key = (pd.to_datetime(entry["hour"]), entry["sensor"])
-            model_dict[key] = entry
-        except Exception as e:
-            print(f"[!] Skipped invalid model entry: {entry} -> {e}")
-
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    for timestamp in weak_hours:
-        hour_start = timestamp
-        hour_end = timestamp + pd.Timedelta(hours=1)
-
-        segment = df[(df["time"] >= hour_start) & (df["time"] < hour_end)].copy()
-        if segment.empty:
-            continue
-
-        for sensor_col in sensor_values:
-            key = (timestamp, sensor_col)
-            model_entry = model_dict.get(key, None)
-
-            if not model_entry:
-                print(f"No model for hour {timestamp} and sensor {sensor_col}")
-                continue
-
-            a = model_entry["a"]
-            b = model_entry["b"]
-            segment["predicted"] = a * segment[sensor_col] + b
-
-            # Plot all three series
-            plt.figure(figsize=(10, 5))
-            plt.plot(segment["time"], segment[sensor_col],
-                     label=f"{sensor_col} (raw)", linewidth=0.9)
-            plt.plot(segment["time"], segment[sensor_value_ref],
-                     label=f"{sensor_value_ref} (actual)", linewidth=0.9)
-            plt.plot(segment["time"], segment["predicted"],
-                     label=f"Regression Output: y = {a:.2f}·x + {b:.1f}",
-                     linewidth=1.4, linestyle="--")
-
-            plt.title(f"Regression Fit – {timestamp.strftime('%Y-%m-%d %H:%M')} – {sensor_col}")
-            plt.xlabel("Time")
-            plt.ylabel("Power [W]")
-            plt.legend()
-            plt.grid(True)
-            plt.tight_layout()
-
-            fname = output_dir / f"regression_fail_{timestamp.strftime('%Y%m%d_%H')}__{sensor_col.replace('@','_').replace(':','_')}.png"
-            plt.savefig(fname, dpi=300)
-            plt.close()
-            print(f"Saved: {fname}")
 
 def smooth_models(models_list_path, blend_minutes, time_delta, output_path="smoothed_models.json"):
     """

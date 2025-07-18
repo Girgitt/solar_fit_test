@@ -2,6 +2,7 @@
 # Polynomial regression CLI tool: fit/update/execute solar model alignment
 # Adds sun-elevation & time-of-day features, supports model save/load via JSON
 # ========================================================================== #
+
 # ----------------------------------------------------------------------------
 # ACTION: UPDATE (fit and save model) or EXECUTE (load and predict)
 # ----------------------------------------------------------------------------
@@ -10,8 +11,8 @@
 python src/main.py --action=update --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 '''
-import argparse
 
+import argparse
 from utils import *
 
 def main():
