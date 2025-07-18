@@ -1,5 +1,7 @@
 import math
 import json
+from argparse import Namespace
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,10 +13,105 @@ from datetime import datetime, timedelta
 from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from dataclasses import dataclass
 
-# ----------------------------------------------------------------------------
-# HELPER: very-lightweight solar-elevation approximation
-# ----------------------------------------------------------------------------
+@dataclass
+class ModelParameters:
+    df: pd.DataFrame
+    args: Namespace
+    log_dir: str
+    sensor_values: np.ndarray
+    sensor_value_ref: np.ndarray
+    min_r2: float
+    max_mae: float
+    tolerance_min: float
+    tolerance_max: float
+    blend_minutes: int
+    timedelta: int
+
+
+def argument_parsing(parser):
+    parser.add_argument("--action", choices=["update", "execute"], required=True,
+                        help="Specify whether to 'update' (train/save) or 'execute' (load/apply) the model")
+    parser.add_argument("--model_id", default="default",
+                        help="Model identifier used for saving/loading coefficients")
+    parser.add_argument("--csv", required=True,
+                        help="Path to CSV file with input data")
+
+    return parser.parse_args()
+
+def print_available_data_columns(data_columns):
+    print("Available data columns:")
+    for i, col in enumerate(data_columns):
+        print(f"{i}: {col}")
+
+def select_available_data_columns_to_process(data_columns, df):
+    sensor_values = [
+        data_columns[0],
+        #data_columns[3],
+        #data_columns[4],
+    ]
+    sensor_value_ref = data_columns[1] #data_columns[6]
+    df = df.dropna(subset=sensor_values + [sensor_value_ref])
+
+    return sensor_values, sensor_value_ref, df
+
+
+def update_function(model_parameters: ModelParameters):
+    fit_hourly_models(
+        df=model_parameters.df,
+        model_id=model_parameters.args.model_id,
+        log_dir=model_parameters.log_dir,
+        sensor_values=model_parameters.sensor_values,
+        sensor_value_ref=model_parameters.sensor_value_ref,
+    )
+
+def execute_function(model_parameters: ModelParameters):
+    df = execute_hourly_prediction(
+        df=model_parameters.df,
+        model_id=model_parameters.args.model_id,
+        log_dir="../logs",
+        sensor_values=model_parameters.sensor_values,
+    )
+
+    results = evaluate_predictions_per_sensor(
+        df=df,
+        model_id=model_parameters.args.model_id,
+        sensor_values=model_parameters.sensor_values,
+        sensor_value_ref=model_parameters.sensor_value_ref,
+    )
+
+    for sensor, res in results.items():
+        df_metrics = res["df_metrics"]
+
+        identify_and_export_weak_hours(
+            df_metrics,
+            min_r2=model_parameters.min_r2,
+            max_mae=model_parameters.max_mae,
+            model_id=f"{model_parameters.args.model_id}__{sensor.replace('@', '_').replace(':', '_')}"
+        )
+
+        group_and_export_models(
+            df_metrics,
+            output_path=f"./logs/grouped_{model_parameters.args.model_id}__{sensor.replace('@', '_').replace(':', '_')}.json",
+            tol_a=model_parameters.tolerance_min,
+            tol_b=model_parameters.tolerance_max,
+        )
+
+    plot_weak_hourly_segments(
+        df=model_parameters.df,
+        weak_hours_path=f"./logs/weak_hours_{model_parameters.args.model_id}.json",
+        model_data_path=f"./logs/{model_parameters.args.model_id}.json",
+        output_dir="../plots/weak_hours",
+        sensor_values=model_parameters.sensor_values,
+        sensor_value_ref=model_parameters.sensor_value_ref,
+    )
+
+    smooth_models(models_list_path=f"./logs/{model_parameters.args.model_id}.json",
+                  blend_minutes=model_parameters.blend_minutes,
+                  time_delta=timedelta(minutes=model_parameters.timedelta),
+                  output_path=f"./logs/smoothed_{model_parameters.args.model_id}.json")
+
 def solar_elevation(lat, lon, tz_offset, dt_local):
     n = dt_local.timetuple().tm_yday
     lt = dt_local.hour + dt_local.minute / 60 + dt_local.second / 3600  # local clock time
@@ -31,9 +128,6 @@ def solar_elevation(lat, lon, tz_offset, dt_local):
     z = math.acos(max(-1, min(1, cos_z)))  # clamp
     return math.degrees(math.pi / 2 - z)
 
-# ----------------------------------------------------------------------------
-# MODEL STORAGE HELPERS
-# ----------------------------------------------------------------------------
 def save_model_to_json(model, poly, path):
     data = {
         "intercept": model.intercept_,
@@ -49,9 +143,6 @@ def load_model_from_json(path):
         data = json.load(f)
     return data["intercept"], data["coefficients"], data["features"]
 
-# ----------------------------------------------------------------------------
-# CREATE ONE-HOUR TIME SLOTS AND FIT CORRECTIVE FUNCTION
-# ----------------------------------------------------------------------------
 def fit_hourly_models(
         df: pd.DataFrame,
         model_id: str,
@@ -150,14 +241,10 @@ def execute_hourly_prediction(
 
     return df
 
-# ----------------------------------------------------------------------------
-# PLOTS
-# ----------------------------------------------------------------------------
-
 def plot_model_outputs(
     df: pd.DataFrame,
     model_id="tmp_v1",
-    out_dir=Path("./plots"),
+    out_dir=Path("../plots"),
     prefix="linear",
     show=True,
     sensor_values: list[str] = None,
@@ -229,7 +316,6 @@ def plot_model_outputs(
             plt.show()
         plt.close()
 
-
 def identify_and_export_weak_hours(metrics_df, min_r2=0.8, max_mae=50.0, model_id="default", output_dir="./logs"):
     """
     Identifies model hours with weak fit based on R² and MAE thresholds.
@@ -264,7 +350,6 @@ def identify_and_export_weak_hours(metrics_df, min_r2=0.8, max_mae=50.0, model_i
     print(f"Weak hours exported to {output_path}")
 
     return weak_hours
-
 
 def group_and_export_models(metrics_df, output_path, tol_a=0.02, tol_b=2.0):
     """
@@ -414,7 +499,6 @@ def plot_weak_hourly_segments(
             plt.close()
             print(f"Saved: {fname}")
 
-
 def smooth_models(models_list_path, blend_minutes, time_delta, output_path="smoothed_models.json"):
     """
     Generates smooth transitions between models for every minute (or every `time_delta`),
@@ -477,7 +561,6 @@ def smooth_models(models_list_path, blend_minutes, time_delta, output_path="smoo
     print(f"Saved in: {output_path}")
     return result
 
-
 def evaluate_predictions_per_sensor(df, model_id, sensor_values, sensor_value_ref):
     results_per_sensor = {}
 
@@ -526,9 +609,3 @@ def evaluate_predictions_per_sensor(df, model_id, sensor_values, sensor_value_re
         }
 
     return results_per_sensor
-
-
-
-
-
-
