@@ -1,9 +1,12 @@
 import math
+from argparse import ArgumentParser
+from datetime import datetime
+from typing import Tuple
 
 from calibrate_methods import *
 from analyze_calibration import *
 
-def argument_parsing(parser):
+def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--action", choices=["update", "execute"], required=True,
                         help="Specify whether to 'update' (train/save) or 'execute' (load/apply) the model")
     parser.add_argument("--model_id", default="default",
@@ -13,15 +16,15 @@ def argument_parsing(parser):
 
     return parser.parse_args()
 
-def print_available_data_columns(data_columns):
+def print_available_data_columns(data_columns: List[str]) -> None:
     print("Available data columns:")
     for i, col in enumerate(data_columns):
         print(f"{i}: {col}")
 
 def select_available_data_columns_to_process(
-        data_columns,
-        df
-):
+        data_columns: List[str],
+        df: pd.DataFrame
+) -> Tuple[List[str], str, pd.DataFrame]:
     sensor_names = [
         data_columns[0],
         data_columns[1],
@@ -32,8 +35,7 @@ def select_available_data_columns_to_process(
 
     return sensor_names, sensor_name_ref, df
 
-
-def update_function(model_parameters: ModelParameters):
+def update_function(model_parameters: ModelParameters) -> None:
     linear_regression(
         df=model_parameters.df,
         log_dir = model_parameters.log_dir,
@@ -74,15 +76,7 @@ def update_function(model_parameters: ModelParameters):
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
 
-def execute_function(model_parameters: ModelParameters):
-    '''
-    analyze_calibration_metrics(
-        log_dir=model_parameters.log_dir,
-        plot_dir=model_parameters.plot_dir,
-        folder_data_name=Path(model_parameters.args.csv).stem,
-    )
-    '''
-
+def execute_function(model_parameters: ModelParameters) -> None:
     calibrate_by_linear_regression(
         df=model_parameters.df,
         sensor_names=model_parameters.sensor_names,
@@ -125,11 +119,11 @@ def execute_function(model_parameters: ModelParameters):
     )
 
 def solar_elevation(
-        lat,
-        lon,
-        tz_offset,
-        dt_local
-):
+        lat: float,
+        lon: float,
+        tz_offset: int,
+        dt_local: datetime
+) -> float:
     n = dt_local.timetuple().tm_yday
     lt = dt_local.hour + dt_local.minute / 60 + dt_local.second / 3600  # local clock time
     B = math.radians((360 / 365) * (n - 81))
@@ -143,5 +137,6 @@ def solar_elevation(
     cos_z = (math.sin(phi) * math.sin(delta) +
              math.cos(phi) * math.cos(delta) * math.cos(omega))
     z = math.acos(max(-1, min(1, cos_z)))  # clamp
+
     return math.degrees(math.pi / 2 - z)
 

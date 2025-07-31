@@ -2,6 +2,7 @@ import inspect
 import json
 import re
 
+from typing import Dict, Any
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -22,29 +23,29 @@ Bias shows whether the model regularly over- or under-predicts
 '''
 
 class SensorCalibrationMetrics:
-    def __init__(self, y_true, y_pred):
-        self.y_true = np.array(y_true)
-        self.y_pred = np.array(y_pred)
+    def __init__(self, y_true: np.ndarray, y_pred:np.ndarray):
+        self.y_true: np.ndarray = np.array(y_true)
+        self.y_pred: np.ndarray = np.array(y_pred)
 
-        self.mae = mean_absolute_error(self.y_true, self.y_pred)
-        self.mse = mean_squared_error(self.y_true, self.y_pred)
-        self.rmse = np.sqrt(mean_squared_error(self.y_true, self.y_pred))
-        self.r2 = r2_score(self.y_true, self.y_pred)
-        self.mape = np.mean(np.abs((self.y_true - self.y_pred) / (self.y_true + 1e-8))) * 100  # +1e-8 for safety
-        self.max_error = np.max(np.abs(self.y_true - self.y_pred))
-        self.bias = np.mean(self.y_pred - self.y_true)
+        self.mae: float = mean_absolute_error(self.y_true, self.y_pred)
+        self.mse: float = mean_squared_error(self.y_true, self.y_pred)
+        self.rmse: float = np.sqrt(mean_squared_error(self.y_true, self.y_pred))
+        self.r2: float = r2_score(self.y_true, self.y_pred)
+        self.mape: float = float(np.mean(np.abs((self.y_true - self.y_pred) / (self.y_true + 1e-8))) * 100)  # +1e-8 for safety
+        self.max_error: float = float(np.max(np.abs(self.y_true - self.y_pred)))
+        self.bias: float = float(np.mean(self.y_pred - self.y_true))
 
 def sanitize_filename(name: str) -> str:
     name = name.split("@")[-1]
     return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
 
-def export_tree_as_rules(model: DecisionTreeRegressor):
+def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
     tree_ = model.tree_
     feature = tree_.feature
     threshold = tree_.threshold
     value = tree_.value
 
-    def recurse(node):
+    def recurse(node: int) -> Dict[str, Any]:
         if tree_.feature[node] != _tree.TREE_UNDEFINED:
             return {
                 "feature": int(feature[node]),
@@ -59,13 +60,12 @@ def export_tree_as_rules(model: DecisionTreeRegressor):
 
     return recurse(0)
 
-
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,
         samples_count: int,
         coefficients_list: list[dict],
         filename_path: Path
-):
+) -> None:
     metrics_json = {
         "mse": float(metrics.mse),
         "mae": float(metrics.mae),
@@ -90,7 +90,7 @@ def save_true_and_predicted_data_to_csv(
     y_pred: np.ndarray,
     output_path: Path,
     index: np.ndarray = None
-):
+) -> None:
     if index is None:
         index = np.arange(len(y_true))
 
@@ -109,7 +109,7 @@ def linear_regression(
         data_filename_dir: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None
-):
+) -> None:
     df = df.copy()
 
     if sensor_names is None:
@@ -150,7 +150,7 @@ def divided_linear_regression(
         data_filename_dir: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None
-):
+) -> None:
     df = df.copy()
     df["hour"] = df["time"].dt.floor("h")
 
@@ -214,7 +214,7 @@ def polynominal_regression(
         data_filename_dir: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None
-):
+) -> None:
     df = df.copy()
     coefficients = []
 
@@ -262,9 +262,8 @@ def decision_tree_regression(
         data_filename_dir: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None
-):
+) -> None:
     df = df.copy()
-    coefficients = []
 
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
@@ -303,7 +302,7 @@ def mlp_regression(
         data_filename_dir: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None
-):
+) -> None:
     df = df.copy()
     coefficients = []
 
@@ -348,5 +347,3 @@ def mlp_regression(
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test)
-
-

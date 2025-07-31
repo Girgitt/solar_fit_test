@@ -1,49 +1,10 @@
 import json
 
 from model_params import *
-from plot_functions import plot_bar_metrics, plot_predictions_by_method
+from typing import Dict, List, Any
 from calibrate_methods import save_true_and_predicted_data_to_csv
 
-def analyze_calibration_metrics(log_dir: Path,
-                                plot_dir: Path,
-                                folder_data_name: str
-                                ):
-
-    folder_data_dir = log_dir / folder_data_name
-
-    calibration_method_dirs = [p for p in folder_data_dir.iterdir() if p.is_dir()]
-
-    # Structure: {sensor_name: {method_name: {metric: value, ...}}}
-    all_metrics = load_data_from_json(calibration_method_dirs)
-    all_data = load_data_from_csv(calibration_method_dirs)
-
-    output_dir = Path(plot_dir) / folder_data_name
-    output_dir.mkdir(exist_ok=True)
-
-    for sensor_name, methods in all_metrics.items():
-        df = pd.DataFrame.from_dict(methods, orient="index")
-
-        selected_metrics = ["r2"]
-        plot_bar_metrics(selected_metrics, df, output_dir, sensor_name)
-
-        #plot_predictions_by_method(all_data)
-
-def load_data_from_json(calibration_method_dirs: Path):
-    all_metrics = {}
-
-    for method_dir in calibration_method_dirs:
-        method_name = method_dir.name
-        for json_file in method_dir.glob("*.json"):
-            sensor_name = json_file.stem
-            with open(json_file, "r", encoding="utf-8") as f:
-                metrics = json.load(f)
-                if sensor_name not in all_metrics:
-                    all_metrics[sensor_name] = {}
-                all_metrics[sensor_name][method_name] = metrics
-
-    return all_metrics
-
-def load_data_from_csv(calibration_method_dirs: Path):
+def load_data_from_csv(calibration_method_dirs: Path) -> pd.DataFrame:
     all_data = {}
 
     for method_dir in calibration_method_dirs:
@@ -57,7 +18,7 @@ def load_data_from_csv(calibration_method_dirs: Path):
 
     return all_data
 
-def linear_regression_load_parameters(calibration_method_dir: Path):
+def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
 
@@ -73,7 +34,7 @@ def linear_regression_load_parameters(calibration_method_dir: Path):
 
     return params
 
-def divided_linear_regression_load_parameters(calibration_method_dir: Path):
+def divided_linear_regression_load_parameters(calibration_method_dir: Path) -> List[DatatypeCoefficientsForDividedLinearRegression]:
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
 
@@ -90,7 +51,7 @@ def divided_linear_regression_load_parameters(calibration_method_dir: Path):
 
     return params
 
-def polynominal_regression_load_parameters(calibration_method_dir: Path):
+def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
 
@@ -106,7 +67,7 @@ def polynominal_regression_load_parameters(calibration_method_dir: Path):
 
     return params
 
-def decision_tree_regression_load_parameters(calibration_method_dir: Path):
+def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, Any]:
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
 
@@ -123,7 +84,7 @@ def decision_tree_regression_load_parameters(calibration_method_dir: Path):
 
     return params["params"]
 
-def mlp_load_parameters(calibration_method_dir: Path):
+def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsForMLPRegression:
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
 
@@ -139,7 +100,7 @@ def mlp_load_parameters(calibration_method_dir: Path):
 
     return params
 
-def _validate_tree_structure(node: dict):
+def _validate_tree_structure(node: dict) -> None:
     if "value" in node:
         return  # it's a leaf, that's fine
 
@@ -164,7 +125,7 @@ def _traverse_tree(node: dict, x_val: float) -> float:
     else:
         return _traverse_tree(node["right"], x_val)
 
-def _apply_activation(z, activation):
+def _apply_activation(z, activation) -> np.ndarray:
     if activation == 'relu':
         return np.maximum(0, z)
     elif activation == 'tanh':
@@ -255,7 +216,7 @@ def calibrate_by_linear_regression(
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str,
-):
+) -> None:
     calibration_method_dir = log_dir / folder_data_name / "linear_regression"
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
@@ -278,7 +239,7 @@ def calibrate_by_divided_linear_regression(
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
-):
+) -> None:
     calibration_method_dir = log_dir / folder_data_name / "divided_linear_regression"
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
@@ -299,7 +260,7 @@ def calibrate_by_polynominal_regression(
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
-):
+) -> None:
     calibration_method_dir = log_dir / folder_data_name / "polynominal_regression"
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
@@ -320,7 +281,7 @@ def calibrate_by_decision_tree_regression(
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
-):
+) -> None:
     calibration_method_dir = log_dir / folder_data_name / "decision_tree_regression"
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
@@ -341,7 +302,7 @@ def calibrate_by_mlp_regression(
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
-):
+) -> None:
 
     calibration_method_dir = log_dir / folder_data_name / "mlp_regression"
 
