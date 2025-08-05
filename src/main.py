@@ -10,11 +10,14 @@
 '''
 python src/main.py --action=update --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
+
+python src/main.py --action=update --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
+python src/main.py --action=execute --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
 '''
 
 import argparse
 from utils import *
-from plot_functions import plot_model_outputs
+from plot_functions import plot_raw_data, plot_predicted_data
 
 def main():
     ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -54,11 +57,18 @@ def main():
     elif args.action == "execute":
         execute_function(model_parameters)
 
-    plot_model_outputs(
+    plot_raw_data(
         df=model_parameters.df,
-        model_id="multi_sensor_model",
+        save_dir=PLOT_DIR / Path(args.csv).stem,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
+        show=True,
+    )
+
+    plot_predicted_data(
+        calibration_method_dir=LOG_DIR / Path(args.csv).stem,
+        show=False,
+        save_dir=PLOT_DIR / Path(args.csv).stem,
     )
 
 if __name__ == '__main__':

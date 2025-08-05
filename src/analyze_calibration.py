@@ -4,20 +4,6 @@ from model_params import *
 from typing import Dict, List, Any
 from calibrate_methods import save_true_and_predicted_data_to_csv
 
-def load_data_from_csv(calibration_method_dirs: Path) -> pd.DataFrame:
-    all_data = {}
-
-    for method_dir in calibration_method_dirs:
-        method_name = method_dir.name
-        for csv_file in method_dir.glob("*.csv"):
-            sensor_name = csv_file.stem
-            df = pd.read_csv(csv_file)
-            if sensor_name not in all_data:
-                all_data[sensor_name] = {}
-            all_data[sensor_name][method_name] = df
-
-    return all_data
-
 def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
