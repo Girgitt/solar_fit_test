@@ -10,6 +10,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.tree import _tree
+from sklearn.preprocessing import MinMaxScaler
 
 from model_params import *
 
@@ -34,6 +35,15 @@ class SensorCalibrationMetrics:
         self.mape: float = float(np.mean(np.abs((self.y_true - self.y_pred) / (self.y_true + 1e-8))) * 100)  # +1e-8 for safety
         self.max_error: float = float(np.max(np.abs(self.y_true - self.y_pred)))
         self.bias: float = float(np.mean(self.y_pred - self.y_true))
+
+def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
+    scaler = MinMaxScaler()
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    scaled_array = scaler.fit_transform(df[numeric_cols])
+    df_scaled = df.copy()
+    df_scaled[numeric_cols] = scaled_array
+
+    return df_scaled
 
 def sanitize_filename(name: str) -> str:
     name = name.split("@")[-1]
@@ -108,7 +118,7 @@ def linear_regression(
         log_dir: Path,
         data_filename_dir: Path,
         sensor_names: list[str] = None,
-        sensor_name_ref: str = None
+        sensor_name_ref: str = None,
 ) -> None:
     df = df.copy()
 
@@ -138,6 +148,7 @@ def linear_regression(
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
         data_filename = sanitize_filename(Path(data_filename_dir).stem)
+
         json_metrics_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_metrics_filename)
 
@@ -149,7 +160,7 @@ def divided_linear_regression(
         log_dir: Path,
         data_filename_dir: Path,
         sensor_names: list[str] = None,
-        sensor_name_ref: str = None
+        sensor_name_ref: str = None,
 ) -> None:
     df = df.copy()
     df["hour"] = df["time"].dt.floor("h")
@@ -213,7 +224,7 @@ def polynominal_regression(
         log_dir: Path,
         data_filename_dir: Path,
         sensor_names: list[str] = None,
-        sensor_name_ref: str = None
+        sensor_name_ref: str = None,
 ) -> None:
     df = df.copy()
     coefficients = []
@@ -261,7 +272,7 @@ def decision_tree_regression(
         log_dir: Path,
         data_filename_dir: Path,
         sensor_names: list[str] = None,
-        sensor_name_ref: str = None
+        sensor_name_ref: str = None,
 ) -> None:
     df = df.copy()
 
@@ -301,10 +312,12 @@ def mlp_regression(
         log_dir: Path,
         data_filename_dir: Path,
         sensor_names: list[str] = None,
-        sensor_name_ref: str = None
+        sensor_name_ref: str = None,
 ) -> None:
     df = df.copy()
     coefficients = []
+
+    df = normalize_values(df)
 
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
