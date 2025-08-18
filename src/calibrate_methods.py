@@ -1,9 +1,7 @@
 import inspect
-import json
 import re
 
 from typing import Dict, Any
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
@@ -13,6 +11,8 @@ from sklearn.tree import _tree
 from sklearn.preprocessing import MinMaxScaler
 
 from model_params import *
+from sensor_calibration_metrics import SensorCalibrationMetrics
+from save_functions import save_metrics_to_json, save_true_and_predicted_data_to_csv
 
 '''
 MAE does not indicate whether the model overestimates or underestimates values
@@ -22,19 +22,6 @@ R2 correlation between two datasets
 MAPE especially useful when you want to assess the accuracy of predictions in percentage
 Bias shows whether the model regularly over- or under-predicts
 '''
-
-class SensorCalibrationMetrics:
-    def __init__(self, y_true: np.ndarray, y_pred:np.ndarray):
-        self.y_true: np.ndarray = np.array(y_true)
-        self.y_pred: np.ndarray = np.array(y_pred)
-
-        self.mae: float = mean_absolute_error(self.y_true, self.y_pred)
-        self.mse: float = mean_squared_error(self.y_true, self.y_pred)
-        self.rmse: float = np.sqrt(mean_squared_error(self.y_true, self.y_pred))
-        self.r2: float = r2_score(self.y_true, self.y_pred)
-        self.mape: float = float(np.mean(np.abs((self.y_true - self.y_pred) / (self.y_true + 1e-8))) * 100)  # +1e-8 for safety
-        self.max_error: float = float(np.max(np.abs(self.y_true - self.y_pred)))
-        self.bias: float = float(np.mean(self.y_pred - self.y_true))
 
 def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
     scaler = MinMaxScaler()
@@ -69,49 +56,6 @@ def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
             }
 
     return recurse(0)
-
-def save_metrics_to_json(
-        metrics: SensorCalibrationMetrics,
-        samples_count: int,
-        coefficients_list: list[dict],
-        filename_path: Path
-) -> None:
-    metrics_json = {
-        "mse": float(metrics.mse),
-        "mae": float(metrics.mae),
-        "rmse": float(metrics.rmse),
-        "r2": float(metrics.r2),
-        "mape": float(metrics.mape),
-        "max_error": float(metrics.max_error),
-        "bias": float(metrics.bias),
-        "n_samples": samples_count,
-    }
-
-    if coefficients_list is not None:
-        metrics_json["coefficients"] = coefficients_list
-
-    filename_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(filename_path, "w") as f:
-        json.dump(metrics_json, f, indent=2)
-
-def save_true_and_predicted_data_to_csv(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    output_path: Path,
-    index: np.ndarray = None
-) -> None:
-    if index is None:
-        index = np.arange(len(y_true))
-
-    df_out = pd.DataFrame({
-        "index": index,
-        "y_true": y_true,
-        "y_pred": y_pred
-    })
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    df_out.to_csv(output_path, index=False)
 
 def linear_regression(
         df: pd.DataFrame,

@@ -18,6 +18,18 @@ class ModelParameters:
     sensor_names: np.ndarray
     sensor_name_ref: np.ndarray
 
+@dataclass
+class ClearSkyParameters:
+    start_time: pd.Timestamp
+    end_time: pd.Timestamp
+    warsaw_lat: float
+    warsaw_lon: float
+    tz: str
+    altitude: int
+    name: str
+    frequency: str
+    albedo: float
+
 class DatatypeCoefficientsForDividedLinearRegression(TypedDict):
     hour: str
     a: float

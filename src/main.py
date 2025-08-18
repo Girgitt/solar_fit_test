@@ -16,8 +16,8 @@ python src/main.py --action=execute --model_id=high_sunshine_frequent_cover_1_da
 '''
 
 import argparse
+
 from utils import *
-from plot_functions import plot_raw_data, plot_predicted_data
 
 def main():
     ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -51,25 +51,23 @@ def main():
         sensor_name_ref = sensor_name_ref
     )
 
+    clear_sky_parameters = ClearSkyParameters(
+        start_time=model_parameters.df_time.iloc[0],
+        end_time=model_parameters.df_time.iloc[-1],
+        warsaw_lat=52.22977,
+        warsaw_lon=21.01178,
+        tz='Europe/Warsaw',
+        altitude=170,
+        name='Warsaw',
+        frequency='1min',
+        albedo=0.2,
+    )
+
     if args.action == "update":
         update_function(model_parameters)
 
     elif args.action == "execute":
-        execute_function(model_parameters)
-
-    plot_raw_data(
-        df=model_parameters.df,
-        save_dir=PLOT_DIR / Path(args.csv).stem,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        show=True,
-    )
-
-    plot_predicted_data(
-        calibration_method_dir=LOG_DIR / Path(args.csv).stem,
-        show=False,
-        save_dir=PLOT_DIR / Path(args.csv).stem,
-    )
+        execute_function(model_parameters, clear_sky_parameters)
 
 if __name__ == '__main__':
     main()
