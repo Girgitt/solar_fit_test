@@ -5,6 +5,8 @@ from typing import Tuple
 
 from calibrate_methods import *
 from analyze_calibration import *
+from plot_functions import plot_raw_data, plot_predicted_data, plot_poa_vs_reference
+from clear_sky_model import *
 
 def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--action", choices=["update", "execute"], required=True,
@@ -34,20 +36,6 @@ def select_available_data_columns_to_process(
     df = df.dropna(subset=sensor_names + [sensor_name_ref])
 
     return sensor_names, sensor_name_ref, df
-
-def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) -> Dict[str, Dict[str, pd.DataFrame]]:
-    all_data = {}
-
-    for method_dir in calibration_method_dirs.iterdir():
-        if method_dir.is_dir():
-            method_name = method_dir.name
-            method_data = {}
-            for csv_file in method_dir.glob("*all_true_vs_pred.csv"):
-                sensor_name = csv_file.stem.replace("_all_true_vs_pred", "")
-                method_data[sensor_name] = pd.read_csv(csv_file)
-            all_data[method_name] = method_data
-
-    return all_data
 
 def update_function(model_parameters: ModelParameters) -> None:
     linear_regression(
@@ -90,7 +78,7 @@ def update_function(model_parameters: ModelParameters) -> None:
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
 
-def execute_function(model_parameters: ModelParameters) -> None:
+def execute_function(model_parameters: ModelParameters, clear_sky_parameters: ClearSkyParameters) -> None:
     calibrate_by_linear_regression(
         df=model_parameters.df,
         sensor_names=model_parameters.sensor_names,
@@ -130,6 +118,33 @@ def execute_function(model_parameters: ModelParameters) -> None:
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
         folder_data_name=Path(model_parameters.args.csv).stem
+    )
+
+    plot_raw_data(
+        df=model_parameters.df,
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        show=True,
+    )
+
+    plot_predicted_data(
+        calibration_method_dir=model_parameters.log_dir / Path(model_parameters.args.csv).stem,
+        show=False,
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+    )
+
+    poa = clear_sky(
+        clear_sky_parameters=clear_sky_parameters,
+        show=False,
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+    )
+
+    plot_poa_vs_reference(
+        poa_global=poa['poa_global'],
+        sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        show=True,
     )
 
 def solar_elevation(
