@@ -108,6 +108,7 @@ def divided_linear_regression(
 ) -> None:
     df = df.copy()
     df["hour"] = df["time"].dt.floor("h")
+    min_samples = 10
 
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
@@ -121,6 +122,13 @@ def divided_linear_regression(
         idx_test_all_hours = []
 
         for idx, (hour, group) in enumerate(df.groupby("hour")):
+            n = len(group)
+
+            # skip too-small groups
+            if n < min_samples:
+                print(f"[INFO] Skipping hour {hour}: only {n} samples (< min_samples={min_samples})")
+                continue
+
             x = group[sensor_col].values.reshape(-1, 1)
             y = group[sensor_name_ref].values
 
