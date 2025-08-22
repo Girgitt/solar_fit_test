@@ -1,12 +1,12 @@
 import math
 from argparse import ArgumentParser
 from datetime import datetime
-from typing import Tuple
 
 from calibrate_methods import *
 from analyze_calibration import *
-from plot_functions import plot_raw_data, plot_predicted_data, plot_poa_vs_reference
+from plot_functions import *
 from clear_sky_model import *
+from calculate_parameters_based_on_reference_values import *
 
 def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--action", choices=["update", "execute"], required=True,
@@ -120,9 +120,17 @@ def execute_function(model_parameters: ModelParameters, clear_sky_parameters: Cl
         folder_data_name=Path(model_parameters.args.csv).stem
     )
 
+    determine_curve_interpolating_maxima(
+        df=model_parameters.df,
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        save_dir=model_parameters.data_filename_dir
+    )
+
     plot_raw_data(
         df=model_parameters.df,
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        filename="series_vs_time.png",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         show=True,
@@ -145,6 +153,16 @@ def execute_function(model_parameters: ModelParameters, clear_sky_parameters: Cl
         sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
         show=True,
+    )
+
+    plot_raw_data_with_peaks(
+        df=model_parameters.df,
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        peaks_dir= Path("data/interpolated") / Path(model_parameters.data_filename_dir).stem,
+        filename="series_vs_time_with_peaks",
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        show=True
     )
 
 def solar_elevation(
