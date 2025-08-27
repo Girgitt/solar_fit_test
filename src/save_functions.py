@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import json
 from matplotlib.figure import Figure
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from sensor_calibration_metrics import SensorCalibrationMetrics
 
@@ -54,10 +54,16 @@ def save_true_and_predicted_data_to_csv(
 def save_dataframe_to_csv(
         df: pd.DataFrame,
         output_path: Path,
+        index: Optional[bool] = False,
+        index_label: Optional[str] = None
 ) -> None:
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(output_path, index=False)
+        df.to_csv(
+            output_path,
+            index=index,
+            index_label=index_label
+        )
 
 def save_figure(
         fig: Figure,

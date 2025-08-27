@@ -238,10 +238,53 @@ def plot_poa_vs_reference(
     ax.grid(True)
     fig.tight_layout()
 
-    save_figure(fig, save_dir, "poa_vs_reference.png")
+    if save_dir is not None:
+        save_figure(fig, save_dir, "poa_vs_reference.png")
 
     if show:
         fig.show()
 
     return fig
 
+def plot_poa_reference_with_clearsky_periods(
+        poa_global: pd.Series,
+        sensor_reference: pd.Series,
+        sunny: pd.Series,
+        save_dir: Optional[Path] = None,
+        show: bool = True
+) -> Figure:
+    poa_global = poa_global.copy()
+    sensor_reference = sensor_reference.copy()
+    sunny = sunny.copy()
+
+    fig = plot_poa_vs_reference(
+        poa_global=poa_global,
+        sensor_reference=sensor_reference,
+        save_dir=None,
+        show=False
+    )
+
+    sensor_aligned = sensor_reference
+    sensor_aligned.index = poa_global.index
+    sunny_aligned = sunny.reindex(poa_global.index).fillna(False).astype(bool)
+
+    ax = fig.axes[0]
+    ax.scatter(
+        poa_global.index[sunny_aligned],
+        sensor_aligned[sunny_aligned],
+        s=12,
+        zorder=5,
+        label="Clear-sky samples"
+    )
+
+    ax.set_title("POA Global vs Sensor Reference (clear-sky highlighted)")
+    ax.legend(title="")
+    fig.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, "poa_vs_reference_sunny.png")
+
+    if show:
+        fig.show()
+
+    return fig
