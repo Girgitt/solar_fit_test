@@ -33,6 +33,8 @@ def main():
     args = argument_parsing(parser)
     model_path = Path(f"model_config__{args.model_id}.json")
 
+    check_if_csv_contains_timezone_info(args.csv)
+
     df = pd.read_csv(args.csv, parse_dates=["time"])
     data_columns = [col for col in df.columns if col != "time"]
     time_column = df["time"]
@@ -61,6 +63,8 @@ def main():
         name='Warsaw',
         frequency='1min',
         albedo=0.2,
+        surface_tilt=30,  # degrees from horizontal
+        surface_azimuth = 180,  # south-facing
     )
 
     if args.action == "update":

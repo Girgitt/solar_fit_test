@@ -4,6 +4,7 @@ import pandas as pd
 from dataclasses import dataclass
 from argparse import Namespace
 from pathlib import Path
+from pvlib.location import Location
 
 from typing import TypedDict, List
 
@@ -29,6 +30,15 @@ class ClearSkyParameters:
     name: str
     frequency: str
     albedo: float
+    surface_tilt: int  # degrees from horizontal
+    surface_azimuth: int # 180 - south facing
+
+@dataclass
+class SolarDataForLocationAndTime:
+    location: Location
+    times: pd.DatetimeIndex
+    solar_position: pd.DataFrame
+    clear_sky: pd.DataFrame
 
 class DatatypeCoefficientsForDividedLinearRegression(TypedDict):
     hour: str

@@ -1,12 +1,13 @@
 import math
 from argparse import ArgumentParser
 from datetime import datetime
-from typing import Tuple
+from zoneinfo import ZoneInfo
 
 from calibrate_methods import *
 from analyze_calibration import *
-from plot_functions import plot_raw_data, plot_predicted_data, plot_poa_vs_reference
+from plot_functions import *
 from clear_sky_model import *
+from determine_azimuth_and_tilt import *
 
 def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--action", choices=["update", "execute"], required=True,
@@ -36,6 +37,19 @@ def select_available_data_columns_to_process(
     df = df.dropna(subset=sensor_names + [sensor_name_ref])
 
     return sensor_names, sensor_name_ref, df
+
+def check_if_csv_contains_timezone_info(file_path: str) -> None:
+    file_path = Path(file_path)
+
+    df = pd.read_csv(file_path)
+    df['time'] = pd.to_datetime(df['time'])
+
+    if df['time'].dt.tz is None:
+        df['time'] = df['time'].dt.tz_localize(ZoneInfo('Europe/Warsaw'))
+        df.to_csv(file_path, index=False)
+        print('Time does not contain timezone info. Timezone added and file updated')
+    else:
+        print('[INFO] Time already has timezone. No changes made')
 
 def update_function(model_parameters: ModelParameters) -> None:
     linear_regression(
@@ -120,9 +134,35 @@ def execute_function(model_parameters: ModelParameters, clear_sky_parameters: Cl
         folder_data_name=Path(model_parameters.args.csv).stem
     )
 
+    poa = clear_sky(
+        clear_sky_parameters=clear_sky_parameters,
+        show=False,
+        save_dir_plot=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        save_dir_data=model_parameters.data_filename_dir
+    )
+
+    clearsky_periods = detect_clearsky_periods(
+        poa=poa,
+        df=model_parameters.df,
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        save_dir=model_parameters.data_filename_dir
+    )
+
+    determine_system_azimuth_and_tilt(
+        clear_sky_parameters=clear_sky_parameters,
+        df=model_parameters.df,
+        sunny_mask=clearsky_periods,
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        tilts=np.arange(0, 30, 1), # None
+        azimuths=np.arange(170, 190, 1) # None
+    )
+
     plot_raw_data(
         df=model_parameters.df,
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        filename="series_vs_time.png",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         show=True,
@@ -134,17 +174,29 @@ def execute_function(model_parameters: ModelParameters, clear_sky_parameters: Cl
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
     )
 
-    poa = clear_sky(
-        clear_sky_parameters=clear_sky_parameters,
-        show=False,
-        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
-    )
-
     plot_poa_vs_reference(
         poa_global=poa['poa_global'],
         sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
         show=True,
+    )
+
+    plot_poa_reference_with_clearsky_periods(
+        poa_global=poa['poa_global'],
+        sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
+        sunny=clearsky_periods,
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        show=True,
+    )
+
+    plot_raw_data_with_peaks(
+        df=model_parameters.df,
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        peaks_dir= Path("data/interpolated") / Path(model_parameters.data_filename_dir).stem,
+        filename="series_vs_time_with_peaks",
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        show=True
     )
 
 def solar_elevation(

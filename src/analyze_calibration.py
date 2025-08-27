@@ -1,115 +1,9 @@
-import json
-
 from model_params import *
-from typing import Dict, List, Any
 from save_functions import save_true_and_predicted_data_to_csv
+from load_functions import (linear_regression_load_parameters, divided_linear_regression_load_parameters,
+                            polynominal_regression_load_parameters, decision_tree_regression_load_parameters, mlp_load_parameters)
 
-def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
-    with open(calibration_method_dir, 'r') as f:
-        data = json.load(f)
-
-    if "coefficients" not in data or not data["coefficients"]:
-        raise ValueError("JSON file does not contain 'coefficients' list.")
-
-    params = data["coefficients"]
-
-    required_keys = ["a", "b"]
-    for key in required_keys:
-        if key not in params:
-            raise ValueError(f"Missing key '{key}' in coefficients.")
-
-    return params
-
-def divided_linear_regression_load_parameters(calibration_method_dir: Path) -> List[DatatypeCoefficientsForDividedLinearRegression]:
-    with open(calibration_method_dir, 'r') as f:
-        data = json.load(f)
-
-    if "coefficients" not in data or not data["coefficients"]:
-        raise ValueError("JSON file does not contain 'coefficients' list.")
-
-    params = data["coefficients"][:]
-
-    required_keys = ["hour", "a", "b"]
-    for idx, c in enumerate(data["coefficients"]):
-        for key in required_keys:
-            if key not in c:
-                raise ValueError(f"Missing key '{key}' in coefficients at index {idx}: {c}")
-
-    return params
-
-def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
-    with open(calibration_method_dir, 'r') as f:
-        data = json.load(f)
-
-    if "coefficients" not in data or not data["coefficients"]:
-        raise ValueError("JSON file does not contain 'coefficients' list.")
-
-    params = data["coefficients"]
-
-    required_keys = ["a", "b", "c"]
-    for key in required_keys:
-        if key not in params:
-            raise ValueError(f"Missing key '{key}' in coefficients.")
-
-    return params
-
-def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, Any]:
-    with open(calibration_method_dir, 'r') as f:
-        data = json.load(f)
-
-    if "coefficients" not in data or not data["coefficients"]:
-        raise ValueError("JSON file does not contain 'coefficients' list.")
-
-    params = data["coefficients"]
-
-    if "params" not in params:
-        raise ValueError("Missing 'params' key in 'coefficients'.")
-
-        # Recursively validate the tree structure
-    _validate_tree_structure(params["params"])
-
-    return params["params"]
-
-def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsForMLPRegression:
-    with open(calibration_method_dir, 'r') as f:
-        data = json.load(f)
-
-    if "coefficients" not in data or not data["coefficients"]:
-        raise ValueError("JSON file does not contain 'coefficients' list.")
-
-    params = data["coefficients"]
-
-    required_keys = ["layer_1_weights", "layer_1_biases", "layer_2_weights", "layer_2_biases", "output_weights", "output_biases"]
-    for key in required_keys:
-        if key not in params:
-            raise ValueError(f"Missing key '{key}' in coefficients.")
-
-    return params
-
-def _validate_tree_structure(node: dict) -> None:
-    if "value" in node:
-        return  # it's a leaf, that's fine
-
-    required_keys = ["feature", "threshold", "left", "right"]
-    for key in required_keys:
-        if key not in node:
-            raise ValueError(f"Missing key '{key}' in internal node: {node}")
-
-    # Recursively validate children
-    _validate_tree_structure(node["left"])
-    _validate_tree_structure(node["right"])
-
-def _traverse_tree(node: dict, x_val: float) -> float:
-    if "value" in node:
-        return node["value"]
-
-    threshold = node["threshold"]
-    feature = node["feature"]  # always 0 in this case
-
-    if x_val <= threshold:
-        return _traverse_tree(node["left"], x_val)
-    else:
-        return _traverse_tree(node["right"], x_val)
+from validate_decision_tree import _traverse_tree
 
 def _apply_activation(z, activation) -> np.ndarray:
     if activation == 'relu':
@@ -121,7 +15,10 @@ def _apply_activation(z, activation) -> np.ndarray:
     else:
         raise ValueError(f"Unsupported activation: {activation}")
 
-def linear_regression_calculate_calibration_values(x: np.ndarray, params: dict) -> np.ndarray:
+def linear_regression_calculate_calibration_values(
+        x: np.ndarray,
+        params: dict
+) -> np.ndarray:
     a = params["a"]
     b = params["b"]
     x = np.asarray(x).flatten()
@@ -129,7 +26,11 @@ def linear_regression_calculate_calibration_values(x: np.ndarray, params: dict) 
     y_pred = a * x + b
     return y_pred
 
-def divided_linear_regression_calculate_calibration_values(x: np.ndarray, time: np.ndarray, params: dict) -> np.ndarray:
+def divided_linear_regression_calculate_calibration_values(
+        x: np.ndarray,
+        time: np.ndarray,
+        params: dict
+) -> np.ndarray:
     intervals = sorted([
         (pd.to_datetime(c["hour"]), c["a"], c["b"])
         for c in params
@@ -146,7 +47,7 @@ def divided_linear_regression_calculate_calibration_values(x: np.ndarray, time: 
 
         for j in range(len(intervals)):
             t_start, a_j, b_j = intervals[j]
-            t_end = intervals[j + 1][0] if j + 1 < len(intervals) else pd.Timestamp.max
+            t_end = intervals[j + 1][0] if j + 1 < len(intervals) else pd.Timestamp.max.tz_localize('Europe/Warsaw')
 
             if t_start <= t < t_end:
                 a, b = a_j, b_j
@@ -156,7 +57,10 @@ def divided_linear_regression_calculate_calibration_values(x: np.ndarray, time: 
 
     return y_pred
 
-def polynominal_regression_calculate_calibration_values(x: np.ndarray, params: dict) -> np.ndarray:
+def polynominal_regression_calculate_calibration_values(
+        x: np.ndarray,
+        params: dict
+) -> np.ndarray:
     a = params["a"]
     b = params["b"]
     c = params["c"]
@@ -166,14 +70,21 @@ def polynominal_regression_calculate_calibration_values(x: np.ndarray, params: d
 
     return y_pred
 
-def decision_tree_regression_calculate_calibration_values(x: np.ndarray, params: dict) -> np.ndarray:
+def decision_tree_regression_calculate_calibration_values(
+        x: np.ndarray,
+        params: dict
+) -> np.ndarray:
     tree = params #params["params"]
     x = np.asarray(x).flatten()
     y_pred = np.array([_traverse_tree(tree, val) for val in x])
 
     return y_pred
 
-def mlp_calculate_calibration_values(x: np.ndarray, params: dict, activation: str='relu') -> np.ndarray:
+def mlp_calculate_calibration_values(
+        x: np.ndarray,
+        params: dict,
+        activation: str='relu'
+) -> np.ndarray:
     W1 = np.array(params["layer_1_weights"])  # shape (n_inputs, 10)
     b1 = np.array(params["layer_1_biases"])  # (10,)
     W2 = np.array(params["layer_2_weights"])  # shape (10, 10)
@@ -233,7 +144,7 @@ def calibrate_by_divided_linear_regression(
 
         x = df[sensor_names[idx]].values
         y_true = df[sensor_name_ref]
-        y_pred = divided_linear_regression_calculate_calibration_values(x, df_time.values, params)
+        y_pred = divided_linear_regression_calculate_calibration_values(x, df_time, params)
 
         output_dir = Path(json_file_dir).parent
         file_stem = Path(json_file_dir).stem

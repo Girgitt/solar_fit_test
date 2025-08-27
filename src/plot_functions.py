@@ -1,28 +1,36 @@
 import os
 import matplotlib.pyplot as plt
-import pandas as pd
 
-from pathlib import Path
-from matplotlib.figure import Figure
-from typing import Dict, List, Tuple, Optional
+from matplotlib.axes import Axes
+from typing import Dict, Optional
 
+from save_functions import *
 from load_functions import load_true_and_predicted_data_for_all_methods
+from calibrate_methods import sanitize_filename
 
 def plot_raw_data(
     df: pd.DataFrame,
     save_dir: Path=None,
+    filename: str=None,
     sensor_names: list[str] = None,
     sensor_name_ref: str=None,
     show: bool=True,
-) -> None:
+) -> tuple[Figure, Axes]:
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
+    if 'time' in df.columns:
+        df = df.copy()
+        df['time'] = pd.to_datetime(df['time'], errors='coerce')
+        x = df['time']
+    else:
+        x = pd.to_datetime(df.index, errors='coerce')
+
     # Plot 1: Raw input series over time
     fig, ax = plt.subplots(figsize=(9, 4))
-    ax.plot(df["time"], df[sensor_name_ref], label="Power Reference (actual)", linewidth=0.9)
+    ax.plot(x, df[sensor_name_ref], label="Power Reference (actual)", linewidth=0.9)
     for sensor_col in sensor_names:
-        ax.plot(df["time"], df[sensor_col], label=f"Sensor: {sensor_col}", linewidth=0.9)
+        ax.plot(x, df[sensor_col], label=f"Sensor: {sensor_col}", linewidth=0.9)
     ax.set_title("Raw input series over time")
     ax.set_xlabel("Time")
     ax.set_ylabel("Power (W/m²)")
@@ -33,45 +41,77 @@ def plot_raw_data(
     if show:
         fig.show()
 
-    filename = f"series_vs_time.png"
+    if save_dir is not None:
+        save_figure(fig, save_dir, filename)
 
-    if fig is not None:
-        save_raw_data_figure(filename, fig, save_dir)
+    return fig, ax
 
-def save_figure(
-        fig: Figure,
-        fig_path: Path=None,
+def plot_raw_data_with_peaks(
+    df: pd.DataFrame,
+    save_dir: Path=None,
+    peaks_dir: Path=None,
+    filename = str,
+    sensor_names: list[str] = None,
+    sensor_name_ref: str=None,
+    show: bool=True,
 ) -> None:
-    print(f"[DEBUG] Saving: {fig_path}")
-    try:
-        fig.savefig(fig_path, dpi=300)
-        print(f"[SUCCESS] Saved: {fig_path}")
-    except Exception as e:
-        print(f"[ERROR] Failed to save {fig_path}: {e}")
+    if sensor_names is None:
+        raise ValueError("Parameter 'sensor_names' must be a list of column names.")
+    if peaks_dir is None:
+        raise ValueError("Parameter 'peaks_dir' must be a directory containing peaks CSV files.")
 
-def save_raw_data_figure(
-        filename: str,
-        fig: Figure,
-        save_dir: Path=None
-) -> None:
-    save_dir.mkdir(parents=True, exist_ok=True)
-    fig_path = save_dir / filename
+    peaks_dir = Path(peaks_dir)
 
-    save_figure(fig, fig_path)
+    fig, ax = plot_raw_data(
+        df=df,
+        save_dir=None,
+        filename=None,
+        sensor_names=sensor_names,
+        sensor_name_ref=sensor_name_ref,
+        show=False,
+    )
 
-def save_predicted_data_figures(
-        figures: List[Tuple[str, str, Figure]],
-        save_dir: Path=None,
-) -> None:
-    print(f"[INFO] Saving figures to: {save_dir} (type: {type(save_dir)})")
+    sensors_all = list(sensor_names)
+    if sensor_name_ref is not None and sensor_name_ref not in sensors_all:
+        sensors_all.append(sensor_name_ref)
 
-    save_dir.mkdir(parents=True, exist_ok=True)
+    line_colors = {}
+    for ln in ax.get_lines():
+        line_colors[ln.get_label()] = ln.get_color()
 
-    for sensor_name, calibration_method, fig in figures:
-        filename = f"{sensor_name}.png"
-        fig_path = save_dir / filename
+    for sensor_col in sensors_all:
+        peaks_path = peaks_dir / f"{sanitize_filename(sensor_col)}_peaks.csv"
+        if not peaks_path.exists():
+            print(f"[WARN] Peaks CSV not found for '{sensor_col}': {peaks_path}")
+            continue
 
-        save_figure(fig, fig_path)
+        peaks_df = pd.read_csv(peaks_path, parse_dates=['time'])
+        peaks_df['value'] = pd.to_numeric(peaks_df['value'], errors='coerce')
+        peaks_df = peaks_df.dropna(subset=['time', 'value'])
+
+        line_label = f"Sensor: {sensor_col}"
+        line_color = line_colors.get(line_label, None)
+
+        ax.scatter(
+            peaks_df['time'],
+            peaks_df['value'],
+            s=15, # control the shape
+            facecolors='white',
+            edgecolors=line_color or 'black',
+            linewidths=1.6,
+            alpha=1.0,
+            zorder=10,
+            label=f"{sensor_col} peaks",
+        )
+
+    ax.set_title("Raw input series with detected peaks")
+    fig.tight_layout()
+
+    if show:
+        fig.show()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, filename)
 
 def subplot_predicted_data(
         data: Dict[str, pd.DataFrame],
@@ -150,10 +190,7 @@ def plot_clear_sky(
     ax.grid(True)
     fig.tight_layout()
 
-    if save_dir is not None:
-        save_dir.mkdir(parents=True, exist_ok=True)
-        fig_path = save_dir / "clear_sky.png"
-        save_figure(fig, fig_path)
+    save_figure(fig, save_dir, "clear_sky_model.png")
 
     if show:
         fig.show()
@@ -172,10 +209,7 @@ def plot_poa_components(
     ax.grid(True)
     fig.tight_layout()
 
-    if save_dir is not None:
-        save_dir.mkdir(parents=True, exist_ok=True)
-        fig_path = save_dir / "poa_components.png"
-        save_figure(fig, fig_path)
+    save_figure(fig, save_dir, "poa_components.png")
 
     if show:
         fig.show()
@@ -205,12 +239,52 @@ def plot_poa_vs_reference(
     fig.tight_layout()
 
     if save_dir is not None:
-        save_dir.mkdir(parents=True, exist_ok=True)
-        fig_path = save_dir / "poa_vs_reference.png"
-        save_figure(fig, fig_path)
+        save_figure(fig, save_dir, "poa_vs_reference.png")
 
     if show:
         fig.show()
 
     return fig
 
+def plot_poa_reference_with_clearsky_periods(
+        poa_global: pd.Series,
+        sensor_reference: pd.Series,
+        sunny: pd.Series,
+        save_dir: Optional[Path] = None,
+        show: bool = True
+) -> Figure:
+    poa_global = poa_global.copy()
+    sensor_reference = sensor_reference.copy()
+    sunny = sunny.copy()
+
+    fig = plot_poa_vs_reference(
+        poa_global=poa_global,
+        sensor_reference=sensor_reference,
+        save_dir=None,
+        show=False
+    )
+
+    sensor_aligned = sensor_reference
+    sensor_aligned.index = poa_global.index
+    sunny_aligned = sunny.reindex(poa_global.index).fillna(False).astype(bool)
+
+    ax = fig.axes[0]
+    ax.scatter(
+        poa_global.index[sunny_aligned],
+        sensor_aligned[sunny_aligned],
+        s=12,
+        zorder=5,
+        label="Clear-sky samples"
+    )
+
+    ax.set_title("POA Global vs Sensor Reference (clear-sky highlighted)")
+    ax.legend(title="")
+    fig.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, "poa_vs_reference_sunny.png")
+
+    if show:
+        fig.show()
+
+    return fig
