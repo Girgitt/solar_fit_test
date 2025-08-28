@@ -6,8 +6,8 @@ from typing import List
 from pvanalytics import system
 from pvanalytics.system import _peak_times # infer_orientation_daily_peak
 
-from clear_sky_model import get_solar_data_for_location_and_time
-from model_params import ClearSkyParameters
+from solar_domain.clearsky import get_solar_data_for_location_and_time
+from config.params import ClearSkyParameters
 
 def determine_system_azimuth_and_tilt(
         clear_sky_parameters: ClearSkyParameters,

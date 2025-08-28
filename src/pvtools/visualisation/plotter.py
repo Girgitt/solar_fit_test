@@ -1,12 +1,16 @@
 import os
 import matplotlib.pyplot as plt
+import pandas as pd
 
+from typing import List, Tuple, Optional
+from pathlib import Path
 from matplotlib.axes import Axes
-from typing import Dict, Optional
+from matplotlib.figure import Figure
+from typing import Dict
 
-from save_functions import *
-from load_functions import load_true_and_predicted_data_for_all_methods
-from calibrate_methods import sanitize_filename
+from io_file.reader import load_true_and_predicted_data_for_all_methods
+from io_file.writer import save_figure, save_predicted_data_figures
+from modeling.calibrate import sanitize_filename
 
 def plot_raw_data(
     df: pd.DataFrame,

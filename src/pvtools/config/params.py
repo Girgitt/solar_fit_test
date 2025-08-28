@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from argparse import Namespace
 from pathlib import Path
 from pvlib.location import Location
-
 from typing import TypedDict, List
 
 @dataclass

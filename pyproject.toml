@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pvtools"
+version = "0.1.0"
+description = "Solar PV system tools"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Mateusz Kania" }]
+dependencies = [
+    "argparse",
+    "dataclasses",
+    "datetime",
+    "inspect",
+    "itertools",
+    "json",
+    "math",
+    "matplotlib",
+    "numpy",
+    "pandas>=2.0",
+    "pathlib",
+    "pvanalytics",
+    "pvlib",
+    "re",
+    "scikit-learn",
+    "typing",
+    "zoneinfo",
+]
+
+# Tell setuptools that sources live under src/
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Optional: make a CLI command `pvtools`
+[project.scripts]
+pvtools = "pvtools.main:main"

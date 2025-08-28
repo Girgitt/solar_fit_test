@@ -1,6 +1,9 @@
 import inspect
 import re
+import pandas as pd
+import numpy as np
 
+from pathlib import Path
 from typing import Dict, Any
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -10,9 +13,8 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.tree import _tree
 from sklearn.preprocessing import MinMaxScaler
 
-from model_params import *
-from sensor_calibration_metrics import SensorCalibrationMetrics
-from save_functions import save_metrics_to_json, save_true_and_predicted_data_to_csv
+from config.sensor_calibration_metrics import SensorCalibrationMetrics
+from io_file.writer import save_metrics_to_json, save_true_and_predicted_data_to_csv
 
 '''
 MAE does not indicate whether the model overestimates or underestimates values
