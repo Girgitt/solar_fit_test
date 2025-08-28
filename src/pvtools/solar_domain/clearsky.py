@@ -1,21 +1,20 @@
+import numpy as np
+import pandas as pd
+import pvlib
+
 from itertools import product
 from pathlib import Path
 from typing import Optional
-
-import numpy as np
-import pandas as pd
-
-import pvlib
 from pvlib import clearsky, atmosphere, solarposition, irradiance
 from pvlib.location import Location
 from pvlib.iotools import read_tmy3
 from pvlib.clearsky import detect_clearsky
 from pvanalytics.features.clearsky import reno
 
-from plot_functions import plot_clear_sky, plot_poa_components
-from model_params import ClearSkyParameters, SolarDataForLocationAndTime
-from calibrate_methods import sanitize_filename
-from save_functions import save_dataframe_to_csv
+from visualisation.plotter import plot_clear_sky, plot_poa_components
+from config.params import ClearSkyParameters, SolarDataForLocationAndTime
+from modeling.calibrate import sanitize_filename
+from io_file.writer import save_dataframe_to_csv
 
 def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameters) -> SolarDataForLocationAndTime:
     tus = Location(

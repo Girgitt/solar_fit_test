@@ -11,13 +11,18 @@
 python src/main.py --action=update --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 
-python src/main.py --action=update --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
-python src/main.py --action=execute --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
+python src/pvtools/main.py --action=update --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
+python src/pvtools/main.py --action=execute --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
 '''
 
 import argparse
+import pandas as pd
 
-from utils import *
+from pathlib import Path
+
+from utils.utilities import argument_parsing, check_if_csv_contains_timezone_info, print_available_data_columns, \
+    select_available_data_columns_to_process, update_function, execute_function
+from config.params import ModelParameters, ClearSkyParameters
 
 def main():
     ROOT_DIR = Path(__file__).resolve().parent.parent

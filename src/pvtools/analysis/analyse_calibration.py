@@ -1,9 +1,12 @@
-from model_params import *
-from save_functions import save_true_and_predicted_data_to_csv
-from load_functions import (linear_regression_load_parameters, divided_linear_regression_load_parameters,
-                            polynominal_regression_load_parameters, decision_tree_regression_load_parameters, mlp_load_parameters)
+import pandas as pd
+import numpy as np
 
-from validate_decision_tree import _traverse_tree
+from pathlib import Path
+
+from io_file.writer import save_true_and_predicted_data_to_csv
+from io_file.reader import (linear_regression_load_parameters, divided_linear_regression_load_parameters,
+                                        polynominal_regression_load_parameters, decision_tree_regression_load_parameters, mlp_load_parameters)
+from analysis.validate_decision_tree import _traverse_tree
 
 def _apply_activation(z, activation) -> np.ndarray:
     if activation == 'relu':

@@ -1,9 +1,9 @@
-from typing import Dict, Any
-
 import json
 
-from model_params import *
-from validate_decision_tree import _validate_tree_structure
+from typing import Dict, Any
+
+from config.params import *
+from analysis.validate_decision_tree import _validate_tree_structure
 
 def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) -> Dict[str, Dict[str, pd.DataFrame]]:
     all_data = {}

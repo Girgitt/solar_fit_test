@@ -1,12 +1,12 @@
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import json
+
+from pathlib import Path
 from matplotlib.figure import Figure
 from typing import List, Tuple, Optional
 
-from sensor_calibration_metrics import SensorCalibrationMetrics
+from config.sensor_calibration_metrics import SensorCalibrationMetrics
 
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,
