@@ -3,10 +3,10 @@ import numpy as np
 
 from pathlib import Path
 
-from io_file.writer import save_true_and_predicted_data_to_csv
-from io_file.reader import (linear_regression_load_parameters, divided_linear_regression_load_parameters,
+from pvtools.io_file.writer import save_true_and_predicted_data_to_csv
+from pvtools.io_file.reader import (linear_regression_load_parameters, divided_linear_regression_load_parameters,
                                         polynominal_regression_load_parameters, decision_tree_regression_load_parameters, mlp_load_parameters)
-from analysis.validate_decision_tree import _traverse_tree
+from pvtools.analysis.validate_decision_tree import _traverse_tree
 
 def _apply_activation(z, activation) -> np.ndarray:
     if activation == 'relu':
