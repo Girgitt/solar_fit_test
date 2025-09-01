@@ -3,21 +3,22 @@ import numpy as np
 import pandas as pd
 
 from argparse import ArgumentParser, Namespace
-from datetime import datetime
+from datetime import datetime, time
 from pathlib import Path
 from typing import List, Tuple
 from zoneinfo import ZoneInfo
 
-from analysis.analyse_calibration import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
+from pvtools.analysis.analyse_calibration import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
     calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression, calibrate_by_mlp_regression
-from config.params import ModelParameters, ClearSkyParameters
-from modeling.calibrate import linear_regression, divided_linear_regression, polynominal_regression, \
+from pvtools.config.params import ModelParameters, ClearSkyParameters
+from pvtools.modeling.calibrate import linear_regression, divided_linear_regression, polynominal_regression, \
     decision_tree_regression, mlp_regression
-from solar_domain.clearsky import clear_sky, detect_clearsky_periods
-from solar_domain.determine_orientation import determine_system_azimuth_and_tilt
-from visualisation.plotter import plot_raw_data, plot_predicted_data, plot_poa_vs_reference, \
+from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
+from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
+from pvtools.visualisation.plotter import plot_raw_data, plot_predicted_data, plot_poa_vs_reference, \
     plot_poa_reference_with_clearsky_periods, plot_raw_data_with_peaks
-
+from pvtools.preprocess.preprocess_data import delete_night_period
+from pvtools.io_file.reader import load_dataframe_from_csv
 
 def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--action", choices=["update", "execute"], required=True,
@@ -173,6 +174,16 @@ def execute_function(model_parameters: ModelParameters, clear_sky_parameters: Cl
         df=model_parameters.df,
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
         filename="series_vs_time.png",
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        show=True,
+    )
+
+    # ----------------------------------- TEMPORARY PLOTTING FOR FILTERED DATA -----------------------------------------
+    plot_raw_data(
+        df=load_dataframe_from_csv(model_parameters.data_filename_dir.parent / "filtered" / Path(model_parameters.args.csv).name),
+        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        filename="series_vs_time_filtered.png",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         show=True,

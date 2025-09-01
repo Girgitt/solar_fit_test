@@ -6,7 +6,7 @@ from pathlib import Path
 from matplotlib.figure import Figure
 from typing import List, Tuple, Optional
 
-from config.sensor_calibration_metrics import SensorCalibrationMetrics
+from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,

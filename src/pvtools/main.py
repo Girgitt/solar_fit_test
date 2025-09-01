@@ -20,12 +20,13 @@ import pandas as pd
 
 from pathlib import Path
 
-from utils.utilities import argument_parsing, check_if_csv_contains_timezone_info, print_available_data_columns, \
+from pvtools.utils.utilities import argument_parsing, check_if_csv_contains_timezone_info, print_available_data_columns, \
     select_available_data_columns_to_process, update_function, execute_function
-from config.params import ModelParameters, ClearSkyParameters
+from pvtools.config.params import ModelParameters, ClearSkyParameters
+from pvtools.preprocess.preprocess_data import preprocess_data
 
 def main():
-    ROOT_DIR = Path(__file__).resolve().parent.parent
+    ROOT_DIR = Path(__file__).resolve().parent.parent.parent
     LOG_DIR = ROOT_DIR / "logs"
     PLOT_DIR = ROOT_DIR / "plots"
     DATA_DIR = ROOT_DIR / "data"
@@ -41,6 +42,12 @@ def main():
     check_if_csv_contains_timezone_info(args.csv)
 
     df = pd.read_csv(args.csv, parse_dates=["time"])
+    df = preprocess_data(
+        df=df,
+        save_dir=Path(args.csv),
+        target_timedelta='1min' # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
+    )
+
     data_columns = [col for col in df.columns if col != "time"]
     time_column = df["time"]
 
@@ -52,7 +59,7 @@ def main():
         df_time = time_column,
         args = args,
         log_dir = LOG_DIR,
-        data_filename_dir = args.csv,
+        data_filename_dir = Path(args.csv),
         plot_dir = PLOT_DIR,
         sensor_names = sensor_names,
         sensor_name_ref = sensor_name_ref

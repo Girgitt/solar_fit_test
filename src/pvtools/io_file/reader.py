@@ -1,9 +1,17 @@
 import json
+import pandas as pd
 
-from typing import Dict, Any
+from typing import Dict, Any, List
+from pathlib import Path
 
-from config.params import *
-from analysis.validate_decision_tree import _validate_tree_structure
+from pvtools.config.params import DatatypeCoefficientsForMLPRegression, DatatypeCoefficientsForDividedLinearRegression
+from pvtools.analysis.validate_decision_tree import _validate_tree_structure
+
+def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
+    load_path = Path(load_path)
+    df = pd.read_csv(load_path)
+
+    return df
 
 def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) -> Dict[str, Dict[str, pd.DataFrame]]:
     all_data = {}
