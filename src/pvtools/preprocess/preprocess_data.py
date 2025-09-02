@@ -1,7 +1,9 @@
 import pandas as pd
 
-from datetime import time
+from datetime import time, datetime
 from pathlib import Path
+
+from pandas.core.dtypes.common import is_numeric_dtype
 
 from pvtools.io_file.writer import save_dataframe_to_csv
 
@@ -37,6 +39,10 @@ def preprocess_data(
     return df_avereged
 
 def ensure_datetime(df: pd.DataFrame) -> pd.DataFrame:
+    if is_numeric_dtype(df['time']):
+        for i in df['time']: i = datetime.fromtimestamp(i)
+        df['time'] = pd.to_datetime(df['time'])
+
     if not pd.api.types.is_datetime64_any_dtype(df['time']):
         df['time'] = pd.to_datetime(df['time'])
 
@@ -56,7 +62,7 @@ def ensure_target_frequency_is_lower_than_measurements(
         target_freq = pd.to_timedelta(target_timedelta)
 
         if actual_freq > target_freq:
-            print(f"[INFO] Data has already more frequent measurements: {actual_freq.total_seconds()}s > {target_freq.total_seconds()}s. Nothing to do.")
+            print(f"[INFO] Data has already less frequent measurements: {actual_freq.total_seconds()}s > {target_freq.total_seconds()}s. Nothing to do.")
             return
 
 def delete_night_period(
@@ -76,7 +82,7 @@ def average_measurements(
         target_timedelta: str = '1min',
 ) -> pd.DataFrame:
     df.set_index('time', inplace=True)
-    df_resampled = df.resample(target_timedelta).mean()
+    df_resampled = df.resample(target_timedelta, origin=df.index[0]).mean()
     df_resampled = df_resampled.reset_index()
 
     return df_resampled
