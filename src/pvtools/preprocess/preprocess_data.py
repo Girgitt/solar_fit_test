@@ -48,7 +48,6 @@ def preprocess_data(
     if save_dir is not None:
         save_dir = Path(save_dir)
         output_path = save_dir.parent / "filtered" / (save_dir.stem + save_dir.suffix)
-        print(f"AAA: {output_path}")
         save_dataframe_to_csv(df_avereged, output_path, index=False)
 
     return df_avereged
