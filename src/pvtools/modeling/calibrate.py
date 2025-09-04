@@ -1,5 +1,4 @@
 import inspect
-import re
 import pandas as pd
 import numpy as np
 
@@ -11,10 +10,10 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.tree import _tree
-from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 from pvtools.io_file.writer import save_metrics_to_json, save_true_and_predicted_data_to_csv
+from pvtools.preprocess.preprocess_data import sanitize_filename, normalize_values
 
 '''
 MAE does not indicate whether the model overestimates or underestimates values
@@ -24,19 +23,6 @@ R2 correlation between two datasets
 MAPE especially useful when you want to assess the accuracy of predictions in percentage
 Bias shows whether the model regularly over- or under-predicts
 '''
-
-def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
-    scaler = MinMaxScaler()
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    scaled_array = scaler.fit_transform(df[numeric_cols])
-    df_scaled = df.copy()
-    df_scaled[numeric_cols] = scaled_array
-
-    return df_scaled
-
-def sanitize_filename(name: str) -> str:
-    name = name.split("@")[-1]
-    return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
 
 def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
     tree_ = model.tree_

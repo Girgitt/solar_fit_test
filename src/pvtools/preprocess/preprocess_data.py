@@ -1,11 +1,25 @@
 import pandas as pd
+import numpy as np
+import re
 
-from datetime import time, datetime
+from datetime import time
 from pathlib import Path
-
-from pandas.core.dtypes.common import is_numeric_dtype
+from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
+
+def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
+    scaler = MinMaxScaler()
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    scaled_array = scaler.fit_transform(df[numeric_cols])
+    df_scaled = df.copy()
+    df_scaled[numeric_cols] = scaled_array
+
+    return df_scaled
+
+def sanitize_filename(name: str) -> str:
+    name = name.split("@")[-1]
+    return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
 
 def preprocess_data(
         df: pd.DataFrame,
@@ -34,16 +48,13 @@ def preprocess_data(
     if save_dir is not None:
         save_dir = Path(save_dir)
         output_path = save_dir.parent / "filtered" / (save_dir.stem + save_dir.suffix)
+        print(f"AAA: {output_path}")
         save_dataframe_to_csv(df_avereged, output_path, index=False)
 
     return df_avereged
 
 def ensure_datetime(df: pd.DataFrame) -> pd.DataFrame:
-    if is_numeric_dtype(df['time']):
-        for i in df['time']: i = datetime.fromtimestamp(i)
-        df['time'] = pd.to_datetime(df['time'])
-
-    if not pd.api.types.is_datetime64_any_dtype(df['time']):
+    if not pd.api.types.is_datetime64_any_dtype(df['time'].dtype):
         df['time'] = pd.to_datetime(df['time'])
 
     return df
@@ -82,7 +93,7 @@ def average_measurements(
         target_timedelta: str = '1min',
 ) -> pd.DataFrame:
     df.set_index('time', inplace=True)
-    df_resampled = df.resample(target_timedelta, origin=df.index[0]).mean()
+    df_resampled = df.resample(target_timedelta).mean()
     df_resampled = df_resampled.reset_index()
 
     return df_resampled

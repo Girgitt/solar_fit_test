@@ -11,7 +11,7 @@
 python src/main.py --action=update --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 
-python src/pvtools/main.py --action=update --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
+python src/pvtools/main.py --action=update --model_id=1_day_timestamp_3s --csv=./data/1_day_timestamp_3s.csv
 python src/pvtools/main.py --action=execute --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
 '''
 

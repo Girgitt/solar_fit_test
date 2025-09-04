@@ -8,9 +8,9 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from typing import Dict
 
-from io_file.reader import load_true_and_predicted_data_for_all_methods
-from io_file.writer import save_figure, save_predicted_data_figures
-from modeling.calibrate import sanitize_filename
+from pvtools.io_file.reader import load_true_and_predicted_data_for_all_methods
+from pvtools.io_file.writer import save_figure, save_predicted_data_figures
+from pvtools.preprocess.preprocess_data import sanitize_filename
 
 def plot_raw_data(
     df: pd.DataFrame,
