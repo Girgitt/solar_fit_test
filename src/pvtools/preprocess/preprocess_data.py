@@ -9,6 +9,11 @@ from sklearn.preprocessing import MinMaxScaler
 from pvtools.io_file.writer import save_dataframe_to_csv
 
 def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Expected 'df' to be a pandas DataFrame")
+
+    df = df.copy()
+
     scaler = MinMaxScaler()
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     scaled_array = scaler.fit_transform(df[numeric_cols])
@@ -26,6 +31,9 @@ def preprocess_data(
         save_dir: Path = None,
         target_timedelta: str = '1min'
 ) -> pd.DataFrame:
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Expected 'df' to be a pandas DataFrame")
+
     df = df.copy()
 
     df = ensure_datetime(df=df)

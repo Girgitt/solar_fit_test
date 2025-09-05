@@ -48,6 +48,8 @@ def main():
         target_timedelta='1min' # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
     )
 
+    # use measurement_limitations after calibration - otherwise VEML values are too low!!
+
     data_columns = [col for col in df.columns if col != "time"]
     time_column = df["time"]
 

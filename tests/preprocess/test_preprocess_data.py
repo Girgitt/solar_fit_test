@@ -13,7 +13,7 @@ from pvtools.preprocess.preprocess_data import (normalize_values,
                                                 ensure_datetime,
                                                 ensure_target_frequency_is_lower_than_measurements)
 
-def test_normalize_values():
+def test_normalize_values_basic():
     df = pd.DataFrame({
         'A': [10, 20, 30],
         'B': [100, 200, 300],
@@ -30,6 +30,19 @@ def test_normalize_values():
 
     # Column 'C' should remain unchanged
     assert all(result['C'] == df['C'])
+
+def test_normalize_values_invalid_inputs():
+    invalid_inputs_df = [
+        None,
+        pd.Series([1, -2, 3]),
+        np.array([[1, -1], [2, -2]]),
+        "not a dataframe",
+        123
+    ]
+
+    for invalid_df in invalid_inputs_df:
+        with pytest.raises(TypeError, match="Expected 'df' to be a pandas DataFrame"):
+            normalize_values(invalid_df)
 
 
 def test_sanitize_filename():
@@ -113,6 +126,37 @@ def test_preprocess_data_roundtrip(tmp_path, df_simple):
     assert len(out) == 3
     expected_file = save_path.parent / "filtered" / save_path.name
     assert expected_file.exists()
+
+def test_preprocess_data_invalid_inputs(df_simple):
+    invalid_inputs_df = [
+        None,
+        pd.Series([1, -2, 3]),
+        np.array([[1, -1], [2, -2]]),
+        "not a dataframe",
+        123
+    ]
+
+    for invalid_df in invalid_inputs_df:
+        with pytest.raises(TypeError, match="Expected 'df' to be a pandas DataFrame"):
+            preprocess_data(
+                df=invalid_df,
+                save_dir=None,
+                target_timedelta='1min',
+            )
+
+    invalid_inputs_timedelta = [
+        None,
+        5,
+        "aa"
+    ]
+
+    for invalid_timedelta in invalid_inputs_timedelta:
+        with pytest.raises((TypeError, ValueError)):
+            preprocess_data(
+                df=df_simple,
+                save_dir=None,
+                target_timedelta=invalid_timedelta,
+            )
 
 
 '''
