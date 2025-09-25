@@ -8,24 +8,6 @@ from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
 
-def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError("Expected 'df' to be a pandas DataFrame")
-
-    df = df.copy()
-
-    scaler = MinMaxScaler()
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    scaled_array = scaler.fit_transform(df[numeric_cols])
-    df_scaled = df.copy()
-    df_scaled[numeric_cols] = scaled_array
-
-    return df_scaled
-
-def sanitize_filename(name: str) -> str:
-    name = name.split("@")[-1]
-    return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
-
 def preprocess_data(
         df: pd.DataFrame,
         save_dir: Path = None,
@@ -44,8 +26,8 @@ def preprocess_data(
 
     df_filtered = delete_night_period(
         df=df,
-        start=time(3,0),
-        end=time(18,0)
+        start=time(3,0), # 3:00 GMT -> 5:00 UTC+2
+        end=time(18,0) # 18:00 GMT -> 20:00 UTC+2
     )
 
     df_avereged = average_measurements(
@@ -104,4 +86,22 @@ def average_measurements(
     df_resampled = df_resampled.reset_index()
 
     return df_resampled
+
+def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Expected 'df' to be a pandas DataFrame")
+
+    df = df.copy()
+
+    scaler = MinMaxScaler()
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    scaled_array = scaler.fit_transform(df[numeric_cols])
+    df_scaled = df.copy()
+    df_scaled[numeric_cols] = scaled_array
+
+    return df_scaled
+
+def sanitize_filename(name: str) -> str:
+    name = name.split("@")[-1]
+    return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
 

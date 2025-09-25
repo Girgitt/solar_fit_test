@@ -16,26 +16,6 @@ from pvtools.config.params import ClearSkyParameters, SolarDataForLocationAndTim
 from pvtools.preprocess.preprocess_data import sanitize_filename
 from pvtools.io_file.writer import save_dataframe_to_csv
 
-def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameters) -> SolarDataForLocationAndTime:
-    tus = Location(
-        latitude=clear_sky_parameters.warsaw_lat,
-        longitude=clear_sky_parameters.warsaw_lon,
-        tz=clear_sky_parameters.tz,
-        altitude=clear_sky_parameters.altitude,
-        name=clear_sky_parameters.name
-    )
-
-    times = pd.date_range(
-        start=clear_sky_parameters.start_time,
-        end=clear_sky_parameters.end_time,
-        freq=clear_sky_parameters.frequency
-    )
-
-    sol = pvlib.solarposition.get_solarposition(times, clear_sky_parameters.warsaw_lat, clear_sky_parameters.warsaw_lon)
-    cs = tus.get_clearsky(times)
-
-    return tus, times, sol, cs
-
 def clear_sky(
         clear_sky_parameters: ClearSkyParameters,
         show: bool = False,
@@ -79,54 +59,25 @@ def clear_sky(
 
     return poa
 
-def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
-    poa_global_ref = pair['poa_global'].quantile(0.95)
-    mean_percentage_grid = [0.08, 0.09, 0.10] #[0.06, 0.07, 0.08]
-    max_percentage_grid = [0.12, 0.15] #[0.10, 0.12]
+def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameters) -> SolarDataForLocationAndTime:
+    tus = Location(
+        latitude=clear_sky_parameters.warsaw_lat,
+        longitude=clear_sky_parameters.warsaw_lon,
+        tz=clear_sky_parameters.tz,
+        altitude=clear_sky_parameters.altitude,
+        name=clear_sky_parameters.name
+    )
 
-    step = pair.index.to_series().diff().median()
-    window_minutes = int(max(3, round(pd.Timedelta('10min') / step))) * int(step / pd.Timedelta('1min'))
-    window_length = max(6, min(20, window_minutes))
+    times = pd.date_range(
+        start=clear_sky_parameters.start_time,
+        end=clear_sky_parameters.end_time,
+        freq=clear_sky_parameters.frequency
+    )
 
-    best_mask, best_score = None, -np.inf
-    for mean_pct, max_pct in product(mean_percentage_grid, max_percentage_grid):
-        mean_diff = mean_pct * poa_global_ref
-        max_diff = max_pct * poa_global_ref
+    sol = pvlib.solarposition.get_solarposition(times, clear_sky_parameters.warsaw_lat, clear_sky_parameters.warsaw_lon)
+    cs = tus.get_clearsky(times)
 
-        m = detect_clearsky(
-            pair['measured'], pair['poa_global'],
-            window_length=window_length, #10
-            mean_diff=mean_diff, #100
-            max_diff=max_diff, #100
-        )
-
-        mask = m.astype(bool)
-        if mask.any():
-            corr = pair.loc[mask, ['measured', 'poa_global']].corr().iloc[0, 1]
-            nmid = (pair['poa_global'] > 0.4 * poa_global_ref).sum()
-            nsel = (mask & (pair['poa_global'] > 0.4 * poa_global_ref)).sum()
-            cover = nsel / max(1, nmid)
-            score = (max(corr, 0) if pd.notna(corr) else 0) + 0.6 * cover
-            if score > best_score:
-                best_score, best_mask = score, mask
-
-    sunny_subset = best_mask if best_mask is not None else pd.Series(False, index=pair.index)
-
-    return sunny_subset
-
-def calculate_my_own_mask(
-        pair: pd.DataFrame,
-        ratio: float = 0.90, # percentage
-        time_period: int = 10 # minutes
-) -> pd.Series:
-    diff = (pair["measured"] - pair["poa_global"]).abs()
-    tolerance = (1.0 - ratio) * pair["poa_global"]
-    base = diff.le(tolerance) & diff.notna() & tolerance.gt(0)
-    groups = base.ne(base.shift(fill_value=False)).cumsum()
-    run_len = base.groupby(groups).transform("size")
-    mask = base & run_len.ge(time_period)
-
-    return mask.astype(bool)
+    return tus, times, sol, cs
 
 def detect_clearsky_periods(
         df: pd.DataFrame,
@@ -182,3 +133,54 @@ def detect_clearsky_periods(
         save_dataframe_to_csv(df_sunny, output_path, index=False)
 
     return sunny_subset
+
+def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
+    poa_global_ref = pair['poa_global'].quantile(0.95)
+    mean_percentage_grid = [0.08, 0.09, 0.10] #[0.06, 0.07, 0.08]
+    max_percentage_grid = [0.12, 0.15] #[0.10, 0.12]
+
+    step = pair.index.to_series().diff().median()
+    window_minutes = int(max(3, round(pd.Timedelta('10min') / step))) * int(step / pd.Timedelta('1min'))
+    window_length = max(6, min(20, window_minutes))
+
+    best_mask, best_score = None, -np.inf
+    for mean_pct, max_pct in product(mean_percentage_grid, max_percentage_grid):
+        mean_diff = mean_pct * poa_global_ref
+        max_diff = max_pct * poa_global_ref
+
+        m = detect_clearsky(
+            pair['measured'], pair['poa_global'],
+            window_length=window_length, #10
+            mean_diff=mean_diff, #100
+            max_diff=max_diff, #100
+        )
+
+        mask = m.astype(bool)
+        if mask.any():
+            corr = pair.loc[mask, ['measured', 'poa_global']].corr().iloc[0, 1]
+            nmid = (pair['poa_global'] > 0.4 * poa_global_ref).sum()
+            nsel = (mask & (pair['poa_global'] > 0.4 * poa_global_ref)).sum()
+            cover = nsel / max(1, nmid)
+            score = (max(corr, 0) if pd.notna(corr) else 0) + 0.6 * cover
+            if score > best_score:
+                best_score, best_mask = score, mask
+
+    sunny_subset = best_mask if best_mask is not None else pd.Series(False, index=pair.index)
+
+    return sunny_subset
+
+def calculate_my_own_mask(
+        pair: pd.DataFrame,
+        ratio: float = 0.90, # percentage
+        time_period: int = 10 # minutes
+) -> pd.Series:
+    diff = (pair["measured"] - pair["poa_global"]).abs()
+    tolerance = (1.0 - ratio) * pair["poa_global"]
+    base = diff.le(tolerance) & diff.notna() & tolerance.gt(0)
+    groups = base.ne(base.shift(fill_value=False)).cumsum()
+    run_len = base.groupby(groups).transform("size")
+    mask = base & run_len.ge(time_period)
+
+    return mask.astype(bool)
+
+
