@@ -1,0 +1,9 @@
+Metadata-Version: 2.4
+Name: pvtools
+Version: 0.1.0
+Summary: Solar PV system tools
+Author: Mateusz Kania
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+
+Simple polynomial fitting of sensor data to match solar irradiance values derived from a luxometer with reference measurements from a calibrated irradiance meter.

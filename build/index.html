@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>solar_fit_test documentation &#8212; solar_fit_test 01.09.2025 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <script src="_static/documentation_options.js?v=be8539be"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Main" href="main.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="solar-fit-test-documentation">
+<h1>solar_fit_test documentation<a class="headerlink" href="#solar-fit-test-documentation" title="Link to this heading">¶</a></h1>
+<p>Add your content using <code class="docutils literal notranslate"><span class="pre">reStructuredText</span></code> syntax. See the
+<a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html">reStructuredText</a>
+documentation for details.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="main.html">Main</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="main.html#main.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.argument_parsing"><code class="docutils literal notranslate"><span class="pre">argument_parsing()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.execute_function"><code class="docutils literal notranslate"><span class="pre">execute_function()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.load_true_and_predicted_data_for_all_methods"><code class="docutils literal notranslate"><span class="pre">load_true_and_predicted_data_for_all_methods()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.print_available_data_columns"><code class="docutils literal notranslate"><span class="pre">print_available_data_columns()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.select_available_data_columns_to_process"><code class="docutils literal notranslate"><span class="pre">select_available_data_columns_to_process()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.solar_elevation"><code class="docutils literal notranslate"><span class="pre">solar_elevation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="utils.html#utils.update_function"><code class="docutils literal notranslate"><span class="pre">update_function()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="model_params.html">Model Params</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="model_params.html#model_params.DatatypeCoefficientsForDividedLinearRegression"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForDividedLinearRegression</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="model_params.html#model_params.DatatypeCoefficientsForMLPRegression"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="model_params.html#model_params.ModelParameters"><code class="docutils literal notranslate"><span class="pre">ModelParameters</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="calibrate_methods.html">Calibrate Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.SensorCalibrationMetrics"><code class="docutils literal notranslate"><span class="pre">SensorCalibrationMetrics</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.decision_tree_regression"><code class="docutils literal notranslate"><span class="pre">decision_tree_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.divided_linear_regression"><code class="docutils literal notranslate"><span class="pre">divided_linear_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.export_tree_as_rules"><code class="docutils literal notranslate"><span class="pre">export_tree_as_rules()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.linear_regression"><code class="docutils literal notranslate"><span class="pre">linear_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.mlp_regression"><code class="docutils literal notranslate"><span class="pre">mlp_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.polynominal_regression"><code class="docutils literal notranslate"><span class="pre">polynominal_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.sanitize_filename"><code class="docutils literal notranslate"><span class="pre">sanitize_filename()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.save_metrics_to_json"><code class="docutils literal notranslate"><span class="pre">save_metrics_to_json()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="calibrate_methods.html#calibrate_methods.save_true_and_predicted_data_to_csv"><code class="docutils literal notranslate"><span class="pre">save_true_and_predicted_data_to_csv()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="analyze_calibration.html">Analyze Calibration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.calibrate_by_decision_tree_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_decision_tree_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.calibrate_by_divided_linear_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_divided_linear_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.calibrate_by_linear_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_linear_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.calibrate_by_mlp_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_mlp_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.calibrate_by_polynominal_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_polynominal_regression()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.decision_tree_regression_calculate_calibration_values"><code class="docutils literal notranslate"><span class="pre">decision_tree_regression_calculate_calibration_values()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.decision_tree_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">decision_tree_regression_load_parameters()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.divided_linear_regression_calculate_calibration_values"><code class="docutils literal notranslate"><span class="pre">divided_linear_regression_calculate_calibration_values()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.divided_linear_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">divided_linear_regression_load_parameters()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.linear_regression_calculate_calibration_values"><code class="docutils literal notranslate"><span class="pre">linear_regression_calculate_calibration_values()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.linear_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">linear_regression_load_parameters()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.mlp_calculate_calibration_values"><code class="docutils literal notranslate"><span class="pre">mlp_calculate_calibration_values()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.mlp_load_parameters"><code class="docutils literal notranslate"><span class="pre">mlp_load_parameters()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.polynominal_regression_calculate_calibration_values"><code class="docutils literal notranslate"><span class="pre">polynominal_regression_calculate_calibration_values()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyze_calibration.html#analyze_calibration.polynominal_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">polynominal_regression_load_parameters()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="plot_functions.html">Plot Functions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="plot_functions.html#plot_functions.plot_predicted_data"><code class="docutils literal notranslate"><span class="pre">plot_predicted_data()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_functions.html#plot_functions.plot_raw_data"><code class="docutils literal notranslate"><span class="pre">plot_raw_data()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_functions.html#plot_functions.save_figure"><code class="docutils literal notranslate"><span class="pre">save_figure()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_functions.html#plot_functions.save_predicted_data_figures"><code class="docutils literal notranslate"><span class="pre">save_predicted_data_figures()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_functions.html#plot_functions.save_raw_data_figure"><code class="docutils literal notranslate"><span class="pre">save_raw_data_figure()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="plot_functions.html#plot_functions.subplot_predicted_data"><code class="docutils literal notranslate"><span class="pre">subplot_predicted_data()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">solar_fit_test</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="main.html">Main</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="model_params.html">Model Params</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calibrate_methods.html">Calibrate Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="analyze_calibration.html">Analyze Calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plot_functions.html">Plot Functions</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="main.html" title="next chapter">Main</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2025, Mateusz and Zbigniew.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
