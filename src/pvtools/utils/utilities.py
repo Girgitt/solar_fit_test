@@ -1,5 +1,7 @@
 import math
+import numpy as np
 import pandas as pd
+
 
 from argparse import ArgumentParser, Namespace
 from datetime import datetime, time
@@ -36,7 +38,8 @@ def select_available_data_columns_to_process(
 
     return sensor_names, sensor_name_ref, df
 
-def check_if_csv_contains_timezone_info(file_path: str) -> None:
+
+def check_if_csv_contains_timezone_info__v1(file_path: str) -> None:
     file_path = Path(file_path)
 
     df = pd.read_csv(file_path)
@@ -48,6 +51,77 @@ def check_if_csv_contains_timezone_info(file_path: str) -> None:
         print('Time does not contain timezone info. Timezone added and file updated')
     else:
         print('[INFO] Time already has timezone. No changes made')
+
+
+def check_if_csv_contains_timezone_info(file_path: str, tz_name: str = "Europe/Warsaw") -> None:
+    """
+    Reads a CSV with a 'time' column and ensures it has timezone info.
+    - If 'time' is numeric epoch (s/ms/us/ns), interpret as UTC and convert to tz_name.
+    - If 'time' parses to naive datetimes, tz-localize to tz_name (treating them as local times).
+    - If 'time' already has tz info, leave it unchanged.
+
+    Notes:
+    * Mixed formats in one column are not supported; majority-numeric is treated as epoch.
+    * Epoch detection uses value magnitude to infer unit.
+    """
+    file_path = Path(file_path)
+    df = pd.read_csv(file_path)
+
+    if "time" not in df.columns:
+        raise KeyError("CSV must contain a 'time' column.")
+
+    tz = ZoneInfo(tz_name)
+    col = df["time"]
+
+    # --- Helper: decide if column is (mostly) numeric epoch and infer unit
+    num = pd.to_numeric(col, errors="coerce")
+    numeric_ratio = num.notna().mean() if len(num) else 0.0
+
+    def infer_epoch_unit(values: pd.Series) -> str:
+        """Infer epoch unit from magnitude (median of non-NaN absolute values)."""
+        v = values.dropna().abs()
+        if v.empty:
+            # Default to seconds if empty after dropna (shouldn't happen if we call it correctly)
+            return "s"
+        med = float(np.median(v))
+        # Rough thresholds for modern timestamps
+        if med >= 1e17:
+            return "ns"
+        elif med >= 1e14:
+            return "us"
+        elif med >= 1e11:
+            return "ms"
+        else:
+            # Covers typical seconds-since-epoch (~1e9 today), and also older dates
+            return "s"
+
+    # Treat as epoch if the column is mostly numeric (>= 90%)
+    if numeric_ratio >= 0.90:
+        unit = infer_epoch_unit(num)
+        # Parse as UTC instants, then convert to local tz
+        dt = pd.to_datetime(num, unit=unit, utc=True)
+        df["time"] = dt.dt.tz_convert(tz)
+        df.to_csv(file_path, index=False)
+        print(f"[INFO] Detected epoch timestamps (~{unit}). Parsed as UTC and converted to {tz_name}. File updated.")
+        return df
+
+    # Otherwise: parse as datetimes (strings)
+    dt = pd.to_datetime(col, errors="coerce", utc=False)
+
+    if dt.isna().all():
+        raise ValueError('Could not parse any datetimes from the "time" column.')
+
+    # If already timezone-aware, keep as-is
+    if getattr(dt.dt, "tz", None) is not None:
+        print("[INFO] Time already has timezone. No changes made")
+        return df
+
+    # Naive datetimes: interpret as local time in tz_name
+    df["time"] = dt.dt.tz_localize(tz)
+    df.to_csv(file_path, index=False)
+    print("Time does not contain timezone info. Timezone added and file updated")
+
+    return df
 
 def solar_elevation(
         lat: float,

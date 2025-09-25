@@ -29,7 +29,7 @@ from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyC
 from pvtools.preprocess.preprocess_data import preprocess_data, sanitize_filename
 
 def main():
-    ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+    ROOT_DIR = Path(__file__).resolve().parent.parent#.parent
     LOG_DIR = ROOT_DIR / "logs"
     PLOT_DIR = ROOT_DIR / "plots"
     DATA_DIR = ROOT_DIR / "data"
@@ -42,9 +42,10 @@ def main():
     args = argument_parsing(parser)
     model_path = Path(f"model_config__{args.model_id}.json")
 
-    check_if_csv_contains_timezone_info(args.csv)
+    df = check_if_csv_contains_timezone_info(args.csv)
 
-    df = pd.read_csv(args.csv, parse_dates=["time"])
+    #df = pd.read_csv(args.csv, parse_dates=["time"])
+
     df = preprocess_data(
         df=df,
         save_dir=Path(args.csv),
@@ -63,6 +64,16 @@ def main():
 
     print_available_data_columns(data_columns)
     sensor_names, sensor_name_ref, df = select_available_data_columns_to_process(data_columns, df)
+
+    #FIXME: added to re-sample again with constant interval BUT it generates NaNs
+    df = preprocess_data(
+        df=df,
+        save_dir=None,
+        target_timedelta='1min' # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
+    )
+
+    # HERE NaNs are interpolated
+    df.ffill(inplace=True)
 
     model_parameters = ModelParameters(
         df=df,
@@ -89,20 +100,23 @@ def main():
         surface_azimuth = 180,  # south-facing
     )
 
-    clear_sky_calculated_values = ClearSkyCalculatedValues(
-        poa=load_dataframe_from_csv(Path(DATA_DIR / "calculated_data" / model_parameters.data_filename_dir.stem / "poa_values.csv")),
-        clearsky_periods=load_dataframe_from_csv(
-            Path(DATA_DIR /
-                 "calculated_data" / model_parameters.data_filename_dir.stem /
-                 f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"
-                 ))
-    )
-
     if args.action == "update":
         update_function(model_parameters, clear_sky_parameters)
 
     elif args.action == "execute":
+
+        clear_sky_calculated_values = ClearSkyCalculatedValues(
+            poa=load_dataframe_from_csv(
+                Path(DATA_DIR / "calculated_data" / model_parameters.data_filename_dir.stem / "poa_values.csv")),
+            clearsky_periods=load_dataframe_from_csv(
+                Path(DATA_DIR /
+                     "calculated_data" / model_parameters.data_filename_dir.stem /
+                     f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"
+                     ))
+        )
+
         execute_function(model_parameters, clear_sky_calculated_values)
+
 
 if __name__ == '__main__':
     main()
