@@ -8,12 +8,21 @@ from typing import List, Tuple, Optional
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 
+REQUIRED_METRIC_FIELDS = ["mse", "mae", "rmse", "r2", "mape", "max_error", "bias"]
+
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,
         samples_count: int,
         coefficients_list: list[dict],
-        filename_path: Path
+        filename_path: Path = None
 ) -> None:
+    for attr in REQUIRED_METRIC_FIELDS:
+        if not hasattr(metrics, attr):
+            raise TypeError(f"metrics must have '{attr}' attribute")
+
+    if not isinstance(samples_count, int):
+        raise TypeError("samples_count must be an int")
+
     metrics_json = {
         "mse": float(metrics.mse),
         "mae": float(metrics.mae),
@@ -28,10 +37,11 @@ def save_metrics_to_json(
     if coefficients_list is not None:
         metrics_json["coefficients"] = coefficients_list
 
-    filename_path.parent.mkdir(parents=True, exist_ok=True)
+    if filename_path is not None:
+        filename_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(filename_path, "w") as f:
-        json.dump(metrics_json, f, indent=2)
+        with open(filename_path, "w") as f:
+            json.dump(metrics_json, f, indent=2)
 
 def save_true_and_predicted_data_to_csv(
     y_true: np.ndarray,

@@ -33,6 +33,11 @@ class ClearSkyParameters:
     surface_azimuth: int # 180 - south facing
 
 @dataclass
+class ClearSkyCalculatedValues:
+    poa: pd.DataFrame
+    clearsky_periods: pd.DataFrame
+
+@dataclass
 class SolarDataForLocationAndTime:
     location: Location
     times: pd.DatetimeIndex

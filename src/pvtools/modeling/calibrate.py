@@ -1,5 +1,4 @@
 import inspect
-import re
 import pandas as pd
 import numpy as np
 
@@ -11,10 +10,10 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.tree import _tree
-from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 from pvtools.io_file.writer import save_metrics_to_json, save_true_and_predicted_data_to_csv
+from pvtools.preprocess.preprocess_data import sanitize_filename, normalize_values
 
 '''
 MAE does not indicate whether the model overestimates or underestimates values
@@ -25,39 +24,8 @@ MAPE especially useful when you want to assess the accuracy of predictions in pe
 Bias shows whether the model regularly over- or under-predicts
 '''
 
-def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
-    scaler = MinMaxScaler()
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    scaled_array = scaler.fit_transform(df[numeric_cols])
-    df_scaled = df.copy()
-    df_scaled[numeric_cols] = scaled_array
-
-    return df_scaled
-
-def sanitize_filename(name: str) -> str:
-    name = name.split("@")[-1]
-    return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
-
-def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
-    tree_ = model.tree_
-    feature = tree_.feature
-    threshold = tree_.threshold
-    value = tree_.value
-
-    def recurse(node: int) -> Dict[str, Any]:
-        if tree_.feature[node] != _tree.TREE_UNDEFINED:
-            return {
-                "feature": int(feature[node]),
-                "threshold": float(threshold[node]),
-                "left": recurse(tree_.children_left[node]),
-                "right": recurse(tree_.children_right[node])
-            }
-        else:
-            return {
-                "value": float(value[node][0][0])
-            }
-
-    return recurse(0)
+my_test_size=0.3
+my_random_state=42
 
 def linear_regression(
         df: pd.DataFrame,
@@ -77,7 +45,7 @@ def linear_regression(
 
         indices = np.arange(len(df))
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
-            x, y, indices, test_size=0.2, random_state=42
+            x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
 
         model = LinearRegression()
@@ -136,7 +104,7 @@ def divided_linear_regression(
 
             indices = group.index.values
             x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
-                x, y, indices, test_size=0.2, random_state=42
+                x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
 
             model_hour = LinearRegression()
@@ -192,7 +160,7 @@ def polynominal_regression(
 
         indices = np.arange(len(df))
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
-            x, y, indices, test_size=0.2, random_state=42
+            x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
 
         poly = PolynomialFeatures(degree=2)
@@ -239,7 +207,7 @@ def decision_tree_regression(
 
         indices = np.arange(len(df))
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
-            x, y, indices, test_size=0.2, random_state=42
+            x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
 
         model = DecisionTreeRegressor(criterion='squared_error', max_depth=3)
@@ -282,7 +250,7 @@ def mlp_regression(
 
         indices = np.arange(len(df))
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
-            x, y, indices, test_size=0.2, random_state=42
+            x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
 
         model = MLPRegressor(
@@ -314,3 +282,24 @@ def mlp_regression(
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test)
+
+def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
+    tree_ = model.tree_
+    feature = tree_.feature
+    threshold = tree_.threshold
+    value = tree_.value
+
+    def recurse(node: int) -> Dict[str, Any]:
+        if tree_.feature[node] != _tree.TREE_UNDEFINED:
+            return {
+                "feature": int(feature[node]),
+                "threshold": float(threshold[node]),
+                "left": recurse(tree_.children_left[node]),
+                "right": recurse(tree_.children_right[node])
+            }
+        else:
+            return {
+                "value": float(value[node][0][0])
+            }
+
+    return recurse(0)

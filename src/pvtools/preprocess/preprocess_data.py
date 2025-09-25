@@ -1,7 +1,10 @@
 import pandas as pd
+import numpy as np
+import re
 
 from datetime import time
 from pathlib import Path
+from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
 
@@ -10,6 +13,9 @@ def preprocess_data(
         save_dir: Path = None,
         target_timedelta: str = '1min'
 ) -> pd.DataFrame:
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Expected 'df' to be a pandas DataFrame")
+
     df = df.copy()
 
     df = ensure_datetime(df=df)
@@ -20,8 +26,8 @@ def preprocess_data(
 
     df_filtered = delete_night_period(
         df=df,
-        start=time(3,0),
-        end=time(18,0)
+        start=time(3,0), # 3:00 GMT -> 5:00 UTC+2
+        end=time(18,0) # 18:00 GMT -> 20:00 UTC+2
     )
 
     df_avereged = average_measurements(
@@ -37,7 +43,7 @@ def preprocess_data(
     return df_avereged
 
 def ensure_datetime(df: pd.DataFrame) -> pd.DataFrame:
-    if not pd.api.types.is_datetime64_any_dtype(df['time']):
+    if not pd.api.types.is_datetime64_any_dtype(df['time'].dtype):
         df['time'] = pd.to_datetime(df['time'])
 
     return df
@@ -56,7 +62,7 @@ def ensure_target_frequency_is_lower_than_measurements(
         target_freq = pd.to_timedelta(target_timedelta)
 
         if actual_freq > target_freq:
-            print(f"[INFO] Data has already more frequent measurements: {actual_freq.total_seconds()}s > {target_freq.total_seconds()}s. Nothing to do.")
+            print(f"[INFO] Data has already less frequent measurements: {actual_freq.total_seconds()}s > {target_freq.total_seconds()}s. Nothing to do.")
             return
 
 def delete_night_period(
@@ -80,4 +86,22 @@ def average_measurements(
     df_resampled = df_resampled.reset_index()
 
     return df_resampled
+
+def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Expected 'df' to be a pandas DataFrame")
+
+    df = df.copy()
+
+    scaler = MinMaxScaler()
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    scaled_array = scaler.fit_transform(df[numeric_cols])
+    df_scaled = df.copy()
+    df_scaled[numeric_cols] = scaled_array
+
+    return df_scaled
+
+def sanitize_filename(name: str) -> str:
+    name = name.split("@")[-1]
+    return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
 
