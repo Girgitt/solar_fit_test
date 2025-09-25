@@ -11,6 +11,7 @@ import time
 import json
 import io
 import re
+import calendar
 import argparse
 import requests
 from collections import OrderedDict
@@ -721,6 +722,8 @@ def read_extra_params(extra_args):
             print('Invalid argument: %s' % extra)
             exit(-1)
         name, val = extra.split('=', 1)
+        if name in ['from', 'till']:
+                val = str(calendar.timegm(time.strptime(val, "%Y-%m-%dT%H:%M:%S")))
         if name in params:
             if type(params[name]) == list:
                 params[name].append(read_value(val))

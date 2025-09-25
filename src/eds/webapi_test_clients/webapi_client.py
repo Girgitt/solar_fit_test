@@ -213,18 +213,14 @@ def getTabular():
     return client.service.getTabular(param('authString'), req_id)
 
 
-def getTabularPV():
+def getTabularCSV():
     request = client.factory.create("TabularRequest")
     request.period = create_time_period()
     request.step.seconds = param('step', 60)
-    req_function = config['function']#'MAX_VALUE'
-    # points = ["watt_hi.common@irr_1",
-    #           "watt_hi.common@irr_2",
-    #           "watt_hi.common@irr_3",
-    #           "watt.common@irr_dav_1"
-    #           ]
+    req_function = config['function']
+
     points = config['point']
-    #print(f"points: {points}")
+
     for point_name in points:
         requestItem = create_struct("TabularRequestItem")
         requestItem.pointId = create_struct("PointId")
@@ -237,8 +233,6 @@ def getTabularPV():
         requestItem.function = req_function
         request.items.append(requestItem)
 
-    #print(f"request: {request}")
-    #return
     req_id = client.service.requestTabular(param('authString'), request)
     wait_for_request_execution(req_id)
     result = client.service.getTabular(param('authString'), req_id)
