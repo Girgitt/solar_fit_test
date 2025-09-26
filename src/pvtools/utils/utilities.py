@@ -4,7 +4,7 @@ import pandas as pd
 
 
 from argparse import ArgumentParser, Namespace
-from datetime import datetime, time
+from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
 from zoneinfo import ZoneInfo
@@ -38,7 +38,6 @@ def select_available_data_columns_to_process(
 
     return sensor_names, sensor_name_ref, df
 
-
 def check_if_csv_contains_timezone_info__v1(file_path: str) -> None:
     file_path = Path(file_path)
 
@@ -51,7 +50,6 @@ def check_if_csv_contains_timezone_info__v1(file_path: str) -> None:
         print('Time does not contain timezone info. Timezone added and file updated')
     else:
         print('[INFO] Time already has timezone. No changes made')
-
 
 def check_if_csv_contains_timezone_info(file_path: str, tz_name: str = "Europe/Warsaw") -> None:
     """
