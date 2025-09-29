@@ -10,11 +10,13 @@ from pvlib.location import Location
 from pvlib.iotools import read_tmy3
 from pvlib.clearsky import detect_clearsky
 from pvanalytics.features.clearsky import reno
+from datetime import time
 
 from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
 from pvtools.config.params import ClearSkyParameters, SolarDataForLocationAndTime
 from pvtools.preprocess.preprocess_data import sanitize_filename
 from pvtools.io_file.writer import save_dataframe_to_csv
+from pvtools.preprocess.preprocess_data import delete_night_period
 
 def clear_sky(
         clear_sky_parameters: ClearSkyParameters,
@@ -49,15 +51,22 @@ def clear_sky(
         model='perez'  # you can choose 'isotropic', 'haydavies', 'dirint', etc.
     )
 
+    poa = poa.rename_axis('time').reset_index()
+    poa_filtered = delete_night_period(
+        df=poa,
+        start=time(3, 0),  # 3:00 GMT -> 5:00 UTC+2
+        end=time(18, 0)  # 18:00 GMT -> 20:00 UTC+2
+    )
+
     plot_clear_sky(cs, save_dir=save_dir_plot, show=show)
-    plot_poa_components(poa, save_dir=save_dir_plot, show=show)
+    plot_poa_components(poa_filtered, save_dir=save_dir_plot, show=show)
 
     if save_dir_data is not None:
         save_dir_data = Path(save_dir_data)
         output_path = save_dir_data.parent / "calculated_data" / save_dir_data.stem / ("poa_values" + save_dir_data.suffix)
-        save_dataframe_to_csv(poa, output_path, index=True, index_label="time")
+        save_dataframe_to_csv(poa_filtered, output_path, index=False)
 
-    return poa
+    return poa_filtered
 
 def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameters) -> SolarDataForLocationAndTime:
     tus = Location(
@@ -92,28 +101,26 @@ def detect_clearsky_periods(
     df['time'] = pd.to_datetime(df['time'], errors='coerce', utc=True)
     df = df.set_index('time').tz_convert('Europe/Warsaw').sort_index()
 
-    measured = df[sensor_name_ref].astype(float)
-    poa_global = poa['poa_global'].astype(float)
-    if poa_global.index.tz is None:
-        poa_global.index = poa_global.index.tz_localize('Europe/Warsaw')
+    if poa['time'].dt.tz is None:
+        poa['time'] = poa['time'].dt.tz_localize('Europe/Warsaw')
     else:
-        poa_global = poa_global.tz_convert('Europe/Warsaw')
-    poa_global = poa_global.sort_index()
+        poa['time'] = poa['time'].dt.tz_convert('Europe/Warsaw')
+    poa = poa.sort_values('time')
 
-    step = df.index.to_series().diff().median()
-    if pd.isna(step):
-        step = pd.Timedelta('1min')
-    tol = step / 2
+    poa['time'] = pd.to_datetime(poa['time'])
+    poa = poa.set_index('time')
+    poa_global = poa['poa_global'].astype(float)
 
-    poa_on_meas = poa_global.reindex(measured.index, method='nearest', tolerance=tol)
+    measured = df[sensor_name_ref].astype(float)
+    measured = measured.rename('measured')
 
     pair = pd.concat(
-        [measured.astype(float), poa_global.astype(float)],
+        [measured, poa_global],
         axis=1,
-        keys=["measured", "poa_global"],
-        join="inner",
+        join='inner',
     ).sort_index()
 
+    '''
     #sunny_subset = calculate_adaptive_best_mask(pair)
     sunny_subset = detect_clearsky(
         pair['measured'], pair['poa_global'],
@@ -122,6 +129,26 @@ def detect_clearsky_periods(
         max_diff=125
     )
     #sunny_subset = calculate_my_own_mask(pair, ratio=0.90, time_period=10)
+    '''
+
+    masks = []
+    for day, grp in pair.groupby(pair.index.normalize()):
+        grp = grp.asfreq('1min')
+
+        sub = grp[['measured', 'poa_global']].dropna()
+        if sub.empty:
+            continue
+
+        mask = detect_clearsky(
+            sub['measured'],
+            sub['poa_global'],
+            window_length=4,
+            mean_diff=100,
+            max_diff=125,
+        )
+        masks.append(mask)
+
+    sunny_subset = pd.concat(masks).sort_index()
 
     sunny_subset.index.name = 'time'
     df_sunny = sunny_subset.to_frame(name='if_sunny').reset_index()

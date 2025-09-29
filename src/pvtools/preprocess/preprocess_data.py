@@ -98,10 +98,7 @@ def delete_night_period(
     mask = df_time_only.between(start, end)
     df_filtered = df[mask]
 
-    df_filtered = df_filtered.set_index("time").resample("1min").mean()
-    df_filtered = df_filtered.dropna(how="all").reset_index()
-
-    return df_filtered
+    return df_filtered.reset_index(drop=True)
 
 def check_if_target_frequency_is_lower_than_measurements(
         df: pd.DataFrame,
