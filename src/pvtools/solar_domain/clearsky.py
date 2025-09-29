@@ -13,30 +13,30 @@ from pvanalytics.features.clearsky import reno
 from datetime import time
 
 from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
-from pvtools.config.params import ClearSkyParameters, SolarDataForLocationAndTime
+from pvtools.config.params import ClearSkyParameters, SolarDataForLocationAndTime, ClearSkyCalculatedValues
 from pvtools.preprocess.preprocess_data import sanitize_filename
 from pvtools.io_file.writer import save_dataframe_to_csv
 from pvtools.preprocess.preprocess_data import delete_night_period
 
 def clear_sky(
-        clear_sky_parameters: ClearSkyParameters,
+        clearsky_parameters: ClearSkyParameters,
         show: bool = False,
         save_dir_plot: Path = None,
         save_dir: Path = None,
         filename: str = None
 ) -> pd.DataFrame:
-    tus, times, sol, cs = get_solar_data_for_location_and_time(clear_sky_parameters)
+    tus, times, sol, cs = get_solar_data_for_location_and_time(clearsky_parameters)
 
     dni = cs['dni']
     dhi = cs['dhi']
     ghi = cs['ghi']
 
     dni_extra = irradiance.get_extra_radiation(times)
-    solarpos = solarposition.get_solarposition(times, clear_sky_parameters.warsaw_lat, clear_sky_parameters.warsaw_lon)
+    solarpos = solarposition.get_solarposition(times, clearsky_parameters.warsaw_lat, clearsky_parameters.warsaw_lon)
 
     # panel orientation
-    surface_tilt = clear_sky_parameters.surface_tilt
-    surface_azimuth = clear_sky_parameters.surface_azimuth
+    surface_tilt = clearsky_parameters.surface_tilt
+    surface_azimuth = clearsky_parameters.surface_azimuth
 
     # get POA
     poa = irradiance.get_total_irradiance(
@@ -48,7 +48,7 @@ def clear_sky(
         ghi=ghi,
         dhi=dhi,
         dni_extra=dni_extra,
-        albedo=clear_sky_parameters.albedo,  # ground reflectance for ground‐reflected component
+        albedo=clearsky_parameters.albedo,  # ground reflectance for ground‐reflected component
         model='perez'  # you can choose 'isotropic', 'haydavies', 'dirint', etc.
     )
 
