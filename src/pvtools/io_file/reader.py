@@ -8,10 +8,21 @@ from pvtools.config.params import DatatypeCoefficientsForMLPRegression, Datatype
 from pvtools.analysis.validate_decision_tree import _validate_tree_structure
 
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
+    '''
     load_path = Path(load_path)
     df = pd.read_csv(load_path)
 
     return df
+    '''
+
+    load_path = Path(load_path)
+
+    if load_path.suffix == "":
+        load_path = load_path.with_suffix(".csv")
+    elif load_path.suffix.lower() != ".csv":
+        raise ValueError(f"Expected a .csv file, got '{load_path.suffix}' in path: {load_path}")
+
+    return pd.read_csv(load_path)
 
 def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) -> Dict[str, Dict[str, pd.DataFrame]]:
     all_data = {}

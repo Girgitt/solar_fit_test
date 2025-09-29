@@ -68,7 +68,7 @@ def main():
         args = args,
         log_dir = LOG_DIR,
         data_dir = DATA_DIR, # data/
-        data_filename= Path(args.csv).stem, # data/org/filename.csv
+        filename= Path(args.csv).stem, # data/org/filename.csv
         plot_dir = PLOT_DIR,
         sensor_names = sensor_names,
         sensor_name_ref = sensor_name_ref
@@ -95,10 +95,10 @@ def main():
 
         clear_sky_calculated_values = ClearSkyCalculatedValues(
             poa=load_dataframe_from_csv(
-                Path(DATA_DIR / "calculated_data" / model_parameters.data_filename.stem / "poa_values.csv")),
+                Path(DATA_DIR / "calculated_data" / model_parameters.filename / "poa_values.csv")),
             clearsky_periods=load_dataframe_from_csv(
                 Path(DATA_DIR /
-                     "calculated_data" / model_parameters.data_filename.stem /
+                     "calculated_data" / model_parameters.filename /
                      f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"
                      ))
         )

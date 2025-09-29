@@ -14,7 +14,7 @@ class ModelParameters:
     args: Namespace
     log_dir: Path
     data_dir: Path
-    data_filename: Path
+    filename: Path
     plot_dir: str
     sensor_names: np.ndarray
     sensor_name_ref: np.ndarray

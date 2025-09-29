@@ -75,8 +75,8 @@ def plot(
     # ----------------------------------- TEMPORARY PLOTTING FOR FILTERED DATA -----------------------------------------
     plot_raw_data(
         df=load_dataframe_from_csv(
-            model_parameters.data_filename.parent / "filtered" / Path(model_parameters.args.csv).name),
-        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+            model_parameters.data_dir / "filtered" / model_parameters.filename),
+        save_dir=model_parameters.plot_dir / model_parameters.filename,
         filename="series_vs_time_filtered.png",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
@@ -86,13 +86,13 @@ def plot(
     plot_predicted_data(
         calibration_method_dir=model_parameters.log_dir / Path(model_parameters.args.csv).stem,
         show=False,
-        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        save_dir=model_parameters.plot_dir / model_parameters.filename,
     )
 
     plot_poa_vs_reference(
         poa_global=clear_sky_calculated_values.poa['poa_global'],
         sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
-        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        save_dir=model_parameters.plot_dir / model_parameters.filename,
         show=True,
     )
 
@@ -100,14 +100,14 @@ def plot(
         poa_global=clear_sky_calculated_values.poa['poa_global'],
         sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
         sunny=clear_sky_calculated_values.clearsky_periods['if_sunny'],
-        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
+        save_dir=model_parameters.plot_dir / model_parameters.filename,
         show=True,
     )
 
     plot_raw_data_with_peaks(
         df=model_parameters.df,
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
-        peaks_dir=Path("data/interpolated") / Path(model_parameters.data_filename).stem,
+        peaks_dir=Path("data/interpolated") / model_parameters.filename,
         filename="series_vs_time_with_peaks",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,

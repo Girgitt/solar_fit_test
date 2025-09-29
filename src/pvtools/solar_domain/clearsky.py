@@ -22,7 +22,8 @@ def clear_sky(
         clear_sky_parameters: ClearSkyParameters,
         show: bool = False,
         save_dir_plot: Path = None,
-        save_dir_data: Path = None,
+        save_dir: Path = None,
+        filename: str = None
 ) -> pd.DataFrame:
     tus, times, sol, cs = get_solar_data_for_location_and_time(clear_sky_parameters)
 
@@ -61,9 +62,9 @@ def clear_sky(
     plot_clear_sky(cs, save_dir=save_dir_plot, show=show)
     plot_poa_components(poa_filtered, save_dir=save_dir_plot, show=show)
 
-    if save_dir_data is not None:
-        save_dir_data = Path(save_dir_data)
-        output_path = save_dir_data / "calculated_data" / save_dir_data.stem / ("poa_values" + save_dir_data.suffix)
+    if save_dir is not None:
+        save_dir = Path(save_dir)
+        output_path = save_dir / "calculated_data" / filename / ("poa_values" + ".csv")
         save_dataframe_to_csv(poa_filtered, output_path, index=False)
 
     return poa_filtered
