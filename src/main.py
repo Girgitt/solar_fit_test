@@ -74,7 +74,7 @@ def main():
         sensor_name_ref = sensor_name_ref
     )
 
-    clear_sky_parameters = ClearSkyParameters(
+    clearsky_parameters = ClearSkyParameters(
         start_time=model_parameters.df_time.iloc[0],
         end_time=model_parameters.df_time.iloc[-1],
         warsaw_lat=52.22977,
@@ -88,8 +88,13 @@ def main():
         surface_azimuth = 180,  # south-facing
     )
 
+    clearsky_calculated_values = ClearSkyCalculatedValues(
+        poa=pd.DataFrame(),
+        clearsky_periods=pd.Series()
+    )
+
     if args.action == "update":
-        update_function(model_parameters, clear_sky_parameters)
+        update_function(model_parameters, clearsky_parameters, clearsky_calculated_values)
 
     elif args.action == "execute":
 
@@ -104,7 +109,6 @@ def main():
         )
 
         execute_function(model_parameters, clear_sky_calculated_values)
-
 
 if __name__ == '__main__':
     main()

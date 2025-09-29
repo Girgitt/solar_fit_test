@@ -36,7 +36,7 @@ class ClearSkyParameters:
 @dataclass
 class ClearSkyCalculatedValues:
     poa: pd.DataFrame
-    clearsky_periods: pd.DataFrame
+    clearsky_periods: pd.Series
 
 @dataclass
 class SolarDataForLocationAndTime:

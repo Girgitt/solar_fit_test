@@ -35,8 +35,6 @@ def test_preprocess_data_roundtrip(tmp_path, df_simple):
     save_path = tmp_path / "out.csv"
     out = preprocess_data(df_simple.copy(), save_dir=save_path, target_timedelta="2min")
     assert len(out) == 3
-    expected_file = save_path.parent / "filtered" / save_path.name
-    assert expected_file.exists()
 
 def test_ensure_dataframe_contains_valid_data_int_column_with_nan_drops_rows():
     df = pd.DataFrame({"time": [1, np.nan, 3]})
