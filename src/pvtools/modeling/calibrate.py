@@ -30,7 +30,7 @@ my_random_state=42
 def linear_regression(
         df: pd.DataFrame,
         log_dir: Path,
-        data_filename_dir: Path,
+        data_filename: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None,
 ) -> None:
@@ -61,7 +61,7 @@ def linear_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename_dir).stem)
+        data_filename = sanitize_filename(Path(data_filename).stem)
 
         json_metrics_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_metrics_filename)
@@ -72,7 +72,7 @@ def linear_regression(
 def divided_linear_regression(
         df: pd.DataFrame,
         log_dir: Path,
-        data_filename_dir: Path,
+        data_filename: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None,
 ) -> None:
@@ -134,7 +134,7 @@ def divided_linear_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename_dir).stem)
+        data_filename = sanitize_filename(Path(data_filename).stem)
         json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
         save_metrics_to_json(avg_metrics, len(x), coefficients_list, json_filename)
 
@@ -144,7 +144,7 @@ def divided_linear_regression(
 def polynominal_regression(
         df: pd.DataFrame,
         log_dir: Path,
-        data_filename_dir: Path,
+        data_filename: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None,
 ) -> None:
@@ -182,7 +182,7 @@ def polynominal_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename_dir).stem)
+        data_filename = sanitize_filename(Path(data_filename).stem)
         json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
@@ -192,7 +192,7 @@ def polynominal_regression(
 def decision_tree_regression(
         df: pd.DataFrame,
         log_dir: Path,
-        data_filename_dir: Path,
+        data_filename: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None,
 ) -> None:
@@ -222,7 +222,7 @@ def decision_tree_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename_dir).stem)
+        data_filename = sanitize_filename(Path(data_filename).stem)
         json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
@@ -232,7 +232,7 @@ def decision_tree_regression(
 def mlp_regression(
         df: pd.DataFrame,
         log_dir: Path,
-        data_filename_dir: Path,
+        data_filename: Path,
         sensor_names: list[str] = None,
         sensor_name_ref: str = None,
 ) -> None:
@@ -276,7 +276,7 @@ def mlp_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename_dir).stem)
+        data_filename = sanitize_filename(Path(data_filename).stem)
         json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 

@@ -13,7 +13,8 @@ class ModelParameters:
     df_time: pd.DataFrame
     args: Namespace
     log_dir: Path
-    data_filename_dir: Path
+    data_dir: Path
+    filename: Path
     plot_dir: str
     sensor_names: np.ndarray
     sensor_name_ref: np.ndarray

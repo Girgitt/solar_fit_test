@@ -8,6 +8,8 @@
 # ----------------------------------------------------------------------------
 
 '''
+python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv
+
 python src/main.py --action=update --model_id=hi_fit_mixed --csv=./dataeds_trend__power_hi.csv
 python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
 
@@ -21,12 +23,11 @@ import pandas as pd
 from pathlib import Path
 
 from pvtools.io_file.reader import load_dataframe_from_csv
-from pvtools.utils.utilities import argument_parsing, check_if_csv_contains_timezone_info, print_available_data_columns, \
-    select_available_data_columns_to_process
+from pvtools.utils.utilities import argument_parsing, print_available_data_columns, select_available_data_columns_to_process
 from pvtools.utils.update_function import update_function
 from pvtools.utils.execute_function import execute_function
 from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
-from pvtools.preprocess.preprocess_data import preprocess_data, sanitize_filename
+from pvtools.preprocess.preprocess_data import preprocess_data, sanitize_filename, ensure_dataframe_contains_valid_data, ensure_datetime_contains_timezone
 
 def main():
     ROOT_DIR = Path(__file__).resolve().parent.parent#.parent
@@ -40,17 +41,19 @@ def main():
 
     parser = argparse.ArgumentParser()
     args = argument_parsing(parser)
-    model_path = Path(f"model_config__{args.model_id}.json")
+    target_frequency='1min'
 
-    df = check_if_csv_contains_timezone_info(args.csv)
-
-    #df = pd.read_csv(args.csv, parse_dates=["time"])
-
-    df = preprocess_data(
+    df = pd.read_csv(args.csv, parse_dates=["time"])
+    df_filtered = preprocess_data(
         df=df,
+        target_timedelta=target_frequency, # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
         save_dir=Path(args.csv),
-        target_timedelta='1min' # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
     )
+
+    data_columns = [col for col in df_filtered.columns if col != "time"]
+
+    print_available_data_columns(data_columns)
+    sensor_names, sensor_name_ref, df_filtered = select_available_data_columns_to_process(data_columns, df_filtered)
 
     # use measurement_limitations after calibration - otherwise VEML values are too low!!
 
@@ -59,28 +62,13 @@ def main():
 
     # Second method is better I think. It takes sunny period for DAVIS and uses it for all VAML's
 
-    data_columns = [col for col in df.columns if col != "time"]
-    time_column = df["time"]
-
-    print_available_data_columns(data_columns)
-    sensor_names, sensor_name_ref, df = select_available_data_columns_to_process(data_columns, df)
-
-    #FIXME: added to re-sample again with constant interval BUT it generates NaNs
-    df = preprocess_data(
-        df=df,
-        save_dir=None,
-        target_timedelta='1min' # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
-    )
-
-    # HERE NaNs are interpolated
-    df.ffill(inplace=True)
-
     model_parameters = ModelParameters(
-        df=df,
-        df_time = time_column,
+        df=df_filtered,
+        df_time = df_filtered["time"],
         args = args,
         log_dir = LOG_DIR,
-        data_filename_dir = Path(args.csv),
+        data_dir = DATA_DIR, # data/
+        filename= Path(args.csv).stem, # data/org/filename.csv
         plot_dir = PLOT_DIR,
         sensor_names = sensor_names,
         sensor_name_ref = sensor_name_ref
@@ -94,7 +82,7 @@ def main():
         tz='Europe/Warsaw',
         altitude=170,
         name='Warsaw',
-        frequency='1min',
+        frequency=target_frequency,
         albedo=0.2,
         surface_tilt=30,  # degrees from horizontal
         surface_azimuth = 180,  # south-facing
@@ -107,10 +95,10 @@ def main():
 
         clear_sky_calculated_values = ClearSkyCalculatedValues(
             poa=load_dataframe_from_csv(
-                Path(DATA_DIR / "calculated_data" / model_parameters.data_filename_dir.stem / "poa_values.csv")),
+                Path(DATA_DIR / "calculated_data" / model_parameters.filename / "poa_values.csv")),
             clearsky_periods=load_dataframe_from_csv(
                 Path(DATA_DIR /
-                     "calculated_data" / model_parameters.data_filename_dir.stem /
+                     "calculated_data" / model_parameters.filename /
                      f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"
                      ))
         )

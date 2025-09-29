@@ -30,7 +30,10 @@ def determine_system_azimuth_and_tilt(
 
     freq = pd.Timedelta(clear_sky_parameters.frequency)
     measured = measured.reindex(times, method="nearest", tolerance=freq)
-    sunny_mask = sunny_mask.reindex(times, method="nearest", tolerance=freq).fillna(False)
+    sunny_mask = (sunny_mask.astype('boolean')
+                  .reindex(times, method='nearest', tolerance=freq)
+                  .fillna(False)
+                  )
 
     tilt_deg, azimuth_deg = infer_orientation_daily_peak(
         power_or_poa=measured,
