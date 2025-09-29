@@ -63,7 +63,7 @@ def clear_sky(
 
     if save_dir_data is not None:
         save_dir_data = Path(save_dir_data)
-        output_path = save_dir_data.parent / "calculated_data" / save_dir_data.stem / ("poa_values" + save_dir_data.suffix)
+        output_path = save_dir_data / "calculated_data" / save_dir_data.stem / ("poa_values" + save_dir_data.suffix)
         save_dataframe_to_csv(poa_filtered, output_path, index=False)
 
     return poa_filtered
@@ -94,6 +94,7 @@ def detect_clearsky_periods(
         sensor_names: list[str] = None,
         sensor_name_ref: str = None,
         save_dir: Optional[Path] = None,
+        filename: str = None,
 ) -> pd.Series:
     df = df.copy()
     poa = poa.copy()
@@ -156,7 +157,7 @@ def detect_clearsky_periods(
     if save_dir is not None:
         save_dir = Path(save_dir)
         s_name = sanitize_filename(sensor_name_ref)
-        output_path = save_dir.parent / "calculated_data" / save_dir.stem / (s_name + "_sunny_periods" + save_dir.suffix)
+        output_path = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
         save_dataframe_to_csv(df_sunny, output_path, index=False)
 
     return sunny_subset

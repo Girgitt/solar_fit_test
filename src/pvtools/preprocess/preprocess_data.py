@@ -22,26 +22,26 @@ def preprocess_data(
         tz_name='Europe/Warsaw'
     )
 
+    if check_if_target_frequency_is_lower_than_measurements(df=df, target_timedelta=target_timedelta) is False:
+        df_avereged = average_measurements(
+            df=df,
+            target_timedelta=target_timedelta
+        )
+    else:
+        df_avereged = df
+
     df_filtered = delete_night_period(
-        df=df,
+        df=df_avereged,
         start=time(3, 0),  # 3:00 GMT -> 5:00 UTC+2
         end=time(18, 0)  # 18:00 GMT -> 20:00 UTC+2
     )
 
-    if check_if_target_frequency_is_lower_than_measurements(df=df, target_timedelta=target_timedelta) is False:
-        df_avereged = average_measurements(
-            df=df_filtered,
-            target_timedelta=target_timedelta
-        )
-    else:
-        df_avereged = df_filtered
-
     if save_dir is not None:
         save_dir = Path(save_dir)
-        output_path = save_dir.parent / "filtered" / (save_dir.stem + save_dir.suffix)
-        save_dataframe_to_csv(df_avereged, output_path, index=False)
+        output_path = save_dir.parent.parent / "filtered" / (save_dir.stem + save_dir.suffix)
+        save_dataframe_to_csv(df_filtered, output_path, index=False)
 
-    return df_avereged
+    return df_filtered
 
 def ensure_dataframe_contains_valid_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()

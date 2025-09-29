@@ -75,7 +75,7 @@ def plot(
     # ----------------------------------- TEMPORARY PLOTTING FOR FILTERED DATA -----------------------------------------
     plot_raw_data(
         df=load_dataframe_from_csv(
-            model_parameters.data_filename_dir.parent / "filtered" / Path(model_parameters.args.csv).name),
+            model_parameters.data_filename.parent / "filtered" / Path(model_parameters.args.csv).name),
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
         filename="series_vs_time_filtered.png",
         sensor_names=model_parameters.sensor_names,
@@ -107,7 +107,7 @@ def plot(
     plot_raw_data_with_peaks(
         df=model_parameters.df,
         save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
-        peaks_dir=Path("data/interpolated") / Path(model_parameters.data_filename_dir).stem,
+        peaks_dir=Path("data/interpolated") / Path(model_parameters.data_filename).stem,
         filename="series_vs_time_with_peaks",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,

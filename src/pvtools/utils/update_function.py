@@ -23,7 +23,7 @@ def calculate_regression(model_parameters: ModelParameters) -> None:
     linear_regression(
         df=model_parameters.df,
         log_dir=model_parameters.log_dir,
-        data_filename_dir=model_parameters.data_filename_dir,
+        data_filename=model_parameters.data_filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -31,7 +31,7 @@ def calculate_regression(model_parameters: ModelParameters) -> None:
     divided_linear_regression(
         df=model_parameters.df,
         log_dir=model_parameters.log_dir,
-        data_filename_dir=model_parameters.data_filename_dir,
+        data_filename=model_parameters.data_filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -39,7 +39,7 @@ def calculate_regression(model_parameters: ModelParameters) -> None:
     polynominal_regression(
         df=model_parameters.df,
         log_dir=model_parameters.log_dir,
-        data_filename_dir=model_parameters.data_filename_dir,
+        data_filename=model_parameters.data_filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -47,7 +47,7 @@ def calculate_regression(model_parameters: ModelParameters) -> None:
     decision_tree_regression(
         df=model_parameters.df,
         log_dir=model_parameters.log_dir,
-        data_filename_dir=model_parameters.data_filename_dir,
+        data_filename=model_parameters.data_filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -55,7 +55,7 @@ def calculate_regression(model_parameters: ModelParameters) -> None:
     mlp_regression(
         df=model_parameters.df,
         log_dir=model_parameters.log_dir,
-        data_filename_dir=model_parameters.data_filename_dir,
+        data_filename=model_parameters.data_filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -68,7 +68,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
         clear_sky_parameters=clear_sky_parameters,
         show=False,
         save_dir_plot=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
-        save_dir_data=model_parameters.data_filename_dir
+        save_dir_data=model_parameters.data_dir
     )
 
     clearsky_periods = detect_clearsky_periods(
@@ -76,7 +76,8 @@ def process_solar_data_with_clearsky_detection_and_masking(
         df=model_parameters.df,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
-        save_dir=model_parameters.data_filename_dir
+        save_dir=model_parameters.data_dir,
+        filename=model_parameters.data_filename
     )
 
     determine_system_azimuth_and_tilt(
@@ -90,10 +91,9 @@ def process_solar_data_with_clearsky_detection_and_masking(
     )
 
     apply_sunny_mask(
-        data_dir=model_parameters.data_filename_dir,
-        data_filename=model_parameters.data_filename_dir,
+        data_filename=model_parameters.data_filename,
         sensor_name_ref=model_parameters.sensor_name_ref,
-        save_dir=model_parameters.data_filename_dir.parent
+        save_dir=model_parameters.data_dir
     )
 
 

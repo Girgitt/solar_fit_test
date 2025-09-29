@@ -47,7 +47,7 @@ def main():
     df_filtered = preprocess_data(
         df=df,
         target_timedelta=target_frequency, # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
-        save_dir=Path(args.csv)
+        save_dir=Path(args.csv),
     )
 
     data_columns = [col for col in df_filtered.columns if col != "time"]
@@ -67,7 +67,8 @@ def main():
         df_time = df_filtered["time"],
         args = args,
         log_dir = LOG_DIR,
-        data_filename_dir = Path(args.csv),
+        data_dir = DATA_DIR, # data/
+        data_filename= Path(args.csv).stem, # data/org/filename.csv
         plot_dir = PLOT_DIR,
         sensor_names = sensor_names,
         sensor_name_ref = sensor_name_ref
@@ -94,10 +95,10 @@ def main():
 
         clear_sky_calculated_values = ClearSkyCalculatedValues(
             poa=load_dataframe_from_csv(
-                Path(DATA_DIR / "calculated_data" / model_parameters.data_filename_dir.stem / "poa_values.csv")),
+                Path(DATA_DIR / "calculated_data" / model_parameters.data_filename.stem / "poa_values.csv")),
             clearsky_periods=load_dataframe_from_csv(
                 Path(DATA_DIR /
-                     "calculated_data" / model_parameters.data_filename_dir.stem /
+                     "calculated_data" / model_parameters.data_filename.stem /
                      f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"
                      ))
         )
