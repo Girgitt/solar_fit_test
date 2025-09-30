@@ -4,6 +4,11 @@ import pandas as pd
 from argparse import ArgumentParser, Namespace
 from datetime import datetime
 from typing import List, Tuple
+from pathlib import Path
+
+from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
+from pvtools.io_file.reader import load_dataframe_from_csv
+from pvtools.preprocess.preprocess_data import sanitize_filename
 
 def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--action", choices=["update", "execute"], required=True,
@@ -33,6 +38,20 @@ def select_available_data_columns_to_process(
     df = df.dropna(subset=sensor_names + [sensor_name_ref])
 
     return sensor_names, sensor_name_ref, df
+
+def load_data_for_execute_function(
+        model_parameters: ModelParameters,
+) -> tuple[ModelParameters, ClearSkyCalculatedValues]:
+    model_parameters.df = load_dataframe_from_csv(
+        Path(model_parameters.data_dir / "filtered" / f"{model_parameters.filename}.csv"))
+
+    clearsky_calculated_values = ClearSkyCalculatedValues(
+        poa=load_dataframe_from_csv(Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename / "poa_values.csv")),
+        clearsky_periods=load_dataframe_from_csv(Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
+                                                      f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"))
+    )
+
+    return model_parameters, clearsky_calculated_values
 
 def solar_elevation(
         lat: float,

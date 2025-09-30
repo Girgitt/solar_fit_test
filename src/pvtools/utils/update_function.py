@@ -21,15 +21,6 @@ def update_function(
         clearsky_calculated_values=clearsky_calculated_values
     )
 
-    limitated_df = limit_measured_irradiance_to_clear_sky_model(
-        df=model_parameters.df,
-        clearsky_df=clearsky_calculated_values.poa,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        poa_global_name='poa_global',
-        save_dir=model_parameters.data_dir,
-        filename=model_parameters.filename
-    )
-
     calculate_regression(model_parameters)
 
 def process_solar_data_with_clearsky_detection_and_masking(
@@ -45,6 +36,19 @@ def process_solar_data_with_clearsky_detection_and_masking(
         filename=model_parameters.filename
     )
 
+    clearsky_calculated_values.poa = poa
+
+    df_limited = limit_measured_irradiance_to_clear_sky_model(
+        df=model_parameters.df,
+        clearsky_df=clearsky_calculated_values.poa,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        poa_global_name='poa_global',
+        save_dir=model_parameters.data_dir,
+        filename=model_parameters.filename
+    )
+
+    model_parameters.df = df_limited
+
     clearsky_periods = detect_clearsky_periods(
         poa=poa,
         df=model_parameters.df,
@@ -54,7 +58,6 @@ def process_solar_data_with_clearsky_detection_and_masking(
         filename=model_parameters.filename
     )
 
-    clearsky_calculated_values.poa = poa
     clearsky_calculated_values.clearsky_periods = clearsky_periods
 
     determine_system_azimuth_and_tilt(
@@ -67,11 +70,13 @@ def process_solar_data_with_clearsky_detection_and_masking(
         azimuths=np.arange(170, 190, 1)  # None
     )
 
-    apply_sunny_mask(
+    df_sunny_periods = apply_sunny_mask(
         data_filename=model_parameters.filename,
         sensor_name_ref=model_parameters.sensor_name_ref,
         save_dir=model_parameters.data_dir
     )
+
+    model_parameters.df = df_sunny_periods
 
 def calculate_regression(model_parameters: ModelParameters) -> None:
     linear_regression(

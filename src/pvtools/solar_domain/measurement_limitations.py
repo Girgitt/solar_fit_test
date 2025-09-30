@@ -39,7 +39,7 @@ def limit_measured_irradiance_to_clear_sky_model(
 
     if save_dir is not None:
         save_dir = Path(save_dir)
-        output_path = save_dir / "filtered" / f"{filename}_limitated.csv"
+        output_path = save_dir / "filtered" / f"{filename}.csv"
         save_dataframe_to_csv(result_df, output_path, index=False)
 
     return result_df
@@ -64,7 +64,7 @@ def remove_negative_measurements(
 
     if save_dir is not None and not if_changed:
         save_dir = Path(save_dir)
-        output_path = save_dir / "filtered" / f"{filename}_limitated.csv"
+        output_path = save_dir / "filtered" / f"{filename}.csv"
         save_dataframe_to_csv(df, output_path, index=False)
 
     return df
