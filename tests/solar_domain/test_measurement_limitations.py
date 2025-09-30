@@ -40,7 +40,7 @@ def negative_measured_df(sensor_names, timestamps):
     })
 
 @pytest.fixture
-def clear_sky_df(timestamps):
+def clearsky_df(timestamps):
     return pd.DataFrame({
         'time': timestamps,
         'poa_global': [1.0, 1.2, 1.1, 1.5],
@@ -57,7 +57,7 @@ def clear_sky_df_with_mismatch_timestamps(timestamps):
 
 def test_limit_measured_irradiance_to_clear_sky_model_basic(
         measured_df,
-        clear_sky_df,
+        clearsky_df,
         sensor_names,
 ):
     expected = measured_df.copy()
@@ -69,9 +69,11 @@ def test_limit_measured_irradiance_to_clear_sky_model_basic(
 
     result = limit_measured_irradiance_to_clear_sky_model(
         df=measured_df,
-        clear_sky_df=clear_sky_df,
-        poa_global_column_name='poa_global',
-        save_dir=None
+        clearsky_df=clearsky_df,
+        sensor_name_ref='sensor_ref',
+        poa_global_name='poa_global',
+        save_dir=None,
+        filename=None
     )
 
     pd.testing.assert_series_equal(result[sensor1], expected[sensor1])
@@ -79,21 +81,21 @@ def test_limit_measured_irradiance_to_clear_sky_model_basic(
 
 def test_limit_measured_irradiance_to_clear_sky_model_with_no_time_column(
         measured_df,
-        clear_sky_df,
+        clearsky_df,
 ):
     with pytest.raises(ValueError, match="'time' column needs to be provided!"):
         limit_measured_irradiance_to_clear_sky_model(
             df=measured_df.drop('time', axis='columns'),
-            clear_sky_df=clear_sky_df,
-            poa_global_column_name='poa_global',
+            clearsky_df=clearsky_df,
+            poa_global_name='poa_global',
             save_dir=None
         )
 
         with pytest.raises(ValueError, match="'time' column needs to be provided!"):
             limit_measured_irradiance_to_clear_sky_model(
                 df=measured_df,
-                clear_sky_df=clear_sky_df.drop('time', axis='columns'),
-                poa_global_column_name='poa_global',
+                clearsky_df=clearsky_df.drop('time', axis='columns'),
+                poa_global_name='poa_global',
                 save_dir=None
             )
 
@@ -105,11 +107,11 @@ def test_limit_measured_irradiance_to_clear_sky_model_with_mismatch_timestamps(
     with pytest.raises(ValueError, match='Timestamps are mismatched!'):
         limit_measured_irradiance_to_clear_sky_model(
             df=measured_df,
-            clear_sky_df=clear_sky_df_with_mismatch_timestamps,
-            poa_global_column_name='poa_global',
+            clearsky_df=clear_sky_df_with_mismatch_timestamps,
+            poa_global_name='poa_global',
         )
 
-def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df, clear_sky_df):
+def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df, clearsky_df):
     invalid_inputs = [
         None,
         pd.Series([1, 2, 4]),
@@ -122,17 +124,19 @@ def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df
         with pytest.raises(TypeError, match="Expected 'df' and 'clear_sky_df' to be a pandas DataFrame"):
             limit_measured_irradiance_to_clear_sky_model(
                 df=invalid_df,
-                clear_sky_df=clear_sky_df,
-                poa_global_column_name='poa_global',
-                save_dir=None
+                clearsky_df=clearsky_df,
+                sensor_name_ref='irr_dav_1',
+                poa_global_name='poa_global',
+                save_dir=None,
+                filename=None
             )
 
     for invalid_clear_sky_df in invalid_inputs:
         with pytest.raises(TypeError, match="Expected 'df' and 'clear_sky_df' to be a pandas DataFrame"):
             limit_measured_irradiance_to_clear_sky_model(
                 df=measured_df,
-                clear_sky_df=invalid_clear_sky_df,
-                poa_global_column_name='poa_global',
+                clearsky_df=invalid_clear_sky_df,
+                poa_global_name='poa_global',
                 save_dir=None
             )
 
