@@ -15,6 +15,7 @@ def calibrate_by_linear_regression(
         log_dir: Path,
         folder_data_name: str,
 ) -> None:
+    print(f"AAA: {df.shape}")
     calibration_method_dir = log_dir / folder_data_name / "linear_regression"
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):

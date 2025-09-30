@@ -22,12 +22,12 @@ import pandas as pd
 
 from pathlib import Path
 
-from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.utils.utilities import argument_parsing, print_available_data_columns, select_available_data_columns_to_process
 from pvtools.utils.update_function import update_function
+
 from pvtools.utils.execute_function import execute_function
 from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
-from pvtools.preprocess.preprocess_data import preprocess_data, sanitize_filename, ensure_dataframe_contains_valid_data, ensure_datetime_contains_timezone
+from pvtools.preprocess.preprocess_data import preprocess_data
 
 def main():
     ROOT_DIR = Path(__file__).resolve().parent.parent#.parent
@@ -97,18 +97,7 @@ def main():
         update_function(model_parameters, clearsky_parameters, clearsky_calculated_values)
 
     elif args.action == "execute":
-
-        clear_sky_calculated_values = ClearSkyCalculatedValues(
-            poa=load_dataframe_from_csv(
-                Path(DATA_DIR / "calculated_data" / model_parameters.filename / "poa_values.csv")),
-            clearsky_periods=load_dataframe_from_csv(
-                Path(DATA_DIR /
-                     "calculated_data" / model_parameters.filename /
-                     f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"
-                     ))
-        )
-
-        execute_function(model_parameters, clear_sky_calculated_values)
+        execute_function(model_parameters)
 
 if __name__ == '__main__':
     main()

@@ -6,15 +6,17 @@ from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
 from pvtools.visualisation.plotter import plot_raw_data, plot_predicted_data, plot_poa_vs_reference, \
     plot_poa_reference_with_clearsky_periods, plot_raw_data_with_peaks
 from pvtools.io_file.reader import load_dataframe_from_csv
+from pvtools.utils.utilities import load_data_for_execute_function
 
 def execute_function(
         model_parameters: ModelParameters,
-        clear_sky_calculated_values: ClearSkyCalculatedValues,
 ) -> None:
+    model_parameters, clearsky_calculated_values = load_data_for_execute_function(model_parameters)
+
     calibrate(model_parameters=model_parameters)
     plot(
         model_parameters=model_parameters,
-        clear_sky_calculated_values=clear_sky_calculated_values
+        clearsky_calculated_values=clearsky_calculated_values
     )
 
 def calibrate(model_parameters: ModelParameters) -> None:
@@ -61,7 +63,7 @@ def calibrate(model_parameters: ModelParameters) -> None:
 
 def plot(
         model_parameters: ModelParameters,
-        clear_sky_calculated_values: ClearSkyCalculatedValues,
+        clearsky_calculated_values: ClearSkyCalculatedValues,
 ) -> None:
     plot_raw_data(
         df=model_parameters.df,
@@ -90,16 +92,16 @@ def plot(
     )
 
     plot_poa_vs_reference(
-        poa_global=clear_sky_calculated_values.poa['poa_global'],
+        poa_global=clearsky_calculated_values.poa['poa_global'],
         sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
         save_dir=model_parameters.plot_dir / model_parameters.filename,
         show=True,
     )
 
     plot_poa_reference_with_clearsky_periods(
-        poa_global=clear_sky_calculated_values.poa['poa_global'],
+        poa_global=clearsky_calculated_values.poa['poa_global'],
         sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
-        sunny=clear_sky_calculated_values.clearsky_periods['if_sunny'],
+        sunny=clearsky_calculated_values.clearsky_periods['if_sunny'],
         save_dir=model_parameters.plot_dir / model_parameters.filename,
         show=True,
     )
