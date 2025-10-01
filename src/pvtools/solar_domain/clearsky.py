@@ -280,6 +280,9 @@ def detect_clearsky_periods(
         join='inner',
     ).sort_index()
 
+    tolerance = 0.3 # 30%
+    series_mask = pair['measured'].between(pair['poa_global'] * (1-tolerance), pair['poa_global'] * (1+tolerance))
+
     masks = []
     for day, grp in pair.groupby(pair.index.normalize()):
         grp = grp.asfreq('1min')
@@ -287,6 +290,7 @@ def detect_clearsky_periods(
         sub = grp[['measured', 'poa_global']].dropna()
         if sub.empty:
             continue
+
 
         mask = detect_clearsky(
             sub['measured'],
@@ -302,13 +306,17 @@ def detect_clearsky_periods(
     sunny_subset.index.name = 'time'
     df_sunny = sunny_subset.to_frame(name='if_sunny').reset_index()
 
+    series_sunny = df_sunny.set_index('time')['if_sunny']
+    combined_masks = series_sunny & series_mask
+    combined_masks.name = 'if_sunny'
+
     if save_dir is not None:
         save_dir = Path(save_dir)
         s_name = sanitize_filename(sensor_name_ref)
         output_path = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
-        save_dataframe_to_csv(df_sunny, output_path, index=False)
+        save_dataframe_to_csv(combined_masks, output_path, index=True)
 
-    return sunny_subset
+    return combined_masks
 
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
     poa_global_ref = pair['poa_global'].quantile(0.95)
