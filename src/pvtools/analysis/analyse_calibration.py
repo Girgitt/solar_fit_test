@@ -15,12 +15,12 @@ def calibrate_by_linear_regression(
         log_dir: Path,
         folder_data_name: str,
 ) -> None:
-    print(f"AAA: {df.shape}")
     calibration_method_dir = log_dir / folder_data_name / "linear_regression"
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
+        print(f"AAA: {json_file_dir}")
         params = linear_regression_load_parameters(json_file_dir)
-
+        print(f"BBB: {idx}")
         x = df[sensor_names[idx]].values
         y_true = df[sensor_name_ref]
         y_pred = linear_regression_calculate_calibration_values(x, params)

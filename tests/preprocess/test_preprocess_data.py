@@ -280,3 +280,6 @@ def test_sanitize_filename():
     assert sanitize_filename("test@site.name!2023") == "site_name_2023"
     assert sanitize_filename("@admin@dev-site.com") == "dev-site_com"
     assert sanitize_filename("plain_string") == "plain_string"
+    assert sanitize_filename("irr_dav_1___MAX_VALUE___.csv_") == "irr_dav_1_MAX_VALUE_csv"
+    assert sanitize_filename("weird__name____v2") == "weird_name_v2"
+    assert sanitize_filename("mat______a___") == "mat_a"

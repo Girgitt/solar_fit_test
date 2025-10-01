@@ -8,7 +8,7 @@ from pvtools.modeling.calibrate import linear_regression, divided_linear_regress
 from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
 from pvtools.utils.apply_sunny_mask import apply_sunny_mask
-from pvtools.solar_domain.measurement_limitations import limit_measured_irradiance_to_clear_sky_model
+from pvtools.solar_domain.measurement_limitations import limit_sensor_ref_irradiance_to_clear_sky_model
 
 def update_function(
         model_parameters: ModelParameters,
@@ -38,7 +38,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
 
     clearsky_calculated_values.poa = poa
 
-    df_limited = limit_measured_irradiance_to_clear_sky_model(
+    df_limited = limit_sensor_ref_irradiance_to_clear_sky_model(
         df=model_parameters.df,
         clearsky_df=clearsky_calculated_values.poa,
         sensor_name_ref=model_parameters.sensor_name_ref,
