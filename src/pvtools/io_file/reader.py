@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 from pathlib import Path
 
 from pvtools.config.params import DatatypeCoefficientsForMLPRegression, DatatypeCoefficientsForDividedLinearRegression
-from pvtools.analysis.validate_decision_tree import _validate_tree_structure
+from pvtools.calibration.validate_decision_tree import _validate_tree_structure
 
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
     '''

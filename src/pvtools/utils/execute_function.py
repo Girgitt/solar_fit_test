@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pvtools.analysis.analyse_calibration import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
+from pvtools.calibration.calibrate import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
     calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression, calibrate_by_mlp_regression
 from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
 from pvtools.visualisation.plotter import plot_raw_data, plot_predicted_data, plot_poa_vs_reference, \
