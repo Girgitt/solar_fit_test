@@ -23,26 +23,21 @@ def limit_measured_irradiance_to_clear_sky_model(
     if mismatched_times:
         raise ValueError("Timestamps are mismatched!")
 
-    merged = df.merge(
-        clearsky_df[['time', poa_global_name]],
-        on='time',
-        how='left'
-    )
+    df = df.copy()
 
-    result_df = df.copy()
+    merged = (df[['time', sensor_name_ref]].merge(clearsky_df[['time', poa_global_name]], on='time', how='inner'))
 
-    upper = merged[poa_global_name].astype(float).to_numpy()
-    for col in df.columns:
-        if col in ('time', sensor_name_ref):
-            continue
-        result_df[col] = pd.to_numeric(df[col], errors='coerce').clip(upper=upper)
+    limited_df = merged.copy()
+    limited_df[sensor_name_ref] = limited_df[sensor_name_ref].clip(upper=limited_df[poa_global_name])
+
+    df[sensor_name_ref] = limited_df[sensor_name_ref]
 
     if save_dir is not None:
         save_dir = Path(save_dir)
         output_path = save_dir / "filtered" / f"{filename}.csv"
-        save_dataframe_to_csv(result_df, output_path, index=False)
+        save_dataframe_to_csv(df, output_path, index=False)
 
-    return result_df
+    return df
 
 def remove_negative_measurements(
         df: pd.DataFrame,

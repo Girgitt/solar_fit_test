@@ -89,6 +89,7 @@ def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameter
 
     return tus, times, sol, cs
 
+'''
 def detect_clearsky_periods(
         df: pd.DataFrame,
         poa: pd.DataFrame,
@@ -122,7 +123,7 @@ def detect_clearsky_periods(
         join='inner',
     ).sort_index()
 
-    '''
+    ------------------------------------------------------------------------------------------------
     #sunny_subset = calculate_adaptive_best_mask(pair)
     sunny_subset = detect_clearsky(
         pair['measured'], pair['poa_global'],
@@ -131,7 +132,7 @@ def detect_clearsky_periods(
         max_diff=125
     )
     #sunny_subset = calculate_my_own_mask(pair, ratio=0.90, time_period=10)
-    '''
+    ----------------------------------------------------------------------------------------------------
 
     masks = []
     for day, grp in pair.groupby(pair.index.normalize()):
@@ -162,6 +163,160 @@ def detect_clearsky_periods(
         save_dataframe_to_csv(df_sunny, output_path, index=False)
 
     return sunny_subset
+'''
+''' ---------------------------------------->>>>>>>>>>>>>>>>>>>> CHAT GPT
+def detect_clearsky_periods(
+        df: pd.DataFrame,
+        poa: pd.DataFrame,
+        sensor_names: list[str] = None,
+        sensor_name_ref: str = None,
+        save_dir: Optional[Path] = None,
+        filename: str = None,
+) -> pd.Series:
+    df = df.copy()
+    poa = poa.copy()
+
+    df['time'] = pd.to_datetime(df['time'], errors='coerce', utc=True)
+    df = df.set_index('time').tz_convert('Europe/Warsaw').sort_index()
+
+    if poa['time'].dt.tz is None:
+        poa['time'] = poa['time'].dt.tz_localize('Europe/Warsaw')
+    else:
+        poa['time'] = poa['time'].dt.tz_convert('Europe/Warsaw')
+    poa = poa.sort_values('time')
+
+    poa['time'] = pd.to_datetime(poa['time'])
+    poa = poa.set_index('time')
+    poa_global = poa['poa_global'].astype(float)
+
+    measured = df[sensor_name_ref].astype(float)
+    measured = measured.rename('measured')
+
+    pair = pd.concat(
+        [measured, poa_global],
+        axis=1,
+        join='inner',
+    ).sort_index()
+
+    masks = []
+    for _, grp in pair.groupby(pair.index.normalize()):
+        grp = grp.asfreq('1min')
+        if grp.isna().all(axis=None):
+            continue
+
+        cs = grp['poa_global']
+        daymask = cs > 200.0  # try 150–250 depending on site
+        if not daymask.any():
+            continue
+
+        s = grp.loc[daymask, 'measured'].dropna()
+        cs = cs.loc[daymask].reindex(s.index)
+
+        if len(s) < 10:
+            continue
+
+        sub = grp[['measured', 'poa_global']].dropna()
+        if sub.empty:
+            continue
+
+        mask, comps, alpha = detect_clearsky(
+            measured=s,
+            clearsky=cs,
+            window_length='10min',
+            mean_diff=40,  # tighten vs your 100/125
+            max_diff=60,
+            return_components=True,
+            infer_limits=True,
+        )
+
+        strict = mask & alpha.between(0.9, 1.1)
+
+        sunny_day = pd.Series(False, index=grp.index, name='if_sunny')
+        sunny_day.loc[daymask] = strict.reindex(s.index, fill_value=False)
+        masks.append(sunny_day)
+
+    sunny_subset = pd.concat(masks).sort_index() if masks else pd.Series(False, index=pair.index, name='if_sunny')
+    sunny_subset.index.name = 'time'
+
+    if save_dir is not None:
+        save_dir = Path(save_dir)
+        s_name = sanitize_filename(sensor_name_ref)
+        output_path = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
+        save_dataframe_to_csv(sunny_subset, output_path, index=False)
+
+    return sunny_subset
+'''
+
+def detect_clearsky_periods(
+        df: pd.DataFrame,
+        poa: pd.DataFrame,
+        sensor_names: list[str] = None,
+        sensor_name_ref: str = None,
+        save_dir: Optional[Path] = None,
+        filename: str = None,
+) -> pd.Series:
+    df = df.copy()
+    poa = poa.copy()
+
+    df['time'] = pd.to_datetime(df['time'], errors='coerce', utc=True)
+    df = df.set_index('time').tz_convert('Europe/Warsaw').sort_index()
+
+    if poa['time'].dt.tz is None:
+        poa['time'] = poa['time'].dt.tz_localize('Europe/Warsaw')
+    else:
+        poa['time'] = poa['time'].dt.tz_convert('Europe/Warsaw')
+    poa = poa.sort_values('time')
+
+    poa['time'] = pd.to_datetime(poa['time'])
+    poa = poa.set_index('time')
+    poa_global = poa['poa_global'].astype(float)
+
+    measured = df[sensor_name_ref].astype(float)
+    measured = measured.rename('measured')
+
+    pair = pd.concat(
+        [measured, poa_global],
+        axis=1,
+        join='inner',
+    ).sort_index()
+
+    tolerance = 0.3 # 30%
+    series_mask = pair['measured'].between(pair['poa_global'] * (1-tolerance), pair['poa_global'] * (1+tolerance))
+
+    masks = []
+    for day, grp in pair.groupby(pair.index.normalize()):
+        grp = grp.asfreq('1min')
+
+        sub = grp[['measured', 'poa_global']].dropna()
+        if sub.empty:
+            continue
+
+
+        mask = detect_clearsky(
+            sub['measured'],
+            sub['poa_global'],
+            window_length=4,
+            mean_diff=100,
+            max_diff=125,
+        )
+        masks.append(mask)
+
+    sunny_subset = pd.concat(masks).sort_index()
+
+    sunny_subset.index.name = 'time'
+    df_sunny = sunny_subset.to_frame(name='if_sunny').reset_index()
+
+    series_sunny = df_sunny.set_index('time')['if_sunny']
+    combined_masks = series_sunny & series_mask
+    combined_masks.name = 'if_sunny'
+
+    if save_dir is not None:
+        save_dir = Path(save_dir)
+        s_name = sanitize_filename(sensor_name_ref)
+        output_path = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
+        save_dataframe_to_csv(combined_masks, output_path, index=True)
+
+    return combined_masks
 
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
     poa_global_ref = pair['poa_global'].quantile(0.95)
