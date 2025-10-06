@@ -44,7 +44,7 @@ def select_available_data_columns_to_process(
 
     return sensor_names, sensor_name_ref, df
 
-def load_data_for_execute_function(
+def load_filtered_and_calculated_data_needed_for_execute_function(
         model_parameters: ModelParameters
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df = load_dataframe_from_csv(

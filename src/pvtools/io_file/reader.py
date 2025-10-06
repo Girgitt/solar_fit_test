@@ -41,7 +41,6 @@ def load_calibrated_data(
         tmp_columns = create_dataframe_from_csv("mlp_regression")
 
     df = pd.concat(tmp_columns, axis=1)
-    print(df.head())
 
     return df
 

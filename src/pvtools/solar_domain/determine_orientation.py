@@ -35,7 +35,7 @@ def determine_system_azimuth_and_tilt(
                   .fillna(False)
                   )
 
-    tilt_deg, azimuth_deg = infer_orientation_daily_peak(
+    azimuth_deg, tilt_deg = infer_orientation_daily_peak(
         power_or_poa=measured,
         sunny=sunny_mask,
         tilts=tilts,
