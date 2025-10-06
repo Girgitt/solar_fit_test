@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 
 '''
-python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv
+python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear
 
 python src/main.py --action=update --model_id=hi_fit_mixed --csv=./dataeds_trend__power_hi.csv
 python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
@@ -97,7 +97,7 @@ def main():
         update_function(model_parameters, clearsky_parameters, clearsky_calculated_values)
 
     elif args.action == "execute":
-        execute_function(model_parameters)
+        execute_function(model_parameters, clearsky_calculated_values)
 
 if __name__ == '__main__':
     main()

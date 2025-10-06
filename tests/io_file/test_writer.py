@@ -40,7 +40,7 @@ def sample_df() -> pd.DataFrame:
 
 
 @pytest.fixture
-def sample_arrays():
+def simple_arrays():
     y_true = np.array([10.0, 20.0, 30.0], dtype=float)
     y_pred = np.array([12.0, 19.5, 29.0], dtype=float)
     return y_true, y_pred
@@ -122,8 +122,8 @@ def test_save_metrics_to_json_invalid_input_samples_count(sample_metrics):
                 filename_path=None,
             )
 
-def test_save_true_and_predicted_data_to_csv_default_index(tmp_path: Path, sample_arrays):
-    y_true, y_pred = sample_arrays
+def test_save_true_and_predicted_data_to_csv_default_index(tmp_path: Path, simple_arrays):
+    y_true, y_pred = simple_arrays
     out_path = tmp_path / "pred" / "y.csv"
 
     save_true_and_predicted_data_to_csv(y_true=y_true, y_pred=y_pred, output_path=out_path)

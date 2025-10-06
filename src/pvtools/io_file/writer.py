@@ -53,7 +53,7 @@ def save_true_and_predicted_data_to_csv(
         index = np.arange(len(y_true))
 
     df_out = pd.DataFrame({
-        "index": index,
+        "index": index, # NOTE: index added on purpose, need for identyfing test/train split!
         "y_true": y_true,
         "y_pred": y_pred
     })

@@ -17,6 +17,11 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
                         help="Model identifier used for saving/loading coefficients")
     parser.add_argument("--csv", required=True,
                         help="Path to CSV file with input data")
+    parser.add_argument("--calibration",
+                        choices=["linear", "divided_linear", "decision_tree", "poly", "mlp"],
+                        default="linear",
+                        help="Defines which calibration method use to calibrate sensors"
+                        )
 
     return parser.parse_args()
 
@@ -40,18 +45,19 @@ def select_available_data_columns_to_process(
     return sensor_names, sensor_name_ref, df
 
 def load_data_for_execute_function(
-        model_parameters: ModelParameters,
-) -> tuple[ModelParameters, ClearSkyCalculatedValues]:
-    model_parameters.df = load_dataframe_from_csv(
+        model_parameters: ModelParameters
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    df = load_dataframe_from_csv(
         Path(model_parameters.data_dir / "filtered" / f"{model_parameters.filename}.csv"))
 
-    clearsky_calculated_values = ClearSkyCalculatedValues(
-        poa=load_dataframe_from_csv(Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename / "poa_values.csv")),
-        clearsky_periods=load_dataframe_from_csv(Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
-                                                      f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"))
-    )
+    poa = load_dataframe_from_csv(
+        Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename / "poa_values.csv"))
 
-    return model_parameters, clearsky_calculated_values
+    clearsky_periods = load_dataframe_from_csv(
+        Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
+             f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"))
+
+    return df, poa, clearsky_periods
 
 def solar_elevation(
         lat: float,

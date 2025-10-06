@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 
 from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
-from pvtools.modeling.calibrate import linear_regression, divided_linear_regression, polynominal_regression, \
+from pvtools.modeling.calculate_calibration_parameters import linear_regression, divided_linear_regression, polynominal_regression, \
     decision_tree_regression, mlp_regression
 from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt

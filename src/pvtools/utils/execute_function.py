@@ -5,15 +5,35 @@ from pvtools.calibration.calibrate import calibrate_by_linear_regression, calibr
 from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
 from pvtools.visualisation.plotter import plot_raw_data, plot_predicted_data, plot_poa_vs_reference, \
     plot_poa_reference_with_clearsky_periods, plot_raw_data_with_peaks
-from pvtools.io_file.reader import load_dataframe_from_csv
+from pvtools.io_file.reader import load_dataframe_from_csv, load_calibrated_data
 from pvtools.utils.utilities import load_data_for_execute_function
+from pvtools.postprocess.postprocess_data import postprocess_data
 
 def execute_function(
         model_parameters: ModelParameters,
+        clearsky_calculated_values: ClearSkyCalculatedValues
 ) -> None:
-    model_parameters, clearsky_calculated_values = load_data_for_execute_function(model_parameters)
+    [df, poa, clearsky_periods] = load_data_for_execute_function(model_parameters)
+
+    model_parameters.df = df
+    clearsky_calculated_values.poa = poa
+    clearsky_calculated_values.clearsky_periods = clearsky_periods
 
     calibrate(model_parameters=model_parameters)
+
+    load_calibrated_data(model_parameters)
+
+    postprocess_df = postprocess_data(
+        df=model_parameters.df,
+        clearsky_df=clearsky_calculated_values.poa,
+        sensor_names=model_parameters.sensor_names,
+        poa_global_name='poa_global',
+        save_dir=model_parameters.data_dir,
+        filename=model_parameters.filename,
+    )
+
+    model_parameters.df = postprocess_df
+
     plot(
         model_parameters=model_parameters,
         clearsky_calculated_values=clearsky_calculated_values

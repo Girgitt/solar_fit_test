@@ -18,9 +18,7 @@ def calibrate_by_linear_regression(
     calibration_method_dir = log_dir / folder_data_name / "linear_regression"
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
-        print(f"AAA: {json_file_dir}")
         params = linear_regression_load_parameters(json_file_dir)
-        print(f"BBB: {idx}")
         x = df[sensor_names[idx]].values
         y_true = df[sensor_name_ref]
         y_pred = linear_regression_calculate_calibration_values(x, params)
@@ -28,7 +26,6 @@ def calibrate_by_linear_regression(
         output_dir = Path(json_file_dir).parent
         file_stem = Path(json_file_dir).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
-        print(csv_filename)
         save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename)
 
 def calibrate_by_divided_linear_regression(
