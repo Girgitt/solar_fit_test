@@ -12,37 +12,43 @@ from pvtools.preprocess.preprocess_data import sanitize_filename
 def load_calibrated_data(
         model_parameters: ModelParameters,
 ) -> pd.DataFrame:
-    def create_dataframe_from_csv(calibration_name: str):
-        tmp_columns = []
-
+    def create_dataframe_from_csv(
+            calibration_name: str,
+            df: pd.DataFrame = None
+    ) -> pd.DataFrame:
         for s_name in model_parameters.sensor_names:
             sanitized_name = sanitize_filename(s_name)
             tmp_df = load_dataframe_from_csv(Path(dir / calibration_name / f"{sanitized_name}_all_true_vs_pred.csv"))
-            tmp_columns.append(tmp_df['y_pred'].rename(sanitized_name))
+            df.append(tmp_df['y_pred'].rename(sanitized_name))
 
-        return tmp_columns
+        return df
 
     dir = Path(model_parameters.log_dir / model_parameters.filename)
 
-    tmp_columns = []
+    df = []
+    df_calibrated = []
+    df.append(model_parameters.df["time"])
+
     if model_parameters.args.calibration == "linear":
-        tmp_columns = create_dataframe_from_csv("linear_regression")
+        df_calibrated = create_dataframe_from_csv("linear_regression", df)
 
     elif model_parameters.args.calibration == "divided_linear":
-        tmp_columns = create_dataframe_from_csv("divided_linear_regression")
+        df_calibrated = create_dataframe_from_csv("divided_linear_regression", df)
 
     elif model_parameters.args.calibration == "decision_tree":
-        tmp_columns = create_dataframe_from_csv("decision_tree_regression")
+        df_calibrated = create_dataframe_from_csv("decision_tree_regression", df)
 
     elif model_parameters.args.calibration == "poly":
-        tmp_columns = create_dataframe_from_csv("polynominal_regression")
+        df_calibrated = create_dataframe_from_csv("polynominal_regression", df)
 
     elif model_parameters.args.calibration == "mlp":
-        tmp_columns = create_dataframe_from_csv("mlp_regression")
+        df_calibrated = create_dataframe_from_csv("mlp_regression", df)
 
-    df = pd.concat(tmp_columns, axis=1)
+    df_calibrated.append(model_parameters.df[model_parameters.sensor_name_ref].rename(
+        sanitize_filename(model_parameters.sensor_name_ref)))
+    result_df = pd.concat(df_calibrated, axis=1)
 
-    return df
+    return result_df
 
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
     load_path = Path(load_path)

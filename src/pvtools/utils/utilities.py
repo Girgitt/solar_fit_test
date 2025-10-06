@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Tuple
 from pathlib import Path
 
-from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
+from pvtools.config.params import ModelParameters
 from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.preprocess.preprocess_data import sanitize_filename
 

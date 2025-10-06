@@ -8,6 +8,7 @@ from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
+from pvtools.config.params import ModelParameters
 
 def preprocess_data(
         df: pd.DataFrame,
@@ -15,6 +16,8 @@ def preprocess_data(
         save_dir: Path = None
 ) -> pd.DataFrame:
     df = df.copy()
+
+    df.columns = [sanitize_filename(name) for name in df.columns]
 
     df = ensure_dataframe_contains_valid_data(df=df)
     df = ensure_datetime_contains_timezone(
