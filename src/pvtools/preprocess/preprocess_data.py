@@ -8,7 +8,6 @@ from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
-from pvtools.config.params import ModelParameters
 
 def preprocess_data(
         df: pd.DataFrame,
