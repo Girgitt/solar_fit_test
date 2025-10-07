@@ -10,32 +10,51 @@
 '''
 python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
 '''
+import os
+import logging
 
 import argparse
 import pandas as pd
 
 from pathlib import Path
 
-from pvtools.utils.utilities import argument_parsing, print_available_data_columns, select_available_data_columns_to_process
+import pvtools.utils.utilities
 from pvtools.utils.update_function import update_function
 
 from pvtools.utils.execute_function import execute_function
 from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
 from pvtools.preprocess.preprocess_data import preprocess_data
 
-def main():
-    ROOT_DIR = Path(__file__).resolve().parent.parent#.parent
-    LOG_DIR = ROOT_DIR / "logs"
-    PLOT_DIR = ROOT_DIR / "plots"
-    DATA_DIR = ROOT_DIR / "data"
 
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    PLOT_DIR.mkdir(parents=True, exist_ok=True)
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+def get_logging_format():
+    return '%(asctime)s : %(levelname)s [%(processName)s-%(threadName)s %(name)s.%(funcName)s:%(lineno)d] %(message)s'
+
+
+log = logging.getLogger('main_thd')
+
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+stream_handler = logging.StreamHandler()
+formatter = logging.Formatter(get_logging_format(),
+                              datefmt='%b %d %H:%M:%S')
+stream_handler.setFormatter(formatter)
+root_logger.addHandler(stream_handler)
+
+
+def main():
 
     parser = argparse.ArgumentParser()
-    args = argument_parsing(parser)
-    target_frequency='1min'
+    args = pvtools.utils.utilities.argument_parsing(parser)
+    target_frequency = '1min'
+
+    arg_data_dir = args.data_dir if args.data_dir else None
+
+    if arg_data_dir is None:
+        data_dir = Path(os.getcwd())
+    else:
+        data_dir = Path(arg_data_dir)
+
+    LOG_DIR, PLOT_DIR, DATA_DIR = pvtools.utils.utilities.initialize_dirs_for_base_dir(data_dir)
 
     df = pd.read_csv(args.csv, parse_dates=["time"])
     df_filtered = preprocess_data(
@@ -46,8 +65,8 @@ def main():
 
     data_columns = [col for col in df_filtered.columns if col != "time"]
 
-    print_available_data_columns(data_columns)
-    sensor_names, sensor_name_ref, df_filtered = select_available_data_columns_to_process(
+    pvtools.utils.utilities.print_available_data_columns(data_columns)
+    sensor_names, sensor_name_ref, df_filtered = pvtools.utils.utilities.select_available_data_columns_to_process(
         data_columns=data_columns,
         df=df_filtered,
         sensors_chosen=args.sensors,
@@ -76,7 +95,7 @@ def main():
         name='Warsaw',
         frequency=target_frequency,
         albedo=0.2,
-        surface_tilt=30,  # degrees from horizontal
+        surface_tilt=0,  # degrees from horizontal
         surface_azimuth = 180,  # south-facing
     )
 
@@ -90,6 +109,7 @@ def main():
 
     elif args.action == "execute":
         execute_function(model_parameters, clearsky_calculated_values)
+
 
 if __name__ == '__main__':
     main()

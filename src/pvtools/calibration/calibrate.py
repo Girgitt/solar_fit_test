@@ -1,12 +1,17 @@
+import os
 import pandas as pd
 import numpy as np
 
+import logging
 from pathlib import Path
 
 from pvtools.io_file.writer import save_true_and_predicted_data_to_csv
 from pvtools.io_file.reader import (linear_regression_load_parameters, divided_linear_regression_load_parameters,
                                         polynominal_regression_load_parameters, decision_tree_regression_load_parameters, mlp_load_parameters)
 from pvtools.calibration.validate_decision_tree import _traverse_tree
+
+log = logging.getLogger("calibrate")
+
 
 def calibrate_by_linear_regression(
         df: pd.DataFrame,
@@ -15,19 +20,24 @@ def calibrate_by_linear_regression(
         log_dir: Path,
         folder_data_name: str,
 ) -> None:
-    calibration_method_dir = log_dir / folder_data_name / "linear_regression"
+
+    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "linear_regression"))
+    log.debug(f"calibration_method_dir:{calibration_method_dir}")
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
+        log.debug("fitting json: {json_file_dir}")
         params = linear_regression_load_parameters(json_file_dir)
         time = df["time"]
         x = df[sensor_names[idx]].values
         y_true = df[sensor_name_ref]
         y_pred = linear_regression_use_calibration_values(x, params)
 
-        output_dir = Path(json_file_dir).parent
+        output_dir = Path(calibration_method_dir)
         file_stem = Path(json_file_dir).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
+        log.debug(f"csv_filename: {csv_filename}")
         save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
+
 
 def calibrate_by_divided_linear_regression(
         df: pd.DataFrame,
@@ -37,7 +47,8 @@ def calibrate_by_divided_linear_regression(
         log_dir: Path,
         folder_data_name: str
 ) -> None:
-    calibration_method_dir = log_dir / folder_data_name / "divided_linear_regression"
+
+    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "divided_linear_regression"))
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = divided_linear_regression_load_parameters(json_file_dir)
@@ -52,6 +63,7 @@ def calibrate_by_divided_linear_regression(
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
 
+
 def calibrate_by_polynominal_regression(
         df: pd.DataFrame,
         sensor_names: np.ndarray,
@@ -59,7 +71,8 @@ def calibrate_by_polynominal_regression(
         log_dir: Path,
         folder_data_name: str
 ) -> None:
-    calibration_method_dir = log_dir / folder_data_name / "polynominal_regression"
+
+    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "polynominal_regression"))
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = polynominal_regression_load_parameters(json_file_dir)
@@ -74,6 +87,7 @@ def calibrate_by_polynominal_regression(
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
 
+
 def calibrate_by_decision_tree_regression(
         df: pd.DataFrame,
         sensor_names: np.ndarray,
@@ -81,7 +95,8 @@ def calibrate_by_decision_tree_regression(
         log_dir: Path,
         folder_data_name: str
 ) -> None:
-    calibration_method_dir = log_dir / folder_data_name / "decision_tree_regression"
+
+    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "decision_tree_regression"))
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = decision_tree_regression_load_parameters(json_file_dir)
@@ -96,6 +111,7 @@ def calibrate_by_decision_tree_regression(
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
 
+
 def calibrate_by_mlp_regression(
         df: pd.DataFrame,
         sensor_names: np.ndarray,
@@ -104,7 +120,7 @@ def calibrate_by_mlp_regression(
         folder_data_name: str
 ) -> None:
 
-    calibration_method_dir = log_dir / folder_data_name / "mlp_regression"
+    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "mlp_regression"))
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = mlp_load_parameters(json_file_dir)
@@ -119,6 +135,7 @@ def calibrate_by_mlp_regression(
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
 
+
 def linear_regression_use_calibration_values(
         x: np.ndarray,
         params: dict
@@ -129,6 +146,7 @@ def linear_regression_use_calibration_values(
 
     y_pred = a * x + b
     return y_pred
+
 
 def divided_linear_regression_use_calibration_values(
         x: np.ndarray,
@@ -161,6 +179,7 @@ def divided_linear_regression_use_calibration_values(
 
     return y_pred
 
+
 def polynominal_regression_use_calibration_values(
         x: np.ndarray,
         params: dict
@@ -174,6 +193,7 @@ def polynominal_regression_use_calibration_values(
 
     return y_pred
 
+
 def decision_tree_regression_use_calibration_values(
         x: np.ndarray,
         params: dict
@@ -183,6 +203,7 @@ def decision_tree_regression_use_calibration_values(
     y_pred = np.array([_traverse_tree(tree, val) for val in x])
 
     return y_pred
+
 
 def mlp_use_calibration_values(
         x: np.ndarray,
@@ -210,6 +231,7 @@ def mlp_use_calibration_values(
     output = a2 @ W3 + b3 # shape: (n_samples, 1)
 
     return output.flatten()
+
 
 def _apply_activation(z, activation) -> np.ndarray:
     if activation == 'relu':

@@ -1,3 +1,4 @@
+import os
 import math
 import pandas as pd
 
@@ -9,6 +10,7 @@ from pathlib import Path
 from pvtools.config.params import ModelParameters
 from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.preprocess.preprocess_data import sanitize_filename
+
 
 def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--action", choices=["update", "execute"], required=True,
@@ -30,12 +32,17 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
                              "Number of specified column, counting from 0, skipping time column."
                              "Accept single number.")
 
+    parser.add_argument("--data_dir",
+                        help="force specific data directory to store logs, plots etc. <current working dir>")
+
     return parser.parse_args()
+
 
 def print_available_data_columns(data_columns: List[str]) -> None:
     print("Available data columns:")
     for i, col in enumerate(data_columns):
         print(f"{i}: {col}")
+
 
 def select_available_data_columns_to_process(
         data_columns: List[str],
@@ -68,6 +75,7 @@ def select_available_data_columns_to_process(
 
     return sensor_names, sensor_name_ref, df_out
 
+
 def load_filtered_and_calculated_data_needed_for_execute_function(
         model_parameters: ModelParameters
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -83,25 +91,14 @@ def load_filtered_and_calculated_data_needed_for_execute_function(
 
     return df, poa, clearsky_periods
 
-def solar_elevation(
-        lat: float,
-        lon: float,
-        tz_offset: int,
-        dt_local: datetime
-) -> float:
-    n = dt_local.timetuple().tm_yday
-    lt = dt_local.hour + dt_local.minute / 60 + dt_local.second / 3600  # local clock time
-    B = math.radians((360 / 365) * (n - 81))
-    eot = 9.87 * math.sin(2 * B) - 7.53 * math.cos(B) - 1.5 * math.sin(B)  # Eq. of Time [min]
-    lstm = 15 * tz_offset
-    tc = 4 * (lon - lstm) + eot  # Time-corr [min]
-    lst = lt + tc / 60  # Local solar time
-    omega = math.radians(15 * (lst - 12))  # Hour angle
-    delta = math.radians(23.45 * math.sin(math.radians(360 * (284 + n) / 365)))
-    phi = math.radians(lat)
-    cos_z = (math.sin(phi) * math.sin(delta) +
-             math.cos(phi) * math.cos(delta) * math.cos(omega))
-    z = math.acos(max(-1, min(1, cos_z)))  # clamp
 
-    return math.degrees(math.pi / 2 - z)
+def initialize_dirs_for_base_dir(data_dir_path):
+    LOG_DIR = Path(os.path.join(data_dir_path, "logs"))
+    PLOT_DIR = Path(os.path.join(data_dir_path, "plots"))
+    DATA_DIR = Path(os.path.join(data_dir_path, "data"))
 
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    PLOT_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    return LOG_DIR, PLOT_DIR, DATA_DIR
