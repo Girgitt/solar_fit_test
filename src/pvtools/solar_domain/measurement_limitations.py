@@ -43,9 +43,7 @@ def limit_sensors_irradiance_to_clear_sky_model(
         df: pd.DataFrame,
         clearsky_df: pd.DataFrame,
         sensor_names: list[str] = None,
-        poa_global_name: str = 'poa_global',
-        save_dir: Path = None,
-        filename: str = None
+        poa_global_name: str = 'poa_global'
 ) -> pd.DataFrame:
     if not isinstance(df, pd.DataFrame) or not isinstance(clearsky_df, pd.DataFrame):
         raise TypeError("Expected 'df' and 'clear_sky_df' to be a pandas DataFrame")
@@ -66,34 +64,17 @@ def limit_sensors_irradiance_to_clear_sky_model(
 
     df.loc[:, sensor_names] = limited[sensor_names]
 
-    if save_dir is not None:
-        save_dir = Path(save_dir)
-        output_path = save_dir / "filtered" / f"{filename}.csv"
-        save_dataframe_to_csv(df, output_path, index=False)
-
     return df
 
-def remove_negative_measurements(
-        df: pd.DataFrame,
-        save_dir: Path = None,
-        filename: str = None
-) -> pd.DataFrame:
+def remove_negative_measurements(df: pd.DataFrame) -> pd.DataFrame:
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Expected 'df' to be a pandas DataFrame")
 
-    original_df = df.copy()
     df = df.copy()
 
     for col in df.columns:
         if col == 'time':
             continue
         df[col] = df[col].clip(lower=0)
-
-    if_changed = df.equals(original_df)
-
-    if save_dir is not None and not if_changed:
-        save_dir = Path(save_dir)
-        output_path = save_dir / "filtered" / f"{filename}.csv"
-        save_dataframe_to_csv(df, output_path, index=False)
 
     return df

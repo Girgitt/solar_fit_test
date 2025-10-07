@@ -18,7 +18,7 @@ from pvtools.io_file.writer import (
 )
 
 @pytest.fixture
-def sample_metrics() -> SimpleNamespace:
+def simple_metrics() -> SimpleNamespace:
     return SimpleNamespace(
         mse=1.2345,
         mae=0.5,
@@ -30,7 +30,7 @@ def sample_metrics() -> SimpleNamespace:
     )
 
 @pytest.fixture
-def sample_df() -> pd.DataFrame:
+def simple_df() -> pd.DataFrame:
     return pd.DataFrame(
         {
             "a": [1, 2, 3],
@@ -47,13 +47,13 @@ def simple_arrays():
 
 def test_save_metrics_to_json_with_coefficients(
         tmp_path: Path,
-        sample_metrics: SimpleNamespace
+        simple_metrics: SimpleNamespace
 ):
     out_path = tmp_path / "metrics" / "result.json"
     coeffs = [{"hour": "2025-07-21T10:00:00", "a": 1.0, "b": 0.1}]
 
     save_metrics_to_json(
-        metrics=sample_metrics,
+        metrics=simple_metrics,
         samples_count=123,
         coefficients_list=coeffs,
         filename_path=out_path,
@@ -71,11 +71,11 @@ def test_save_metrics_to_json_with_coefficients(
     assert isinstance(data["coefficients"], list)
     assert data["coefficients"] == coeffs
 
-def test_save_metrics_to_json_without_coefficients(tmp_path: Path, sample_metrics: SimpleNamespace):
+def test_save_metrics_to_json_without_coefficients(tmp_path: Path, simple_metrics: SimpleNamespace):
     out_path = tmp_path / "metrics" / "result_no_coeffs.json"
 
     save_metrics_to_json(
-        metrics=sample_metrics,
+        metrics=simple_metrics,
         samples_count=3,
         coefficients_list=None,
         filename_path=out_path,
@@ -105,7 +105,7 @@ def test_save_metrics_to_json_invalid_inputs_metrics():
                 filename_path=None,
             )
 
-def test_save_metrics_to_json_invalid_input_samples_count(sample_metrics):
+def test_save_metrics_to_json_invalid_input_samples_count(simple_metrics):
     invalid_inputs = [
         None,
         pd.DataFrame(),
@@ -116,7 +116,7 @@ def test_save_metrics_to_json_invalid_input_samples_count(sample_metrics):
     for sample_count in invalid_inputs:
         with pytest.raises(TypeError, match="samples_count must be an int"):
             save_metrics_to_json(
-                metrics=sample_metrics,
+                metrics=simple_metrics,
                 samples_count=sample_count,
                 coefficients_list=[],
                 filename_path=None,
@@ -131,13 +131,12 @@ def test_save_true_and_predicted_data_to_csv_default_index(tmp_path: Path, simpl
     assert out_path.exists(), "Output CSV was not created."
     df = pd.read_csv(out_path)
 
-    assert list(df.columns) == ["index", "y_true", "y_pred"]
-    assert df["index"].tolist() == [0, 1, 2]
+    assert list(df.columns) == ["y_true", "y_pred"]
     assert np.allclose(df["y_true"].values, y_true)
     assert np.allclose(df["y_pred"].values, y_pred)
 
-def test_save_true_and_predicted_data_to_csv_custom_index(tmp_path: Path, sample_arrays):
-    y_true, y_pred = sample_arrays
+def test_save_true_and_predicted_data_to_csv_custom_index(tmp_path: Path, simple_arrays):
+    y_true, y_pred = simple_arrays
     custom_index = np.array([101, 105, 108])
     out_path = tmp_path / "pred_custom" / "y.csv"
 
@@ -152,25 +151,25 @@ def test_save_true_and_predicted_data_to_csv_custom_index(tmp_path: Path, sample
     assert np.allclose(df["y_true"].values, y_true)
     assert np.allclose(df["y_pred"].values, y_pred)
 
-def test_save_dataframe_to_csv_no_index(tmp_path: Path, sample_df: pd.DataFrame):
+def test_save_dataframe_to_csv_no_index(tmp_path: Path, simple_df: pd.DataFrame):
     out_path = tmp_path / "df" / "data.csv"
-    save_dataframe_to_csv(df=sample_df, output_path=out_path, index=False)
+    save_dataframe_to_csv(df=simple_df, output_path=out_path, index=False)
 
     assert out_path.exists()
     df_loaded = pd.read_csv(out_path)
 
     assert list(df_loaded.columns) == ["a", "b"]
-    pd.testing.assert_frame_equal(df_loaded, sample_df.reset_index(drop=True))
+    pd.testing.assert_frame_equal(df_loaded, simple_df.reset_index(drop=True))
 
-def test_save_dataframe_to_csv_with_index_and_label(tmp_path: Path, sample_df: pd.DataFrame):
+def test_save_dataframe_to_csv_with_index_and_label(tmp_path: Path, simple_df: pd.DataFrame):
     out_path = tmp_path / "df" / "data_with_index.csv"
-    save_dataframe_to_csv(df=sample_df, output_path=out_path, index=True, index_label="row_id")
+    save_dataframe_to_csv(df=simple_df, output_path=out_path, index=True, index_label="row_id")
 
     assert out_path.exists()
     df_loaded = pd.read_csv(out_path)
 
     assert "row_id" in df_loaded.columns
-    expect = sample_df.copy()
+    expect = simple_df.copy()
     expect = expect.reset_index().rename(columns={"index": "row_id"})
     pd.testing.assert_frame_equal(df_loaded, expect)
 

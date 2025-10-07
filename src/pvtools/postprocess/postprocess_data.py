@@ -16,16 +16,10 @@ def postprocess_data(
         df=df,
         clearsky_df=clearsky_df,
         sensor_names=model_parameters.sensor_names,
-        poa_global_name=poa_global_name,
-        save_dir=model_parameters.data_dir,
-        filename=model_parameters.filename,
+        poa_global_name=poa_global_name
     )
 
-    result_df = remove_negative_measurements(
-        df=limit_df,
-        save_dir=model_parameters.data_dir,
-        filename=model_parameters.filename,
-    )
+    result_df = remove_negative_measurements(df=limit_df)
 
     save_dataframe_to_csv(
         df=result_df,

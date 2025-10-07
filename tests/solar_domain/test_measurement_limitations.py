@@ -72,18 +72,14 @@ def test_limit_measured_irradiance_to_clear_sky_model_basic(
         df=measured_df,
         clearsky_df=clearsky_df,
         sensor_name_ref='sensor_ref',
-        poa_global_name='poa_global',
-        save_dir=None,
-        filename=None
+        poa_global_name='poa_global'
     )
 
     result_sensors = limit_sensors_irradiance_to_clear_sky_model(
         df=measured_df,
         clearsky_df=clearsky_df,
         sensor_names=sensor_names,
-        poa_global_name='poa_global',
-        save_dir=None,
-        filename=None
+        poa_global_name='poa_global'
     )
 
     pd.testing.assert_series_equal(result_sensor_ref['sensor_ref'], expected['sensor_ref'])
@@ -228,23 +224,3 @@ def test_remove_negative_measurements_invalid_inputs():
     for invalid_df in invalid_inputs:
         with pytest.raises(TypeError, match="Expected 'df' to be a pandas DataFrame"):
             remove_negative_measurements(invalid_df)
-
-@patch("pvtools.solar_domain.measurement_limitations.save_dataframe_to_csv")
-def test_remove_negative_measurements_saves_on_change(
-        mock_to_csv,
-        negative_measured_df,
-        tmp_path
-):
-    _ = remove_negative_measurements(negative_measured_df, save_dir=tmp_path / "output.csv")
-
-    mock_to_csv.assert_called_once()
-
-@patch("pvtools.solar_domain.measurement_limitations.save_dataframe_to_csv")
-def test_remove_negative_measurements_skips_save_on_no_change(
-        mock_to_csv,
-        measured_df,
-        tmp_path
-):
-    _ = remove_negative_measurements(measured_df, save_dir=tmp_path)
-
-    mock_to_csv.assert_not_called()

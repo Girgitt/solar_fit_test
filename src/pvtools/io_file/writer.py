@@ -50,15 +50,14 @@ def save_true_and_predicted_data_to_csv(
     index: np.ndarray = None,
     time: np.ndarray = None,
 ) -> None:
-    if index is None:
-        index = np.arange(len(y_true))
+    columns = {"y_true": y_true, "y_pred": y_pred}
 
-    df_out = pd.DataFrame({
-        "index": index, # NOTE: index added on purpose, need for identyfing test/train split!
-        "time": time,
-        "y_true": y_true,
-        "y_pred": y_pred
-    })
+    if index is not None:
+        columns["index"] = index # NOTE: index added on purpose, need for identyfing test/train split!
+    if time is not None:
+        columns["time"] = time
+
+    df_out = pd.DataFrame(columns)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df_out.to_csv(output_path, index=False)

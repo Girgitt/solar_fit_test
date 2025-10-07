@@ -3,8 +3,8 @@ from pathlib import Path
 from pvtools.calibration.calibrate import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
     calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression, calibrate_by_mlp_regression
 from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
-from pvtools.visualisation.plotter import plot_raw_data, plot_predicted_data, plot_poa_vs_reference, \
-    plot_poa_reference_with_clearsky_periods, plot_raw_data_with_peaks
+from pvtools.visualisation.plotter import plot_from_dataframe, plot_predicted_data, plot_poa_vs_reference, \
+    plot_poa_reference_with_clearsky_periods
 from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.utils.utilities import load_filtered_and_calculated_data_needed_for_execute_function, sanitize_filename
 from pvtools.postprocess.postprocess_data import postprocess_data
@@ -40,7 +40,7 @@ def calibrate(model_parameters: ModelParameters) -> None:
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
-        folder_data_name=Path(model_parameters.args.csv).stem
+        folder_data_name=model_parameters.filename
     )
 
     calibrate_by_divided_linear_regression(
@@ -49,7 +49,7 @@ def calibrate(model_parameters: ModelParameters) -> None:
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
-        folder_data_name=Path(model_parameters.args.csv).stem
+        folder_data_name=model_parameters.filename
     )
 
     calibrate_by_polynominal_regression(
@@ -57,7 +57,7 @@ def calibrate(model_parameters: ModelParameters) -> None:
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
-        folder_data_name=Path(model_parameters.args.csv).stem
+        folder_data_name=model_parameters.filename
     )
 
     calibrate_by_decision_tree_regression(
@@ -65,7 +65,7 @@ def calibrate(model_parameters: ModelParameters) -> None:
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
-        folder_data_name=Path(model_parameters.args.csv).stem
+        folder_data_name=model_parameters.filename
     )
 
     calibrate_by_mlp_regression(
@@ -73,35 +73,44 @@ def calibrate(model_parameters: ModelParameters) -> None:
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
-        folder_data_name=Path(model_parameters.args.csv).stem
+        folder_data_name=model_parameters.filename
     )
 
 def plot(
         model_parameters: ModelParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues,
 ) -> None:
-    plot_raw_data(
-        df=model_parameters.df,
-        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
-        filename="series_vs_time.png",
+
+    df_org = load_dataframe_from_csv(Path(model_parameters.data_dir / "filtered" / f"{model_parameters.filename}.csv"))
+    df_org.columns = [sanitize_filename(name) for name in df_org.columns]
+
+    df_filtered = load_dataframe_from_csv(Path(model_parameters.data_dir /
+                                               "filtered" / "calibrated" /
+                                               model_parameters.filename /
+                                               f"{model_parameters.args.calibration}.csv"))
+
+    plot_from_dataframe(
+        df=df_org,
+        save_dir=model_parameters.plot_dir / model_parameters.filename,
+        filename="org_series_vs_time.png",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         show=True,
+        title="Original series vs. time"
     )
 
-    # ----------------------------------- TEMPORARY PLOTTING FOR FILTERED DATA -----------------------------------------
-    plot_raw_data(
-        df=load_dataframe_from_csv(
-            model_parameters.data_dir / "filtered" / model_parameters.filename),
+    plot_from_dataframe(
+        df=df_filtered,
         save_dir=model_parameters.plot_dir / model_parameters.filename,
-        filename="series_vs_time_filtered.png",
+        filename=f"predicted_series_vs_time_{model_parameters.args.calibration}.png",
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         show=True,
+        title="Predicted series vs. time"
     )
 
     plot_predicted_data(
-        calibration_method_dir=model_parameters.log_dir / Path(model_parameters.args.csv).stem,
+        calibration_method_dir=model_parameters.log_dir / model_parameters.filename,
         show=False,
         save_dir=model_parameters.plot_dir / model_parameters.filename,
     )
@@ -119,14 +128,4 @@ def plot(
         sunny=clearsky_calculated_values.clearsky_periods['if_sunny'],
         save_dir=model_parameters.plot_dir / model_parameters.filename,
         show=True,
-    )
-
-    plot_raw_data_with_peaks(
-        df=model_parameters.df,
-        save_dir=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
-        peaks_dir=Path("data/interpolated") / model_parameters.filename,
-        filename="series_vs_time_with_peaks",
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        show=True
     )

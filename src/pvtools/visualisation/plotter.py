@@ -12,19 +12,20 @@ from pvtools.io_file.reader import load_true_and_predicted_data_for_all_methods
 from pvtools.io_file.writer import save_figure, save_predicted_data_figures
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
-def plot_raw_data(
+def plot_from_dataframe(
     df: pd.DataFrame,
     save_dir: Path=None,
     filename: str=None,
     sensor_names: list[str] = None,
     sensor_name_ref: str=None,
     show: bool=True,
+    title: str = "Plot"
 ) -> tuple[Figure, Axes]:
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
-    if 'time' in df.columns:
-        df = df.copy()
+    df = df.copy()
+    if 'time' in df.columns:    
         df['time'] = pd.to_datetime(df['time'], errors='coerce')
         x = df['time']
     else:
@@ -35,7 +36,7 @@ def plot_raw_data(
     ax.plot(x, df[sensor_name_ref], label="Power Reference (actual)", linewidth=0.9)
     for sensor_col in sensor_names:
         ax.plot(x, df[sensor_col], label=f"Sensor: {sensor_col}", linewidth=0.9)
-    ax.set_title("Raw input series over time")
+    ax.set_title(title)
     ax.set_xlabel("Time")
     ax.set_ylabel("Power (W/m²)")
     ax.legend()
@@ -50,73 +51,6 @@ def plot_raw_data(
 
     return fig, ax
 
-def plot_raw_data_with_peaks(
-    df: pd.DataFrame,
-    save_dir: Path=None,
-    peaks_dir: Path=None,
-    filename = str,
-    sensor_names: list[str] = None,
-    sensor_name_ref: str=None,
-    show: bool=True,
-) -> None:
-    if sensor_names is None:
-        raise ValueError("Parameter 'sensor_names' must be a list of column names.")
-    if peaks_dir is None:
-        raise ValueError("Parameter 'peaks_dir' must be a directory containing peaks CSV files.")
-
-    peaks_dir = Path(peaks_dir)
-
-    fig, ax = plot_raw_data(
-        df=df,
-        save_dir=None,
-        filename=None,
-        sensor_names=sensor_names,
-        sensor_name_ref=sensor_name_ref,
-        show=False,
-    )
-
-    sensors_all = list(sensor_names)
-    if sensor_name_ref is not None and sensor_name_ref not in sensors_all:
-        sensors_all.append(sensor_name_ref)
-
-    line_colors = {}
-    for ln in ax.get_lines():
-        line_colors[ln.get_label()] = ln.get_color()
-
-    for sensor_col in sensors_all:
-        peaks_path = peaks_dir / f"{sanitize_filename(sensor_col)}_peaks.csv"
-        if not peaks_path.exists():
-            print(f"[WARN] Peaks CSV not found for '{sensor_col}': {peaks_path}")
-            continue
-
-        peaks_df = pd.read_csv(peaks_path, parse_dates=['time'])
-        peaks_df['value'] = pd.to_numeric(peaks_df['value'], errors='coerce')
-        peaks_df = peaks_df.dropna(subset=['time', 'value'])
-
-        line_label = f"Sensor: {sensor_col}"
-        line_color = line_colors.get(line_label, None)
-
-        ax.scatter(
-            peaks_df['time'],
-            peaks_df['value'],
-            s=15, # control the shape
-            facecolors='white',
-            edgecolors=line_color or 'black',
-            linewidths=1.6,
-            alpha=1.0,
-            zorder=10,
-            label=f"{sensor_col} peaks",
-        )
-
-    ax.set_title("Raw input series with detected peaks")
-    fig.tight_layout()
-
-    if show:
-        fig.show()
-
-    if save_dir is not None:
-        save_figure(fig, save_dir, filename)
-
 def subplot_predicted_data(
         data: Dict[str, pd.DataFrame],
         y_true: str,
@@ -129,13 +63,13 @@ def subplot_predicted_data(
     for sensor_name, df in data.items():
         fig, ax = plt.subplots(figsize=(9, 4))
         ax.plot(
-            data[sensor_name]["index"],
+            data[sensor_name].index,
             data[sensor_name][y_true],
             label=y_true,
             linewidth=0.9)
 
         ax.plot(
-            data[sensor_name]["index"],
+            data[sensor_name].index,
             data[sensor_name][y_pred],
             label=y_pred,
             linewidth=0.9)
@@ -156,7 +90,6 @@ def plot_predicted_data(
         show: bool = True,
         save_dir: Path = None,
 ) -> None:
-    all_data = {}
     all_data = load_true_and_predicted_data_for_all_methods(calibration_method_dir)
 
     calibration_method_names = [name for name in os.listdir(calibration_method_dir)
