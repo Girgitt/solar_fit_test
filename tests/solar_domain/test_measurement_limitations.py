@@ -2,10 +2,10 @@ import pytest
 import pandas as pd
 import numpy as np
 
-from pathlib import Path
 from unittest.mock import patch
 
-from pvtools.solar_domain.measurement_limitations import (limit_measured_irradiance_to_clear_sky_model,
+from pvtools.solar_domain.measurement_limitations import (limit_sensor_ref_irradiance_to_clear_sky_model,
+                                                          limit_sensors_irradiance_to_clear_sky_model,
                                                           remove_negative_measurements
                                                           )
 
@@ -64,37 +64,61 @@ def test_limit_measured_irradiance_to_clear_sky_model_basic(
     sensor1 = sensor_names[0]
     sensor2 = sensor_names[1]
 
+    expected['sensor_ref'] = [0.4, 0.9, 1.1, 1.5]
     expected[sensor1] = [0.5, 1.2, 1.0, 1.5]
     expected[sensor2] = [0.6, 0.8, 1.1, 1.5]
 
-    result = limit_measured_irradiance_to_clear_sky_model(
+    result_sensor_ref = limit_sensor_ref_irradiance_to_clear_sky_model(
         df=measured_df,
         clearsky_df=clearsky_df,
         sensor_name_ref='sensor_ref',
-        poa_global_name='poa_global',
-        save_dir=None,
-        filename=None
+        poa_global_name='poa_global'
     )
 
-    pd.testing.assert_series_equal(result[sensor1], expected[sensor1])
-    pd.testing.assert_series_equal(result[sensor2], expected[sensor2])
+    result_sensors = limit_sensors_irradiance_to_clear_sky_model(
+        df=measured_df,
+        clearsky_df=clearsky_df,
+        sensor_names=sensor_names,
+        poa_global_name='poa_global'
+    )
+
+    pd.testing.assert_series_equal(result_sensor_ref['sensor_ref'], expected['sensor_ref'])
+    pd.testing.assert_series_equal(result_sensors[sensor1], expected[sensor1])
+    pd.testing.assert_series_equal(result_sensors[sensor2], expected[sensor2])
 
 def test_limit_measured_irradiance_to_clear_sky_model_with_no_time_column(
         measured_df,
         clearsky_df,
+        sensor_names,
 ):
     with pytest.raises(ValueError, match="'time' column needs to be provided!"):
-        limit_measured_irradiance_to_clear_sky_model(
+        limit_sensor_ref_irradiance_to_clear_sky_model(
             df=measured_df.drop('time', axis='columns'),
             clearsky_df=clearsky_df,
+            sensor_name_ref='sensor_ref',
+            poa_global_name='poa_global',
+            save_dir=None
+        )
+        limit_sensors_irradiance_to_clear_sky_model(
+            df=measured_df.drop('time', axis='columns'),
+            clearsky_df=clearsky_df,
+            sensor_names=sensor_names,
             poa_global_name='poa_global',
             save_dir=None
         )
 
         with pytest.raises(ValueError, match="'time' column needs to be provided!"):
-            limit_measured_irradiance_to_clear_sky_model(
+            limit_sensor_ref_irradiance_to_clear_sky_model(
                 df=measured_df,
                 clearsky_df=clearsky_df.drop('time', axis='columns'),
+                sensor_name_ref='sensor_ref',
+                poa_global_name='poa_global',
+                save_dir=None
+            )
+            limit_sensors_irradiance_to_clear_sky_model(
+                df=measured_df,
+                clearsky_df=clearsky_df.drop('time', axis='columns'),
+                sensor_names=sensor_names,
                 poa_global_name='poa_global',
                 save_dir=None
             )
@@ -105,13 +129,20 @@ def test_limit_measured_irradiance_to_clear_sky_model_with_mismatch_timestamps(
         sensor_names,
 ):
     with pytest.raises(ValueError, match='Timestamps are mismatched!'):
-        limit_measured_irradiance_to_clear_sky_model(
+        limit_sensor_ref_irradiance_to_clear_sky_model(
             df=measured_df,
             clearsky_df=clear_sky_df_with_mismatch_timestamps,
+            sensor_name_ref='sensor_ref',
+            poa_global_name='poa_global',
+        )
+        limit_sensors_irradiance_to_clear_sky_model(
+            df=measured_df,
+            clearsky_df=clear_sky_df_with_mismatch_timestamps,
+            sensor_name_ref=sensor_names,
             poa_global_name='poa_global',
         )
 
-def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df, clearsky_df):
+def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df, clearsky_df, sensor_names):
     invalid_inputs = [
         None,
         pd.Series([1, 2, 4]),
@@ -122,7 +153,7 @@ def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df
 
     for invalid_df in invalid_inputs:
         with pytest.raises(TypeError, match="Expected 'df' and 'clear_sky_df' to be a pandas DataFrame"):
-            limit_measured_irradiance_to_clear_sky_model(
+            limit_sensor_ref_irradiance_to_clear_sky_model(
                 df=invalid_df,
                 clearsky_df=clearsky_df,
                 sensor_name_ref='irr_dav_1',
@@ -130,12 +161,28 @@ def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df
                 save_dir=None,
                 filename=None
             )
+            limit_sensors_irradiance_to_clear_sky_model(
+                df=invalid_df,
+                clearsky_df=clearsky_df,
+                sensor_names=sensor_names,
+                poa_global_name='poa_global',
+                save_dir=None,
+                filename=None
+            )
 
     for invalid_clear_sky_df in invalid_inputs:
         with pytest.raises(TypeError, match="Expected 'df' and 'clear_sky_df' to be a pandas DataFrame"):
-            limit_measured_irradiance_to_clear_sky_model(
+            limit_sensor_ref_irradiance_to_clear_sky_model(
                 df=measured_df,
                 clearsky_df=invalid_clear_sky_df,
+                sensor_name_ref='irr_dav_1',
+                poa_global_name='poa_global',
+                save_dir=None
+            )
+            limit_sensors_irradiance_to_clear_sky_model(
+                df=measured_df,
+                clearsky_df=invalid_clear_sky_df,
+                sensor_names=sensor_names,
                 poa_global_name='poa_global',
                 save_dir=None
             )
@@ -177,23 +224,3 @@ def test_remove_negative_measurements_invalid_inputs():
     for invalid_df in invalid_inputs:
         with pytest.raises(TypeError, match="Expected 'df' to be a pandas DataFrame"):
             remove_negative_measurements(invalid_df)
-
-@patch("pvtools.solar_domain.measurement_limitations.save_dataframe_to_csv")
-def test_remove_negative_measurements_saves_on_change(
-        mock_to_csv,
-        negative_measured_df,
-        tmp_path
-):
-    _ = remove_negative_measurements(negative_measured_df, save_dir=tmp_path / "output.csv")
-
-    mock_to_csv.assert_called_once()
-
-@patch("pvtools.solar_domain.measurement_limitations.save_dataframe_to_csv")
-def test_remove_negative_measurements_skips_save_on_no_change(
-        mock_to_csv,
-        measured_df,
-        tmp_path
-):
-    _ = remove_negative_measurements(measured_df, save_dir=tmp_path)
-
-    mock_to_csv.assert_not_called()

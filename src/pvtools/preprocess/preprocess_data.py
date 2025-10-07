@@ -8,7 +8,6 @@ from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
-from pvtools.solar_domain.measurement_limitations import remove_negative_measurements
 
 def preprocess_data(
         df: pd.DataFrame,
@@ -16,6 +15,8 @@ def preprocess_data(
         save_dir: Path = None
 ) -> pd.DataFrame:
     df = df.copy()
+
+    df.columns = [sanitize_filename(name) for name in df.columns]
 
     df = ensure_dataframe_contains_valid_data(df=df)
     df = ensure_datetime_contains_timezone(
@@ -146,5 +147,9 @@ def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
 
 def sanitize_filename(name: str) -> str:
     name = name.split("@")[-1]
-    return re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
+    name = re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
+    name = re.sub(r'_+', '_', name)
+    name = name.rstrip('_')
+
+    return name
 

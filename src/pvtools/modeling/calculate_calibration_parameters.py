@@ -40,6 +40,7 @@ def linear_regression(
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
     for idx, sensor_col in enumerate(sensor_names):
+        time = df["time"]
         x = df[sensor_col].values.reshape(-1, 1)
         y = df[sensor_name_ref].values
 
@@ -47,6 +48,8 @@ def linear_regression(
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
             x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
+
+        time_test = time.iloc[idx_test]
 
         model = LinearRegression()
         model.fit(x_train, y_train)
@@ -67,7 +70,7 @@ def linear_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_metrics_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test)
+        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 def divided_linear_regression(
         df: pd.DataFrame,
@@ -87,6 +90,7 @@ def divided_linear_regression(
         metrics_list = []
         coefficients_list = []
 
+        time_test_all_hours = []
         y_test_all_hours = []
         y_pred_all_hours = []
         idx_test_all_hours = []
@@ -99,6 +103,7 @@ def divided_linear_regression(
                 print(f"[INFO] Skipping hour {hour}: only {n} samples (< min_samples={min_samples})")
                 continue
 
+            time = group["time"]
             x = group[sensor_col].values.reshape(-1, 1)
             y = group[sensor_name_ref].values
 
@@ -107,10 +112,13 @@ def divided_linear_regression(
                 x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
 
+            time_test = time.loc[idx_test]
+
             model_hour = LinearRegression()
             model_hour.fit(x_train, y_train)
             y_pred = model_hour.predict(x_test)
 
+            time_test_all_hours.append(time_test)
             y_test_all_hours.append(y_test)
             y_pred_all_hours.append(y_pred)
             idx_test_all_hours.append(idx_test)
@@ -124,6 +132,7 @@ def divided_linear_regression(
                 "b": float(model_hour.intercept_)
             })
 
+        time_test_all_hours = np.concat(time_test_all_hours)
         y_test_all_hours = np.concatenate(y_test_all_hours)
         y_pred_all_hours = np.concatenate(y_pred_all_hours)
         idx_test_all_hours = np.concatenate(idx_test_all_hours)
@@ -139,7 +148,7 @@ def divided_linear_regression(
         save_metrics_to_json(avg_metrics, len(x), coefficients_list, json_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test_all_hours, y_pred_all_hours, csv_filename, idx_test_all_hours)
+        save_true_and_predicted_data_to_csv(y_test_all_hours, y_pred_all_hours, csv_filename, idx_test_all_hours, time_test_all_hours)
 
 def polynominal_regression(
         df: pd.DataFrame,
@@ -155,6 +164,7 @@ def polynominal_regression(
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
     for idx, sensor_col in enumerate(sensor_names):
+        time = df["time"]
         x = df[sensor_col].values.reshape(-1, 1)
         y = df[sensor_name_ref].values
 
@@ -162,6 +172,8 @@ def polynominal_regression(
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
             x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
+
+        time_test = time.iloc[idx_test]
 
         poly = PolynomialFeatures(degree=2)
         x_poly = poly.fit_transform(x_train)
@@ -187,7 +199,7 @@ def polynominal_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test)
+        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 def decision_tree_regression(
         df: pd.DataFrame,
@@ -202,6 +214,7 @@ def decision_tree_regression(
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
     for idx, sensor_col in enumerate(sensor_names):
+        time = df["time"]
         x = df[sensor_col].values.reshape(-1, 1)
         y = df[sensor_name_ref].values
 
@@ -209,6 +222,8 @@ def decision_tree_regression(
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
             x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
+
+        time_test = time.iloc[idx_test]
 
         model = DecisionTreeRegressor(criterion='squared_error', max_depth=3)
         model.fit(x_train, y_train)
@@ -227,7 +242,7 @@ def decision_tree_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test)
+        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 def mlp_regression(
         df: pd.DataFrame,
@@ -245,6 +260,7 @@ def mlp_regression(
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
     for idx, sensor_col in enumerate(sensor_names):
+        time = df["time"]
         x = df[sensor_col].values.reshape(-1, 1)
         y = df[sensor_name_ref].values
 
@@ -252,6 +268,8 @@ def mlp_regression(
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
             x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
+
+        time_test = time.iloc[idx_test]
 
         model = MLPRegressor(
             loss='squared_error',
@@ -281,7 +299,7 @@ def mlp_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test)
+        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
     tree_ = model.tree_

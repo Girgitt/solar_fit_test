@@ -8,13 +8,7 @@
 # ----------------------------------------------------------------------------
 
 '''
-python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv
-
-python src/main.py --action=update --model_id=hi_fit_mixed --csv=./dataeds_trend__power_hi.csv
-python src/main.py --action=execute --model_id=hi_fit_mixed --csv=./data/eds_trend__power_hi.csv
-
-python src/pvtools/main.py --action=update --model_id=1_day_timestamp_3s --csv=./data/1_day_timestamp_3s.csv
-python src/pvtools/main.py --action=execute --model_id=high_sunshine_frequent_cover_1_day --csv=./data/high_sunshine_frequent_cover_1_day.csv
+python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
 '''
 
 import argparse
@@ -53,14 +47,12 @@ def main():
     data_columns = [col for col in df_filtered.columns if col != "time"]
 
     print_available_data_columns(data_columns)
-    sensor_names, sensor_name_ref, df_filtered = select_available_data_columns_to_process(data_columns, df_filtered)
-
-    # use measurement_limitations after calibration - otherwise VEML values are too low!!
-
-    # to get sunny periods for VEML's I need to do calibrtion first!
-    # Then designate sunny periods and do calibration again (only for sunny periods)!
-
-    # Second method is better I think. It takes sunny period for DAVIS and uses it for all VAML's
+    sensor_names, sensor_name_ref, df_filtered = select_available_data_columns_to_process(
+        data_columns=data_columns,
+        df=df_filtered,
+        sensors_chosen=args.sensors,
+        sensor_ref_chosen=args.reference
+    )
 
     model_parameters = ModelParameters(
         df=df_filtered,
@@ -97,7 +89,7 @@ def main():
         update_function(model_parameters, clearsky_parameters, clearsky_calculated_values)
 
     elif args.action == "execute":
-        execute_function(model_parameters)
+        execute_function(model_parameters, clearsky_calculated_values)
 
 if __name__ == '__main__':
     main()

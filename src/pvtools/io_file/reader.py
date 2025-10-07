@@ -5,16 +5,52 @@ from typing import Dict, Any, List
 from pathlib import Path
 
 from pvtools.config.params import DatatypeCoefficientsForMLPRegression, DatatypeCoefficientsForDividedLinearRegression
-from pvtools.analysis.validate_decision_tree import _validate_tree_structure
+from pvtools.calibration.validate_decision_tree import _validate_tree_structure
+from pvtools.config.params import ModelParameters
+from pvtools.preprocess.preprocess_data import sanitize_filename
+
+def load_calibrated_data(
+        model_parameters: ModelParameters,
+) -> pd.DataFrame:
+    def create_dataframe_from_csv(
+            calibration_name: str,
+            df: pd.DataFrame = None
+    ) -> pd.DataFrame:
+        for s_name in model_parameters.sensor_names:
+            sanitized_name = sanitize_filename(s_name)
+            tmp_df = load_dataframe_from_csv(Path(dir / calibration_name / f"{sanitized_name}_all_true_vs_pred.csv"))
+            df.append(tmp_df['y_pred'].rename(sanitized_name))
+
+        return df
+
+    dir = Path(model_parameters.log_dir / model_parameters.filename)
+
+    df = []
+    df_calibrated = []
+    df.append(model_parameters.df["time"])
+
+    if model_parameters.args.calibration == "linear":
+        df_calibrated = create_dataframe_from_csv("linear_regression", df)
+
+    elif model_parameters.args.calibration == "divided_linear":
+        df_calibrated = create_dataframe_from_csv("divided_linear_regression", df)
+
+    elif model_parameters.args.calibration == "decision_tree":
+        df_calibrated = create_dataframe_from_csv("decision_tree_regression", df)
+
+    elif model_parameters.args.calibration == "poly":
+        df_calibrated = create_dataframe_from_csv("polynominal_regression", df)
+
+    elif model_parameters.args.calibration == "mlp":
+        df_calibrated = create_dataframe_from_csv("mlp_regression", df)
+
+    df_calibrated.append(model_parameters.df[model_parameters.sensor_name_ref].rename(
+        sanitize_filename(model_parameters.sensor_name_ref)))
+    result_df = pd.concat(df_calibrated, axis=1)
+
+    return result_df
 
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
-    '''
-    load_path = Path(load_path)
-    df = pd.read_csv(load_path)
-
-    return df
-    '''
-
     load_path = Path(load_path)
 
     if load_path.suffix == "":
