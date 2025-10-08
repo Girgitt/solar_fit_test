@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 from pvtools.io_file.writer import save_dataframe_to_csv
-from pvtools.utils.utilities import sanitize_filename
+
 
 def limit_sensor_ref_irradiance_to_clear_sky_model(
         df: pd.DataFrame,
@@ -39,6 +39,7 @@ def limit_sensor_ref_irradiance_to_clear_sky_model(
 
     return df
 
+
 def limit_sensors_irradiance_to_clear_sky_model(
         df: pd.DataFrame,
         clearsky_df: pd.DataFrame,
@@ -65,6 +66,7 @@ def limit_sensors_irradiance_to_clear_sky_model(
     df.loc[:, sensor_names] = limited[sensor_names]
 
     return df
+
 
 def remove_negative_measurements(df: pd.DataFrame) -> pd.DataFrame:
     if not isinstance(df, pd.DataFrame):

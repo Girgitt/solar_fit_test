@@ -8,7 +8,8 @@ from typing import List, Tuple, Optional
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 
-REQUIRED_METRIC_FIELDS = ["mse", "mae", "rmse", "r2", "mape", "max_error", "bias"]
+required_metric_fields = ["mse", "mae", "rmse", "r2", "mape", "max_error", "bias"]
+
 
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,
@@ -16,7 +17,7 @@ def save_metrics_to_json(
         coefficients_list: list[dict],
         filename_path: Path = None
 ) -> None:
-    for attr in REQUIRED_METRIC_FIELDS:
+    for attr in required_metric_fields:
         if not hasattr(metrics, attr):
             raise TypeError(f"metrics must have '{attr}' attribute")
 
@@ -43,6 +44,7 @@ def save_metrics_to_json(
         with open(filename_path, "w") as f:
             json.dump(metrics_json, f, indent=2)
 
+
 def save_true_and_predicted_data_to_csv(
     y_true: np.ndarray,
     y_pred: np.ndarray,
@@ -62,6 +64,7 @@ def save_true_and_predicted_data_to_csv(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df_out.to_csv(output_path, index=False)
 
+
 def save_dataframe_to_csv(
         df: pd.DataFrame,
         output_path: Path,
@@ -75,6 +78,7 @@ def save_dataframe_to_csv(
             index=index,
             index_label=index_label
         )
+
 
 def save_figure(
         fig: Figure,
@@ -92,6 +96,7 @@ def save_figure(
         print(f"[SUCCESS] Saved: {output_path}")
     except Exception as e:
         print(f"[ERROR] Failed to save {output_path}: {e}")
+
 
 def save_predicted_data_figures(
         figures: List[Tuple[str, str, Figure]],

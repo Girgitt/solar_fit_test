@@ -9,6 +9,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
 
+
 def preprocess_data(
         df: pd.DataFrame,
         target_timedelta: str = '1min',
@@ -45,6 +46,7 @@ def preprocess_data(
 
     return df_filtered
 
+
 def ensure_dataframe_contains_valid_data(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
@@ -54,6 +56,7 @@ def ensure_dataframe_contains_valid_data(df: pd.DataFrame) -> pd.DataFrame:
     cleaned_df = df.dropna(how="any").reset_index(drop=True)
 
     return cleaned_df
+
 
 def ensure_datetime_contains_timezone(
         df: pd.DataFrame,
@@ -90,6 +93,7 @@ def ensure_datetime_contains_timezone(
 
     return df
 
+
 def delete_night_period(
         df: pd.DataFrame,
         start: time = time(3,0), # 3:00 GMT -> 5:00 UTC+2
@@ -101,6 +105,7 @@ def delete_night_period(
     df_filtered = df[mask]
 
     return df_filtered.reset_index(drop=True)
+
 
 def check_if_target_frequency_is_lower_than_measurements(
         df: pd.DataFrame,
@@ -121,6 +126,7 @@ def check_if_target_frequency_is_lower_than_measurements(
 
     return False
 
+
 def average_measurements(
         df: pd.DataFrame,
         target_timedelta: str = '1min',
@@ -130,6 +136,7 @@ def average_measurements(
     df_resampled = df_resampled.reset_index()
 
     return df_resampled
+
 
 def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
     if not isinstance(df, pd.DataFrame):
@@ -144,6 +151,7 @@ def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
     df_scaled[numeric_cols] = scaled_array
 
     return df_scaled
+
 
 def sanitize_filename(name: str) -> str:
     name = name.split("@")[-1]

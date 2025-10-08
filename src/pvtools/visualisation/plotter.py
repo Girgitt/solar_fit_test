@@ -12,6 +12,7 @@ from pvtools.io_file.reader import load_true_and_predicted_data_for_all_methods
 from pvtools.io_file.writer import save_figure, save_predicted_data_figures
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
+
 def plot_from_dataframe(
     df: pd.DataFrame,
     save_dir: Path=None,
@@ -51,6 +52,7 @@ def plot_from_dataframe(
 
     return fig, ax
 
+
 def subplot_predicted_data(
         data: Dict[str, pd.DataFrame],
         y_true: str,
@@ -85,6 +87,7 @@ def subplot_predicted_data(
 
     return figures
 
+
 def plot_predicted_data(
         calibration_method_dir: Path,
         show: bool = True,
@@ -115,6 +118,7 @@ def plot_predicted_data(
     if show:
         plt.show()
 
+
 def plot_clear_sky(
     cs: pd.DataFrame,
     save_dir: Optional[Path] = None,
@@ -132,6 +136,7 @@ def plot_clear_sky(
     if show:
         fig.show()
     return fig
+
 
 def plot_poa_components(
     poa: pd.DataFrame,
@@ -182,6 +187,7 @@ def plot_poa_vs_reference(
         fig.show()
 
     return fig
+
 
 def plot_poa_reference_with_clearsky_periods(
         poa_global: pd.Series,

@@ -7,6 +7,7 @@ from pathlib import Path
 from pvlib.location import Location
 from typing import TypedDict, List
 
+
 @dataclass
 class ModelParameters:
     df: pd.DataFrame
@@ -18,6 +19,7 @@ class ModelParameters:
     plot_dir: str
     sensor_names: np.ndarray
     sensor_name_ref: np.ndarray
+
 
 @dataclass
 class ClearSkyParameters:
@@ -33,10 +35,12 @@ class ClearSkyParameters:
     surface_tilt: int  # degrees from horizontal
     surface_azimuth: int # 180 - south facing
 
+
 @dataclass
 class ClearSkyCalculatedValues:
     poa: pd.DataFrame
     clearsky_periods: pd.Series
+
 
 @dataclass
 class SolarDataForLocationAndTime:
@@ -45,10 +49,12 @@ class SolarDataForLocationAndTime:
     solar_position: pd.DataFrame
     clear_sky: pd.DataFrame
 
+
 class DatatypeCoefficientsForDividedLinearRegression(TypedDict):
     hour: str
     a: float
     b: float
+
 
 class DatatypeCoefficientsForMLPRegression(TypedDict):
     layer_1_weights: List[List[float]]

@@ -5,6 +5,7 @@ from pvtools.io_file.reader import load_calibrated_data
 from pvtools.io_file.writer import save_dataframe_to_csv
 from pvtools.config.params import ModelParameters
 
+
 def postprocess_data(
         model_parameters: ModelParameters,
         clearsky_df: pd.DataFrame,

@@ -9,6 +9,7 @@ from pvanalytics.system import _peak_times # infer_orientation_daily_peak
 from pvtools.solar_domain.clearsky import get_solar_data_for_location_and_time
 from pvtools.config.params import ClearSkyParameters
 
+
 def determine_system_azimuth_and_tilt(
         clear_sky_parameters: ClearSkyParameters,
         df: pd.DataFrame,
@@ -50,6 +51,7 @@ def determine_system_azimuth_and_tilt(
     print(f"Estimated tilt: {tilt_deg:.1f}°, azimuth: {azimuth_deg:.1f}°")
 
     return float(tilt_deg), float(azimuth_deg)
+
 
 def infer_orientation_daily_peak(
         power_or_poa,
@@ -95,6 +97,7 @@ def infer_orientation_daily_peak(
                 best_tilt = tilt
 
     return best_azimuth, best_tilt
+
 
 def by_day(data):
     return data.groupby(pd.to_datetime(data.index.date).tz_localize(data.index.tz)) # original code

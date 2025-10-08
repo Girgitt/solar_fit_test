@@ -10,6 +10,7 @@ from pvtools.solar_domain.determine_orientation import determine_system_azimuth_
 from pvtools.utils.apply_sunny_mask import apply_sunny_mask
 from pvtools.solar_domain.measurement_limitations import limit_sensor_ref_irradiance_to_clear_sky_model
 
+
 def update_function(
         model_parameters: ModelParameters,
         clear_sky_parameters: ClearSkyParameters,
@@ -22,6 +23,7 @@ def update_function(
     )
 
     calculate_regression(model_parameters)
+
 
 def process_solar_data_with_clearsky_detection_and_masking(
         model_parameters: ModelParameters,
@@ -77,6 +79,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
     )
 
     model_parameters.df = df_sunny_periods
+
 
 def calculate_regression(model_parameters: ModelParameters) -> None:
     linear_regression(

@@ -2,6 +2,7 @@ import numpy as np
 
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+
 class SensorCalibrationMetrics:
     def __init__(self, y_true: np.ndarray, y_pred:np.ndarray):
         self.y_true: np.ndarray = np.array(y_true)

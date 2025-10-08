@@ -17,6 +17,7 @@ from pvtools.io_file.writer import (
     save_predicted_data_figures,
 )
 
+
 @pytest.fixture
 def simple_metrics() -> SimpleNamespace:
     return SimpleNamespace(
@@ -28,6 +29,7 @@ def simple_metrics() -> SimpleNamespace:
         max_error=3.3,
         bias=-0.05,
     )
+
 
 @pytest.fixture
 def simple_df() -> pd.DataFrame:
@@ -44,6 +46,7 @@ def simple_arrays():
     y_true = np.array([10.0, 20.0, 30.0], dtype=float)
     y_pred = np.array([12.0, 19.5, 29.0], dtype=float)
     return y_true, y_pred
+
 
 def test_save_metrics_to_json_with_coefficients(
         tmp_path: Path,
@@ -71,6 +74,7 @@ def test_save_metrics_to_json_with_coefficients(
     assert isinstance(data["coefficients"], list)
     assert data["coefficients"] == coeffs
 
+
 def test_save_metrics_to_json_without_coefficients(tmp_path: Path, simple_metrics: SimpleNamespace):
     out_path = tmp_path / "metrics" / "result_no_coeffs.json"
 
@@ -87,6 +91,7 @@ def test_save_metrics_to_json_without_coefficients(tmp_path: Path, simple_metric
     assert out_path.exists()
     assert "coefficients" not in data
     assert data["n_samples"] == 3
+
 
 def test_save_metrics_to_json_invalid_inputs_metrics():
     invalid_inputs = [
@@ -105,6 +110,7 @@ def test_save_metrics_to_json_invalid_inputs_metrics():
                 filename_path=None,
             )
 
+
 def test_save_metrics_to_json_invalid_input_samples_count(simple_metrics):
     invalid_inputs = [
         None,
@@ -122,6 +128,7 @@ def test_save_metrics_to_json_invalid_input_samples_count(simple_metrics):
                 filename_path=None,
             )
 
+
 def test_save_true_and_predicted_data_to_csv_default_index(tmp_path: Path, simple_arrays):
     y_true, y_pred = simple_arrays
     out_path = tmp_path / "pred" / "y.csv"
@@ -134,6 +141,7 @@ def test_save_true_and_predicted_data_to_csv_default_index(tmp_path: Path, simpl
     assert list(df.columns) == ["y_true", "y_pred"]
     assert np.allclose(df["y_true"].values, y_true)
     assert np.allclose(df["y_pred"].values, y_pred)
+
 
 def test_save_true_and_predicted_data_to_csv_custom_index(tmp_path: Path, simple_arrays):
     y_true, y_pred = simple_arrays
@@ -151,6 +159,7 @@ def test_save_true_and_predicted_data_to_csv_custom_index(tmp_path: Path, simple
     assert np.allclose(df["y_true"].values, y_true)
     assert np.allclose(df["y_pred"].values, y_pred)
 
+
 def test_save_dataframe_to_csv_no_index(tmp_path: Path, simple_df: pd.DataFrame):
     out_path = tmp_path / "df" / "data.csv"
     save_dataframe_to_csv(df=simple_df, output_path=out_path, index=False)
@@ -160,6 +169,7 @@ def test_save_dataframe_to_csv_no_index(tmp_path: Path, simple_df: pd.DataFrame)
 
     assert list(df_loaded.columns) == ["a", "b"]
     pd.testing.assert_frame_equal(df_loaded, simple_df.reset_index(drop=True))
+
 
 def test_save_dataframe_to_csv_with_index_and_label(tmp_path: Path, simple_df: pd.DataFrame):
     out_path = tmp_path / "df" / "data_with_index.csv"
@@ -172,6 +182,7 @@ def test_save_dataframe_to_csv_with_index_and_label(tmp_path: Path, simple_df: p
     expect = simple_df.copy()
     expect = expect.reset_index().rename(columns={"index": "row_id"})
     pd.testing.assert_frame_equal(df_loaded, expect)
+
 
 def test_save_figure_creates_png_file(tmp_path: Path):
     fig = plt.figure()

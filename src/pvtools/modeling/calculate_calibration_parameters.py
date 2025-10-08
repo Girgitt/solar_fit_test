@@ -27,6 +27,7 @@ Bias shows whether the model regularly over- or under-predicts
 my_test_size=0.3
 my_random_state=42
 
+
 def linear_regression(
         df: pd.DataFrame,
         log_dir: Path,
@@ -71,6 +72,7 @@ def linear_regression(
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+
 
 def divided_linear_regression(
         df: pd.DataFrame,
@@ -150,6 +152,7 @@ def divided_linear_regression(
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test_all_hours, y_pred_all_hours, csv_filename, idx_test_all_hours, time_test_all_hours)
 
+
 def polynominal_regression(
         df: pd.DataFrame,
         log_dir: Path,
@@ -201,6 +204,7 @@ def polynominal_regression(
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
+
 def decision_tree_regression(
         df: pd.DataFrame,
         log_dir: Path,
@@ -243,6 +247,7 @@ def decision_tree_regression(
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+
 
 def mlp_regression(
         df: pd.DataFrame,
@@ -300,6 +305,7 @@ def mlp_regression(
 
         csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+
 
 def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
     tree_ = model.tree_

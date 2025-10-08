@@ -10,6 +10,7 @@
 '''
 python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
 '''
+
 import os
 import logging
 
@@ -18,7 +19,8 @@ import pandas as pd
 
 from pathlib import Path
 
-import pvtools.utils.utilities
+from pvtools.utils.utilities import initialize_dirs_for_base_dir, select_available_data_columns_to_process, \
+    print_available_data_columns, argument_parsing
 from pvtools.utils.update_function import update_function
 
 from pvtools.utils.execute_function import execute_function
@@ -44,7 +46,7 @@ root_logger.addHandler(stream_handler)
 def main():
 
     parser = argparse.ArgumentParser()
-    args = pvtools.utils.utilities.argument_parsing(parser)
+    args = argument_parsing(parser)
     target_frequency = '1min'
 
     arg_data_dir = args.data_dir if args.data_dir else None
@@ -54,7 +56,7 @@ def main():
     else:
         data_dir = Path(arg_data_dir)
 
-    LOG_DIR, PLOT_DIR, DATA_DIR = pvtools.utils.utilities.initialize_dirs_for_base_dir(data_dir)
+    log_dir, plot_dir, data_dir = initialize_dirs_for_base_dir(data_dir)
 
     df = pd.read_csv(args.csv, parse_dates=["time"])
     df_filtered = preprocess_data(
@@ -65,8 +67,8 @@ def main():
 
     data_columns = [col for col in df_filtered.columns if col != "time"]
 
-    pvtools.utils.utilities.print_available_data_columns(data_columns)
-    sensor_names, sensor_name_ref, df_filtered = pvtools.utils.utilities.select_available_data_columns_to_process(
+    print_available_data_columns(data_columns)
+    sensor_names, sensor_name_ref, df_filtered = select_available_data_columns_to_process(
         data_columns=data_columns,
         df=df_filtered,
         sensors_chosen=args.sensors,
@@ -77,10 +79,10 @@ def main():
         df=df_filtered,
         df_time = df_filtered["time"],
         args = args,
-        log_dir = LOG_DIR,
-        data_dir = DATA_DIR, # data/
+        log_dir = log_dir,
+        data_dir = data_dir, # data/
         filename= Path(args.csv).stem, # data/org/filename.csv
-        plot_dir = PLOT_DIR,
+        plot_dir = plot_dir,
         sensor_names = sensor_names,
         sensor_name_ref = sensor_name_ref
     )

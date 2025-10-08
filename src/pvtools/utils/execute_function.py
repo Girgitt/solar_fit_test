@@ -9,6 +9,7 @@ from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.utils.utilities import load_filtered_and_calculated_data_needed_for_execute_function, sanitize_filename
 from pvtools.postprocess.postprocess_data import postprocess_data
 
+
 def execute_function(
         model_parameters: ModelParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues
@@ -33,6 +34,7 @@ def execute_function(
         model_parameters=model_parameters,
         clearsky_calculated_values=clearsky_calculated_values
     )
+
 
 def calibrate(model_parameters: ModelParameters) -> None:
     calibrate_by_linear_regression(
@@ -75,6 +77,7 @@ def calibrate(model_parameters: ModelParameters) -> None:
         log_dir=model_parameters.log_dir,
         folder_data_name=model_parameters.filename
     )
+
 
 def plot(
         model_parameters: ModelParameters,

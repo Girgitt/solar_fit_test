@@ -18,6 +18,7 @@ from pvtools.preprocess.preprocess_data import sanitize_filename
 from pvtools.io_file.writer import save_dataframe_to_csv
 from pvtools.preprocess.preprocess_data import delete_night_period
 
+
 def clear_sky(
         clearsky_parameters: ClearSkyParameters,
         show: bool = False,
@@ -69,6 +70,7 @@ def clear_sky(
 
     return poa_filtered
 
+
 def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameters) -> SolarDataForLocationAndTime:
     tus = Location(
         latitude=clear_sky_parameters.warsaw_lat,
@@ -88,6 +90,7 @@ def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameter
     cs = tus.get_clearsky(times)
 
     return tus, times, sol, cs
+
 
 def detect_clearsky_periods(
         df: pd.DataFrame,
@@ -160,6 +163,7 @@ def detect_clearsky_periods(
 
     return combined_masks
 
+
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
     poa_global_ref = pair['poa_global'].quantile(0.95)
     mean_percentage_grid = [0.08, 0.09, 0.10] #[0.06, 0.07, 0.08]
@@ -194,6 +198,7 @@ def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
     sunny_subset = best_mask if best_mask is not None else pd.Series(False, index=pair.index)
 
     return sunny_subset
+
 
 def calculate_my_own_mask(
         pair: pd.DataFrame,

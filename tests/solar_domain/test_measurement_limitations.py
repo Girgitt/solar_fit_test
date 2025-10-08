@@ -9,17 +9,21 @@ from pvtools.solar_domain.measurement_limitations import (limit_sensor_ref_irrad
                                                           remove_negative_measurements
                                                           )
 
+
 @pytest.fixture()
 def sensor_names():
     return ['sensor1', 'sensor2']
+
 
 @pytest.fixture()
 def mismatch_timestamps():
     return pd.date_range(start="2025-01-01 05:02:00+02:00", periods=4, freq="min")
 
+
 @pytest.fixture
 def timestamps():
     return pd.date_range(start="2025-01-01 05:00:00+02:00", periods=4, freq="min")
+
 
 @pytest.fixture
 def measured_df(timestamps, sensor_names):
@@ -30,6 +34,7 @@ def measured_df(timestamps, sensor_names):
         'sensor_ref': [0.4, 0.9, 1.3, 2.1]
     })
 
+
 @pytest.fixture()
 def negative_measured_df(sensor_names, timestamps):
     return pd.DataFrame({
@@ -39,6 +44,7 @@ def negative_measured_df(sensor_names, timestamps):
         'sensor_ref': [0.1, 0.2, 0.3, 0.4],
     })
 
+
 @pytest.fixture
 def clearsky_df(timestamps):
     return pd.DataFrame({
@@ -47,6 +53,7 @@ def clearsky_df(timestamps):
         'poa_direct': [0.6, 0.7, 0.6, 0.9]
     })
 
+
 @pytest.fixture
 def clear_sky_df_with_mismatch_timestamps(timestamps):
     return pd.DataFrame({
@@ -54,6 +61,7 @@ def clear_sky_df_with_mismatch_timestamps(timestamps):
         'poa_global': [1.0, 1.2, 1.1, 1.5],
         'poa_direct': [0.6, 0.7, 0.6, 0.9]
     })
+
 
 def test_limit_measured_irradiance_to_clear_sky_model_basic(
         measured_df,
@@ -85,6 +93,7 @@ def test_limit_measured_irradiance_to_clear_sky_model_basic(
     pd.testing.assert_series_equal(result_sensor_ref['sensor_ref'], expected['sensor_ref'])
     pd.testing.assert_series_equal(result_sensors[sensor1], expected[sensor1])
     pd.testing.assert_series_equal(result_sensors[sensor2], expected[sensor2])
+
 
 def test_limit_measured_irradiance_to_clear_sky_model_with_no_time_column(
         measured_df,
@@ -123,6 +132,7 @@ def test_limit_measured_irradiance_to_clear_sky_model_with_no_time_column(
                 save_dir=None
             )
 
+
 def test_limit_measured_irradiance_to_clear_sky_model_with_mismatch_timestamps(
         measured_df,
         clear_sky_df_with_mismatch_timestamps,
@@ -141,6 +151,7 @@ def test_limit_measured_irradiance_to_clear_sky_model_with_mismatch_timestamps(
             sensor_name_ref=sensor_names,
             poa_global_name='poa_global',
         )
+
 
 def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df, clearsky_df, sensor_names):
     invalid_inputs = [
@@ -187,6 +198,7 @@ def test_limit_measured_irradiance_to_clear_sky_model_invalid_inputs(measured_df
                 save_dir=None
             )
 
+
 def test_remove_negative_measurements_basic(
         sensor_names,
         timestamps,
@@ -202,15 +214,18 @@ def test_remove_negative_measurements_basic(
     result = remove_negative_measurements(negative_measured_df)
     pd.testing.assert_frame_equal(result, expected)
 
+
 def test_remove_negative_measurements_no_negatives(measured_df):
     result = remove_negative_measurements(measured_df)
     pd.testing.assert_frame_equal(result, measured_df)
+
 
 def test_remove_negative_measurements_empty_df():
     df = pd.DataFrame()
     result = remove_negative_measurements(df)
 
     assert result.empty
+
 
 def test_remove_negative_measurements_invalid_inputs():
     invalid_inputs = [

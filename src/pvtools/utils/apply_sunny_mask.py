@@ -6,6 +6,7 @@ from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.io_file.writer import save_dataframe_to_csv
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
+
 def apply_sunny_mask(
         data_filename: str,
         sensor_name_ref: str,

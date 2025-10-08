@@ -9,9 +9,12 @@ from pvtools.calibration.validate_decision_tree import _validate_tree_structure
 from pvtools.config.params import ModelParameters
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
+
 def load_calibrated_data(
         model_parameters: ModelParameters,
 ) -> pd.DataFrame:
+
+
     def create_dataframe_from_csv(
             calibration_name: str,
             df: pd.DataFrame = None
@@ -50,6 +53,7 @@ def load_calibrated_data(
 
     return result_df
 
+
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
     load_path = Path(load_path)
 
@@ -59,6 +63,7 @@ def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
         raise ValueError(f"Expected a .csv file, got '{load_path.suffix}' in path: {load_path}")
 
     return pd.read_csv(load_path)
+
 
 def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) -> Dict[str, Dict[str, pd.DataFrame]]:
     all_data = {}
@@ -73,6 +78,7 @@ def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) 
             all_data[method_name] = method_data
 
     return all_data
+
 
 def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
     with open(calibration_method_dir, 'r') as f:
@@ -89,6 +95,7 @@ def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str,
             raise ValueError(f"Missing key '{key}' in coefficients.")
 
     return params
+
 
 def divided_linear_regression_load_parameters(calibration_method_dir: Path) -> List[DatatypeCoefficientsForDividedLinearRegression]:
     with open(calibration_method_dir, 'r') as f:
@@ -107,6 +114,7 @@ def divided_linear_regression_load_parameters(calibration_method_dir: Path) -> L
 
     return params
 
+
 def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -122,6 +130,7 @@ def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict
             raise ValueError(f"Missing key '{key}' in coefficients.")
 
     return params
+
 
 def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, Any]:
     with open(calibration_method_dir, 'r') as f:
@@ -139,6 +148,7 @@ def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Di
     _validate_tree_structure(params["params"])
 
     return params["params"]
+
 
 def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsForMLPRegression:
     with open(calibration_method_dir, 'r') as f:

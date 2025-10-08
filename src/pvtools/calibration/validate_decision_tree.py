@@ -11,6 +11,7 @@ def _validate_tree_structure(node: dict) -> None:
     _validate_tree_structure(node["left"])
     _validate_tree_structure(node["right"])
 
+
 def _traverse_tree(node: dict, x_val: float) -> float:
     if "value" in node:
         return node["value"]

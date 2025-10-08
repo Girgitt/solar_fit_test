@@ -25,13 +25,12 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
                         help="Defines which calibration method use to calibrate sensors")
     parser.add_argument("--sensors", type=int, nargs="+",required=True,
                         help="List of sensors to calibrate."
-                             "Number of specified column, counting from 0, skipping time column."
-                             "Accept multiple numbers separated by space.")
+                             " Number of specified column, counting from 0, skipping time column"
+                             " Accept multiple numbers separated by space")
     parser.add_argument("--reference", type=int, required=True,
-                        help="Number of reference sensors"
-                             "Number of specified column, counting from 0, skipping time column."
-                             "Accept single number.")
-
+                        help="Number of reference sensors."
+                             " Number of specified column, counting from 0, skipping time column."
+                             " Accept single number")
     parser.add_argument("--data_dir",
                         help="force specific data directory to store logs, plots etc. <current working dir>")
 
@@ -93,12 +92,12 @@ def load_filtered_and_calculated_data_needed_for_execute_function(
 
 
 def initialize_dirs_for_base_dir(data_dir_path):
-    LOG_DIR = Path(os.path.join(data_dir_path, "logs"))
-    PLOT_DIR = Path(os.path.join(data_dir_path, "plots"))
-    DATA_DIR = Path(os.path.join(data_dir_path, "data"))
+    log_dir = Path(os.path.join(data_dir_path, "logs"))
+    plot_dir = Path(os.path.join(data_dir_path, "plots"))
+    data_dir = Path(os.path.join(data_dir_path, "data"))
 
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    PLOT_DIR.mkdir(parents=True, exist_ok=True)
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    data_dir.mkdir(parents=True, exist_ok=True)
 
-    return LOG_DIR, PLOT_DIR, DATA_DIR
+    return log_dir, plot_dir, data_dir
