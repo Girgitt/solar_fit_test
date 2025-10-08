@@ -24,8 +24,14 @@ def calibrate_by_linear_regression(
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "linear_regression"))
     log.debug(f"calibration_method_dir:{calibration_method_dir}")
 
-    for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
-        log.debug("fitting json: {json_file_dir}")
+    json_files = list(calibration_method_dir.glob("*.json"))
+
+    if len(json_files) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+
+    for idx, json_file_dir in enumerate(json_files):
+        log.debug(f"fitting json: {json_file_dir}")
         params = linear_regression_load_parameters(json_file_dir)
         time = df["time"]
         x = df[sensor_names[idx]].values
@@ -50,7 +56,13 @@ def calibrate_by_divided_linear_regression(
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "divided_linear_regression"))
 
-    for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
+    json_files = list(calibration_method_dir.glob("*.json"))
+
+    if len(json_files) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+
+    for idx, json_file_dir in enumerate(json_files):
         params = divided_linear_regression_load_parameters(json_file_dir)
 
         time = df["time"]
@@ -74,7 +86,13 @@ def calibrate_by_polynominal_regression(
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "polynominal_regression"))
 
-    for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
+    json_files = list(calibration_method_dir.glob("*.json"))
+
+    if len(json_files) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+
+    for idx, json_file_dir in enumerate(json_files):
         params = polynominal_regression_load_parameters(json_file_dir)
 
         time = df["time"]
@@ -98,7 +116,13 @@ def calibrate_by_decision_tree_regression(
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "decision_tree_regression"))
 
-    for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
+    json_files = list(calibration_method_dir.glob("*.json"))
+
+    if len(json_files) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+
+    for idx, json_file_dir in enumerate(json_files):
         params = decision_tree_regression_load_parameters(json_file_dir)
 
         time = df["time"]
@@ -122,7 +146,13 @@ def calibrate_by_mlp_regression(
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "mlp_regression"))
 
-    for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
+    json_files = list(calibration_method_dir.glob("*.json"))
+
+    if len(json_files) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+
+    for idx, json_file_dir in enumerate(json_files):
         params = mlp_load_parameters(json_file_dir)
 
         time = df["time"]
