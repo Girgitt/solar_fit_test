@@ -103,7 +103,8 @@ def main():
 
     clearsky_calculated_values = ClearSkyCalculatedValues(
         poa=pd.DataFrame(),
-        clearsky_periods=pd.Series()
+        clearsky_periods=pd.Series(),
+        cloudy_periods=pd.Series()
     )
 
     if args.action == "update":
@@ -115,24 +116,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# ----------------------------------------------------------------------------
-# OPTIONAL: C++-friendly COEFF DUMP FOR MICROCONTROLLER
-# ----------------------------------------------------------------------------
-'''
-if args.action == "update":
-    names = poly.get_feature_names_out()
-    coeff = np.r_[model.coef_]
-    template = textwrap.dedent("""\
-        // Auto-generated coefficients (float32)
-        constexpr float INTERCEPT = {inter:.8f}f;
-        constexpr float COEF[{n}] = {{
-        {coef_body}
-        }};
-    """)
-    body = ",\n".join([f"    /*{n:>4}*/ {c:.8f}f" for n, c in zip(names, coeff)])
-    print(template.format(inter=model.intercept_, coef_body=body, n=len(names)))
-
-    save_model_metrics('model_name', 'linear_regression')
-'''
 

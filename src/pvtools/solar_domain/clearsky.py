@@ -95,7 +95,6 @@ def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameter
 def detect_clearsky_periods(
         df: pd.DataFrame,
         poa: pd.DataFrame,
-        sensor_names: list[str] = None,
         sensor_name_ref: str = None,
         save_dir: Optional[Path] = None,
         filename: str = None,
@@ -155,13 +154,18 @@ def detect_clearsky_periods(
     combined_masks = series_sunny & series_mask
     combined_masks.name = 'if_sunny'
 
+    cloudy_mask = ~combined_masks
+
     if save_dir is not None:
         save_dir = Path(save_dir)
         s_name = sanitize_filename(sensor_name_ref)
-        output_path = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
-        save_dataframe_to_csv(combined_masks, output_path, index=True)
+        output_path_sunny = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
+        save_dataframe_to_csv(combined_masks, output_path_sunny, index=True)
 
-    return combined_masks
+        output_path_cloudy = save_dir / "calculated_data" / filename / (s_name + "_cloudy_periods" + ".csv")
+        save_dataframe_to_csv(cloudy_mask, output_path_cloudy, index=True)
+
+    return combined_masks, cloudy_mask
 
 
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:

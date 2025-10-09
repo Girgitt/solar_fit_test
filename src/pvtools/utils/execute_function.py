@@ -1,4 +1,7 @@
+import pandas as pd
+
 from pathlib import Path
+from typing import TypeAlias, Literal
 
 from pvtools.calibration.calibrate import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
     calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression, calibrate_by_mlp_regression
@@ -9,20 +12,35 @@ from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.utils.utilities import load_filtered_and_calculated_data_needed_for_execute_function, sanitize_filename
 from pvtools.postprocess.postprocess_data import postprocess_data
 
+Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
 def execute_function(
         model_parameters: ModelParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues
 ) -> None:
-    [df, poa, clearsky_periods] = load_filtered_and_calculated_data_needed_for_execute_function(model_parameters)
+    [df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods] = (
+        load_filtered_and_calculated_data_needed_for_execute_function(model_parameters))
 
     model_parameters.df = df
     clearsky_calculated_values.poa = poa
     clearsky_calculated_values.clearsky_periods = clearsky_periods
+    clearsky_calculated_values.cloudy_periods = cloudy_periods
 
-    calibrate(model_parameters=model_parameters)
+    calibrate(
+        df=df_sunny,
+        model_parameters=model_parameters,
+        period="sunny"
+    )
+
+    calibrate(
+        df=df_cloudy,
+        model_parameters=model_parameters,
+        period="cloudy"
+    )
 
     postprocess_df = postprocess_data(
+        df_sunny=df_sunny,
+        df_cloudy=df_cloudy,
         model_parameters=model_parameters,
         clearsky_df=clearsky_calculated_values.poa,
         poa_global_name='poa_global'
@@ -36,9 +54,14 @@ def execute_function(
     )
 
 
-def calibrate(model_parameters: ModelParameters) -> None:
+def calibrate(
+        df: pd.DataFrame,
+        model_parameters: ModelParameters,
+        period: Period_type
+) -> None:
     calibrate_by_linear_regression(
-        df=model_parameters.df,
+        df=df,
+        period=period,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
@@ -46,7 +69,8 @@ def calibrate(model_parameters: ModelParameters) -> None:
     )
 
     calibrate_by_divided_linear_regression(
-        df=model_parameters.df,
+        df=df,
+        period=period,
         df_time=model_parameters.df_time,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
@@ -55,7 +79,8 @@ def calibrate(model_parameters: ModelParameters) -> None:
     )
 
     calibrate_by_polynominal_regression(
-        df=model_parameters.df,
+        df=df,
+        period=period,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
@@ -63,7 +88,8 @@ def calibrate(model_parameters: ModelParameters) -> None:
     )
 
     calibrate_by_decision_tree_regression(
-        df=model_parameters.df,
+        df=df,
+        period=period,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
@@ -71,7 +97,8 @@ def calibrate(model_parameters: ModelParameters) -> None:
     )
 
     calibrate_by_mlp_regression(
-        df=model_parameters.df,
+        df=df,
+        period=period,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,

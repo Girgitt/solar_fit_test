@@ -17,8 +17,8 @@ class ModelParameters:
     data_dir: Path
     filename: Path
     plot_dir: str
-    sensor_names: np.ndarray
-    sensor_name_ref: np.ndarray
+    sensor_names: list[str]
+    sensor_name_ref: str
 
 
 @dataclass
@@ -40,6 +40,7 @@ class ClearSkyParameters:
 class ClearSkyCalculatedValues:
     poa: pd.DataFrame
     clearsky_periods: pd.Series
+    cloudy_periods: pd.Series
 
 
 @dataclass

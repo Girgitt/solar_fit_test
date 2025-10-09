@@ -23,9 +23,9 @@ def determine_system_azimuth_and_tilt(
 
     # candidate grid to search
     if tilts is None:
-        tilts = np.arange(0, 30, 1)
+        tilts = np.arange(0, 10, 1)
     if azimuths is None:
-        azimuths = np.arange(170, 190, 1) # 180 is south
+        azimuths = np.arange(175, 185, 1) # 180 is south
 
     tus, times, sol, cs = get_solar_data_for_location_and_time(clear_sky_parameters)
 

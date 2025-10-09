@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, TypeAlias, Literal
 from pathlib import Path
 
 from pvtools.config.params import DatatypeCoefficientsForMLPRegression, DatatypeCoefficientsForDividedLinearRegression
@@ -9,47 +9,56 @@ from pvtools.calibration.validate_decision_tree import _validate_tree_structure
 from pvtools.config.params import ModelParameters
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
+Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
-def load_calibrated_data(
+def load_and_merge_calibrated_data_from_each_sensor(
+        df: pd.DataFrame,
         model_parameters: ModelParameters,
+        period: Period_type
 ) -> pd.DataFrame:
-
 
     def create_dataframe_from_csv(
             calibration_name: str,
-            df: pd.DataFrame = None
-    ) -> pd.DataFrame:
+            col: list = None,
+    ) -> list:
+
         for s_name in model_parameters.sensor_names:
             sanitized_name = sanitize_filename(s_name)
-            tmp_df = load_dataframe_from_csv(Path(dir / calibration_name / f"{sanitized_name}_all_true_vs_pred.csv"))
-            df.append(tmp_df['y_pred'].rename(sanitized_name))
+            tmp_df = load_dataframe_from_csv(Path(directory / calibration_name / period / f"{sanitized_name}_all_true_vs_pred.csv"))
+            col.append(tmp_df['y_pred'].rename(sanitized_name))
 
-        return df
+        return col
 
-    dir = Path(model_parameters.log_dir / model_parameters.filename)
+    directory = Path(model_parameters.log_dir / model_parameters.filename)
 
-    df = []
+    col = []
     df_calibrated = []
-    df.append(model_parameters.df["time"])
+    col.append(df["time"])
 
     if model_parameters.args.calibration == "linear":
-        df_calibrated = create_dataframe_from_csv("linear_regression", df)
+        df_calibrated = create_dataframe_from_csv("linear_regression", col)
 
     elif model_parameters.args.calibration == "divided_linear":
-        df_calibrated = create_dataframe_from_csv("divided_linear_regression", df)
+        df_calibrated = create_dataframe_from_csv("divided_linear_regression", col)
 
     elif model_parameters.args.calibration == "decision_tree":
-        df_calibrated = create_dataframe_from_csv("decision_tree_regression", df)
+        df_calibrated = create_dataframe_from_csv("decision_tree_regression", col)
 
     elif model_parameters.args.calibration == "poly":
-        df_calibrated = create_dataframe_from_csv("polynominal_regression", df)
+        df_calibrated = create_dataframe_from_csv("polynominal_regression", col)
 
     elif model_parameters.args.calibration == "mlp":
-        df_calibrated = create_dataframe_from_csv("mlp_regression", df)
+        df_calibrated = create_dataframe_from_csv("mlp_regression", col)
 
-    df_calibrated.append(model_parameters.df[model_parameters.sensor_name_ref].rename(
+    df_calibrated.append(df[model_parameters.sensor_name_ref].rename(
         sanitize_filename(model_parameters.sensor_name_ref)))
+
     result_df = pd.concat(df_calibrated, axis=1)
+
+    if period == 'sunny':
+        result_df['if_sunny'] = True
+    elif period == 'cloudy':
+        result_df['if_sunny'] = False
 
     return result_df
 

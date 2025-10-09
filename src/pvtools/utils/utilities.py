@@ -1,11 +1,11 @@
 import os
-import math
 import pandas as pd
 
 from argparse import ArgumentParser, Namespace
-from datetime import datetime
 from typing import List, Tuple
 from pathlib import Path
+
+from pandas import DataFrame
 
 from pvtools.config.params import ModelParameters
 from pvtools.io_file.reader import load_dataframe_from_csv
@@ -77,18 +77,30 @@ def select_available_data_columns_to_process(
 
 def load_filtered_and_calculated_data_needed_for_execute_function(
         model_parameters: ModelParameters
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[DataFrame, DataFrame, DataFrame, DataFrame, DataFrame, DataFrame]:
     df = load_dataframe_from_csv(
         Path(model_parameters.data_dir / "filtered" / f"{model_parameters.filename}.csv"))
+
+    df_sunny = load_dataframe_from_csv(
+        Path(model_parameters.data_dir / "filtered" / "sunny_periods" / f"{model_parameters.filename}.csv"))
+
+    df_cloudy = load_dataframe_from_csv(
+        Path(model_parameters.data_dir / "filtered" / "cloudy_periods" / f"{model_parameters.filename}.csv"))
 
     poa = load_dataframe_from_csv(
         Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename / "poa_values.csv"))
 
+    sensor_name = sanitize_filename(model_parameters.sensor_name_ref)
+
     clearsky_periods = load_dataframe_from_csv(
         Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
-             f"{sanitize_filename(model_parameters.sensor_name_ref)}_sunny_periods.csv"))
+             f"{sensor_name}_sunny_periods.csv"))
 
-    return df, poa, clearsky_periods
+    cloudy_periods = load_dataframe_from_csv(
+        Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
+             f"{sensor_name}_cloudy_periods.csv"))
+
+    return df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods
 
 
 def initialize_dirs_for_base_dir(data_dir_path):

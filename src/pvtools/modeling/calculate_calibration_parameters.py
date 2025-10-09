@@ -4,12 +4,13 @@ import numpy as np
 
 from pathlib import Path
 from typing import Dict, Any
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, HuberRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.tree import _tree
+from typing import TypeAlias, Literal
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 from pvtools.io_file.writer import save_metrics_to_json, save_true_and_predicted_data_to_csv
@@ -24,12 +25,15 @@ MAPE especially useful when you want to assess the accuracy of predictions in pe
 Bias shows whether the model regularly over- or under-predicts
 '''
 
+Period_type: TypeAlias = Literal['sunny', 'cloudy']
+
 my_test_size=0.3
 my_random_state=42
 
 
 def linear_regression(
         df: pd.DataFrame,
+        period: Period_type,
         log_dir: Path,
         data_filename: Path,
         sensor_names: list[str] = None,
@@ -67,15 +71,16 @@ def linear_regression(
         column_name = sanitize_filename(sensor_col)
         data_filename = sanitize_filename(Path(data_filename).stem)
 
-        json_metrics_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
+        json_metrics_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_metrics_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
+        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 
 def divided_linear_regression(
         df: pd.DataFrame,
+        period: Period_type,
         log_dir: Path,
         data_filename: Path,
         sensor_names: list[str] = None,
@@ -146,15 +151,17 @@ def divided_linear_regression(
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
         data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
+        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(avg_metrics, len(x), coefficients_list, json_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test_all_hours, y_pred_all_hours, csv_filename, idx_test_all_hours, time_test_all_hours)
+        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
+        save_true_and_predicted_data_to_csv(
+            y_test_all_hours, y_pred_all_hours, csv_filename, idx_test_all_hours, time_test_all_hours)
 
 
 def polynominal_regression(
         df: pd.DataFrame,
+        period: Period_type,
         log_dir: Path,
         data_filename: Path,
         sensor_names: list[str] = None,
@@ -198,15 +205,16 @@ def polynominal_regression(
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
         data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
+        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
+        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 
 def decision_tree_regression(
         df: pd.DataFrame,
+        period: Period_type,
         log_dir: Path,
         data_filename: Path,
         sensor_names: list[str] = None,
@@ -242,15 +250,16 @@ def decision_tree_regression(
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
         data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
+        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
+        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 
 def mlp_regression(
         df: pd.DataFrame,
+        period: Period_type,
         log_dir: Path,
         data_filename: Path,
         sensor_names: list[str] = None,
@@ -300,10 +309,10 @@ def mlp_regression(
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
         data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / f"{column_name}.json"
+        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / f"{column_name}_test_true_vs_pred.csv"
+        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
 
 
