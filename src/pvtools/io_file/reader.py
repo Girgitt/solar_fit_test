@@ -17,6 +17,9 @@ def load_and_merge_calibrated_data_from_each_sensor(
         period: Period_type
 ) -> pd.DataFrame:
 
+    df = df.copy()
+    df = df.reset_index(drop=True)
+
     def create_dataframe_from_csv(
             calibration_name: str,
             col: list = None,
@@ -24,7 +27,8 @@ def load_and_merge_calibrated_data_from_each_sensor(
 
         for s_name in model_parameters.sensor_names:
             sanitized_name = sanitize_filename(s_name)
-            tmp_df = load_dataframe_from_csv(Path(directory / calibration_name / period / f"{sanitized_name}_all_true_vs_pred.csv"))
+            tmp_df = load_dataframe_from_csv(Path(directory / calibration_name / #period /
+                                                  f"{sanitized_name}_all_true_vs_pred.csv"))
             col.append(tmp_df['y_pred'].rename(sanitized_name))
 
         return col
@@ -54,11 +58,6 @@ def load_and_merge_calibrated_data_from_each_sensor(
         sanitize_filename(model_parameters.sensor_name_ref)))
 
     result_df = pd.concat(df_calibrated, axis=1)
-
-    if period == 'sunny':
-        result_df['if_sunny'] = True
-    elif period == 'cloudy':
-        result_df['if_sunny'] = False
 
     return result_df
 

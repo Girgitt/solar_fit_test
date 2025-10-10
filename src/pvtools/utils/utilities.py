@@ -100,6 +100,9 @@ def load_filtered_and_calculated_data_needed_for_execute_function(
         Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
              f"{sensor_name}_cloudy_periods.csv"))
 
+    df_sunny['if_sunny'] = True
+    df_cloudy['if_sunny'] = False
+
     return df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods
 
 

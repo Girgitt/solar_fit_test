@@ -10,6 +10,7 @@ from pvtools.config.params import ModelParameters
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
 def postprocess_data(
+        df: pd.DataFrame,
         df_sunny: pd.DataFrame,
         df_cloudy: pd.DataFrame,
         model_parameters: ModelParameters,
@@ -17,6 +18,12 @@ def postprocess_data(
         poa_global_name: str = 'poa_global'
 ) -> pd.DataFrame:
 
+    df = load_and_merge_calibrated_data_from_each_sensor(
+        df=df,
+        model_parameters=model_parameters,
+        period="sunny"
+    )
+    '''
     df_sunny = load_and_merge_calibrated_data_from_each_sensor(
         df=df_sunny,
         model_parameters=model_parameters,
@@ -28,6 +35,7 @@ def postprocess_data(
         model_parameters=model_parameters,
         period="cloudy"
     )
+    '''
 
     df = merge_sunny_and_cloudy_calibrated_dataframes(
         df_sunny=df_sunny,
