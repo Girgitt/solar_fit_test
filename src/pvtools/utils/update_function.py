@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from pathlib import Path
 
@@ -15,11 +16,13 @@ def update_function(
         clear_sky_parameters: ClearSkyParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues,
 ) -> None:
-    process_solar_data_with_clearsky_detection_and_masking(
+    df_sunny = process_solar_data_with_clearsky_detection_and_masking(
         model_parameters=model_parameters,
         clearsky_parameters=clear_sky_parameters,
         clearsky_calculated_values=clearsky_calculated_values
     )
+
+    #model_parameters.df = df_sunny
 
     calculate_regression(model_parameters)
 
@@ -27,7 +30,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
         model_parameters: ModelParameters,
         clearsky_parameters: ClearSkyParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues
-) -> None:
+) -> pd.DataFrame:
     poa = clear_sky(
         clearsky_parameters=clearsky_parameters,
         show=False,
@@ -76,7 +79,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
         save_dir=model_parameters.data_dir
     )
 
-    model_parameters.df = df_sunny_periods
+    return df_sunny_periods
 
 def calculate_regression(model_parameters: ModelParameters) -> None:
     linear_regression(
