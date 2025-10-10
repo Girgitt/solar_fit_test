@@ -148,7 +148,7 @@ def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
 def sanitize_filename(name: str) -> str:
     name = name.split("@")[-1]
     name = re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
-    #name = re.sub(r'_+', '_', name)
+    name = re.sub(r'_+', '_', name)
     name = name.rstrip('_')
 
     return name

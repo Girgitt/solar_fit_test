@@ -24,6 +24,12 @@ def calibrate_by_linear_regression(
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "linear_regression"))
     log.debug(f"calibration_method_dir:{calibration_method_dir}")
 
+    json_count = len(list(calibration_method_dir.glob("*.json")))
+
+    if len(sensor_names) != json_count:
+        raise ValueError(f"Wrong number of .json files in {calibration_method_dir}."
+                         f" Found {json_count}, expected {len(sensor_names)}")
+
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         log.debug("fitting json: {json_file_dir}")
         params = linear_regression_load_parameters(json_file_dir)
@@ -50,6 +56,12 @@ def calibrate_by_divided_linear_regression(
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "divided_linear_regression"))
 
+    json_count = len(list(calibration_method_dir.glob("*.json")))
+
+    if len(sensor_names) != json_count:
+        raise ValueError(f"Wrong number of .json files in {calibration_method_dir}."
+                         f" Found {json_count}, expected {len(sensor_names)}")
+
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = divided_linear_regression_load_parameters(json_file_dir)
 
@@ -73,6 +85,12 @@ def calibrate_by_polynominal_regression(
 ) -> None:
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "polynominal_regression"))
+
+    json_count = len(list(calibration_method_dir.glob("*.json")))
+
+    if len(sensor_names) != json_count:
+        raise ValueError(f"Wrong number of .json files in {calibration_method_dir}."
+                         f" Found {json_count}, expected {len(sensor_names)}")
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = polynominal_regression_load_parameters(json_file_dir)
@@ -98,6 +116,12 @@ def calibrate_by_decision_tree_regression(
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "decision_tree_regression"))
 
+    json_count = len(list(calibration_method_dir.glob("*.json")))
+
+    if len(sensor_names) != json_count:
+        raise ValueError(f"Wrong number of .json files in {calibration_method_dir}."
+                         f" Found {json_count}, expected {len(sensor_names)}")
+
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = decision_tree_regression_load_parameters(json_file_dir)
 
@@ -121,6 +145,12 @@ def calibrate_by_mlp_regression(
 ) -> None:
 
     calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "mlp_regression"))
+
+    json_count = len(list(calibration_method_dir.glob("*.json")))
+
+    if len(sensor_names) != json_count:
+        raise ValueError(f"Wrong number of .json files in {calibration_method_dir}."
+                         f" Found {json_count}, expected {len(sensor_names)}")
 
     for idx, json_file_dir in enumerate(calibration_method_dir.glob("*.json")):
         params = mlp_load_parameters(json_file_dir)
