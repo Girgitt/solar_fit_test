@@ -9,6 +9,7 @@
 
 '''
 python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
+python ../src/main.py --action=update --model_id=25-09-04_08 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
 '''
 
 import os

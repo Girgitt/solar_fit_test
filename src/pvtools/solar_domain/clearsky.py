@@ -98,7 +98,7 @@ def detect_clearsky_periods(
         sensor_name_ref: str = None,
         save_dir: Optional[Path] = None,
         filename: str = None,
-) -> pd.Series:
+) -> [pd.Series, pd.Series]:
     df = df.copy()
     poa = poa.copy()
 
@@ -135,7 +135,6 @@ def detect_clearsky_periods(
         if sub.empty:
             continue
 
-
         mask = detect_clearsky(
             sub['measured'],
             sub['poa_global'],
@@ -151,21 +150,30 @@ def detect_clearsky_periods(
     df_sunny = sunny_subset.to_frame(name='if_sunny').reset_index()
 
     series_sunny = df_sunny.set_index('time')['if_sunny']
-    combined_masks = series_sunny & series_mask
-    combined_masks.name = 'if_sunny'
+    sunny_mask = series_sunny & series_mask
+    sunny_mask.name = 'if_sunny'
 
-    cloudy_mask = ~combined_masks
+    cloudy_mask = ~sunny_mask
+
+    sunny_intervals = detect_sunny_cloudy_intervals(sunny_mask)
+    cloudy_intervals = detect_sunny_cloudy_intervals(cloudy_mask)
 
     if save_dir is not None:
         save_dir = Path(save_dir)
         s_name = sanitize_filename(sensor_name_ref)
         output_path_sunny = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
-        save_dataframe_to_csv(combined_masks, output_path_sunny, index=True)
+        save_dataframe_to_csv(sunny_mask, output_path_sunny, index=True)
 
         output_path_cloudy = save_dir / "calculated_data" / filename / (s_name + "_cloudy_periods" + ".csv")
         save_dataframe_to_csv(cloudy_mask, output_path_cloudy, index=True)
 
-    return combined_masks, cloudy_mask
+        output_path_sunny_intervals = save_dir / "calculated_data" / filename / "sunny_intervals.csv"
+        save_dataframe_to_csv(sunny_intervals, output_path_sunny_intervals, index=False)
+
+        output_path_cloudy_intervals = save_dir / "calculated_data" / filename / "cloudy_intervals.csv"
+        save_dataframe_to_csv(cloudy_intervals, output_path_cloudy_intervals, index=False)
+
+    return sunny_mask, cloudy_mask
 
 
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
@@ -217,5 +225,23 @@ def calculate_my_own_mask(
     mask = base & run_len.ge(time_period)
 
     return mask.astype(bool)
+
+def detect_sunny_cloudy_intervals(s: pd.Series) -> pd.DataFrame:
+
+    groups = (s != s.shift()).cumsum()
+    true_groups = s[s].groupby(groups)
+
+    data = [
+        {
+            "start": group.index[0],
+            "end": group.index[-1],
+            "length": len(group)
+        }
+        for _, group in true_groups
+    ]
+
+    intervals = pd.DataFrame(data)
+
+    return intervals
 
 
