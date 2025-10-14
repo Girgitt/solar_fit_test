@@ -3,6 +3,7 @@ import pandas as pd
 
 from pathlib import Path
 from typing import TypeAlias, Literal
+from datetime import time
 
 from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
 from pvtools.modeling.calculate_calibration_parameters import linear_regression, divided_linear_regression, polynominal_regression, \
@@ -18,21 +19,23 @@ def update_function(
         model_parameters: ModelParameters,
         clear_sky_parameters: ClearSkyParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues,
+        start_time: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
+        end_time: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
 ) -> None:
-    df_sunny, df_cloudy = process_solar_data_with_clearsky_detection_and_masking(
+    df_sunny_cutted_short, df_cloudy_cutted_short = process_solar_data_with_clearsky_detection_and_masking(
         model_parameters=model_parameters,
         clearsky_parameters=clear_sky_parameters,
         clearsky_calculated_values=clearsky_calculated_values
     )
 
     calculate_regression(
-        df=df_sunny,
+        df=df_sunny_cutted_short,
         model_parameters=model_parameters,
         period="sunny"
     )
 
     calculate_regression(
-        df=df_cloudy,
+        df=df_cloudy_cutted_short,
         model_parameters=model_parameters,
         period="cloudy"
     )
@@ -41,11 +44,16 @@ def update_function(
 def process_solar_data_with_clearsky_detection_and_masking(
         model_parameters: ModelParameters,
         clearsky_parameters: ClearSkyParameters,
-        clearsky_calculated_values: ClearSkyCalculatedValues
+        clearsky_calculated_values: ClearSkyCalculatedValues,
+        start_time: time = time(4, 0),
+        end_time: time = time(17, 0),
 ) -> [pd.DataFrame, pd.DataFrame]:
+
     poa = clear_sky(
         clearsky_parameters=clearsky_parameters,
         show=False,
+        start_time=start_time,
+        end_time=end_time,
         save_dir_plot=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
         save_dir=model_parameters.data_dir,
         filename=model_parameters.filename
@@ -64,7 +72,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
 
     model_parameters.df = df_limited
 
-    clearsky_periods, cloudy_periods = detect_clearsky_periods(
+    clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
         poa=poa,
         df=model_parameters.df,
         sensor_name_ref=model_parameters.sensor_name_ref,
@@ -72,34 +80,31 @@ def process_solar_data_with_clearsky_detection_and_masking(
         filename=model_parameters.filename
     )
 
-    clearsky_calculated_values.clearsky_periods = clearsky_periods
-    clearsky_calculated_values.cloudy_periods = cloudy_periods
-
     determine_system_azimuth_and_tilt(
         clear_sky_parameters=clearsky_parameters,
         df=model_parameters.df,
-        sunny_mask=clearsky_periods,
+        sunny_mask=clearsky_periods_all,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         tilts=np.arange(0, 30, 1),  # None
         azimuths=np.arange(170, 190, 1)  # None
     )
 
-    df_sunny_periods = apply_mask_for_dataframe(
+    df_sunny_periods_cutted_short = apply_mask_for_dataframe(
         data_filename=model_parameters.filename,
         sensor_name_ref=model_parameters.sensor_name_ref,
         period_type="sunny",
         save_dir=model_parameters.data_dir
     )
 
-    df_cloudy_periods = apply_mask_for_dataframe(
+    df_cloudy_periods_cutted_short = apply_mask_for_dataframe(
         data_filename=model_parameters.filename,
         sensor_name_ref=model_parameters.sensor_name_ref,
         period_type="cloudy",
         save_dir=model_parameters.data_dir
     )
 
-    return df_sunny_periods, df_cloudy_periods
+    return df_sunny_periods_cutted_short, df_cloudy_periods_cutted_short
 
 
 def calculate_regression(

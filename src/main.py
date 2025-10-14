@@ -19,6 +19,7 @@ import argparse
 import pandas as pd
 
 from pathlib import Path
+from datetime import time
 
 from pvtools.utils.utilities import initialize_dirs_for_base_dir, select_available_data_columns_to_process, \
     print_available_data_columns, argument_parsing
@@ -60,9 +61,15 @@ def main():
     log_dir, plot_dir, data_dir = initialize_dirs_for_base_dir(data_dir)
 
     df = pd.read_csv(args.csv, parse_dates=["time"])
+
+    start_time = time(4, 0) # 4:00 GMT -> 6:00 UTC+2
+    end_time = time(17, 0) # 17:00 GMT -> 19:00 UTC+2
+
     df_filtered = preprocess_data(
         df=df,
         target_timedelta=target_frequency, # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
+        start_time=start_time,
+        end_time=end_time,
         save_dir=Path(args.csv),
     )
 
@@ -109,10 +116,19 @@ def main():
     )
 
     if args.action == "update":
-        update_function(model_parameters, clearsky_parameters, clearsky_calculated_values)
+        update_function(
+            model_parameters=model_parameters,
+            clear_sky_parameters=clearsky_parameters,
+            clearsky_calculated_values=clearsky_calculated_values,
+            start_time = start_time,
+            end_time = end_time
+        )
 
     elif args.action == "execute":
-        execute_function(model_parameters, clearsky_calculated_values)
+        execute_function(
+            model_parameters=model_parameters,
+            clearsky_calculated_values=clearsky_calculated_values
+        )
 
 
 if __name__ == '__main__':

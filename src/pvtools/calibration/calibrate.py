@@ -83,12 +83,6 @@ def calibrate_by_fuzzy_regression(
             params_sunny = linear_regression_load_parameters(json_file_dir_sunny)
             params_cloudy = linear_regression_load_parameters(json_file_dir_cloudy)
 
-            #x_sunny = df[df["if_sunny"] == True]
-            #x_sunny = x_sunny["time", sensor_names[i]]
-
-            #x_cloudy = df[df["if_sunny"] == False]
-            #x_cloudy = x_cloudy["time", sensor_names[j]]
-
             left = df[["time", sensor_name_ref]]
             right = poa[["time", "poa_global"]]
 

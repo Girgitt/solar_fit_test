@@ -11,7 +11,8 @@ from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
 from pvtools.visualisation.plotter import plot_from_dataframe, plot_predicted_data, plot_poa_vs_reference, \
     plot_poa_reference_with_clearsky_periods
 from pvtools.io_file.reader import load_dataframe_from_csv
-from pvtools.utils.utilities import load_filtered_and_calculated_data_needed_for_execute_function, sanitize_filename
+from pvtools.utils.utilities import load_filtered_and_calculated_data_needed_for_execute_function, sanitize_filename, \
+    create_calibrated_dataframe
 from pvtools.postprocess.postprocess_data import postprocess_data, merge_sunny_and_cloudy_calibrated_dataframes
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
@@ -28,21 +29,24 @@ def execute_function(
     clearsky_calculated_values.clearsky_periods = clearsky_periods
     clearsky_calculated_values.cloudy_periods = cloudy_periods
 
-    df = merge_sunny_and_cloudy_calibrated_dataframes(
+    df_cutted_short_periods = merge_sunny_and_cloudy_calibrated_dataframes(
         df_sunny=df_sunny,
         df_cloudy=df_cloudy
     )
 
     calibrate(
-        df=df,
+        df=df_cutted_short_periods,
         poa=poa,
         model_parameters=model_parameters
     )
 
+    df_calibrated = create_calibrated_dataframe(
+        df=df_cutted_short_periods,
+        model_parameters=model_parameters
+    )
+
     postprocess_df = postprocess_data(
-        df=df,
-        df_sunny=df_sunny,
-        df_cloudy=df_cloudy,
+        df=df_calibrated,
         model_parameters=model_parameters,
         clearsky_df=clearsky_calculated_values.poa,
         poa_global_name='poa_global'
@@ -51,6 +55,7 @@ def execute_function(
     model_parameters.df = postprocess_df
 
     plot(
+        df=postprocess_df,
         model_parameters=model_parameters,
         clearsky_calculated_values=clearsky_calculated_values
     )
@@ -117,6 +122,7 @@ def calibrate(
 
 
 def plot(
+        df: pd.DataFrame,
         model_parameters: ModelParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues,
 ) -> None:

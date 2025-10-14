@@ -13,8 +13,7 @@ Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
 def load_and_merge_calibrated_data_from_each_sensor(
         df: pd.DataFrame,
-        model_parameters: ModelParameters,
-        period: Period_type
+        model_parameters: ModelParameters
 ) -> pd.DataFrame:
 
     df = df.copy()
@@ -27,7 +26,7 @@ def load_and_merge_calibrated_data_from_each_sensor(
 
         for s_name in model_parameters.sensor_names:
             sanitized_name = sanitize_filename(s_name)
-            tmp_df = load_dataframe_from_csv(Path(directory / calibration_name / #period /
+            tmp_df = load_dataframe_from_csv(Path(directory / calibration_name /
                                                   f"{sanitized_name}_all_true_vs_pred.csv"))
             col.append(tmp_df['y_pred'].rename(sanitized_name))
 

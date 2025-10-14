@@ -39,6 +39,7 @@ def linear_regression(
         sensor_names: list[str] = None,
         sensor_name_ref: str = None,
 ) -> None:
+
     df = df.copy()
 
     if sensor_names is None:

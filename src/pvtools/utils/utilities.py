@@ -4,11 +4,11 @@ import pandas as pd
 from argparse import ArgumentParser, Namespace
 from typing import List, Tuple
 from pathlib import Path
-
 from pandas import DataFrame
 
 from pvtools.config.params import ModelParameters
-from pvtools.io_file.reader import load_dataframe_from_csv
+from pvtools.io_file.reader import load_dataframe_from_csv, load_and_merge_calibrated_data_from_each_sensor
+from pvtools.io_file.writer import save_dataframe_to_csv
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
 
@@ -82,10 +82,10 @@ def load_filtered_and_calculated_data_needed_for_execute_function(
         Path(model_parameters.data_dir / "filtered" / f"{model_parameters.filename}.csv"))
 
     df_sunny = load_dataframe_from_csv(
-        Path(model_parameters.data_dir / "filtered" / "sunny_periods" / f"{model_parameters.filename}.csv"))
+        Path(model_parameters.data_dir / "filtered" / "sunny_periods" / f"{model_parameters.filename}_all.csv"))
 
     df_cloudy = load_dataframe_from_csv(
-        Path(model_parameters.data_dir / "filtered" / "cloudy_periods" / f"{model_parameters.filename}.csv"))
+        Path(model_parameters.data_dir / "filtered" / "cloudy_periods" / f"{model_parameters.filename}_all.csv"))
 
     poa = load_dataframe_from_csv(
         Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename / "poa_values.csv"))
@@ -94,11 +94,11 @@ def load_filtered_and_calculated_data_needed_for_execute_function(
 
     clearsky_periods = load_dataframe_from_csv(
         Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
-             f"{sensor_name}_sunny_periods.csv"))
+             f"{sensor_name}_sunny_periods_all.csv"))
 
     cloudy_periods = load_dataframe_from_csv(
         Path(model_parameters.data_dir / "calculated_data" / model_parameters.filename /
-             f"{sensor_name}_cloudy_periods.csv"))
+             f"{sensor_name}_cloudy_periods_all.csv"))
 
     df_sunny['if_sunny'] = True
     df_cloudy['if_sunny'] = False
@@ -116,3 +116,26 @@ def initialize_dirs_for_base_dir(data_dir_path):
     data_dir.mkdir(parents=True, exist_ok=True)
 
     return log_dir, plot_dir, data_dir
+
+def create_calibrated_dataframe(
+        df: pd.DataFrame,
+        model_parameters: ModelParameters
+) -> pd.DataFrame:
+
+    df = load_and_merge_calibrated_data_from_each_sensor(
+        df=df,
+        model_parameters=model_parameters
+    )
+
+    save_dir = Path(model_parameters.data_dir / "filtered" / "calibrated" / model_parameters.filename /
+                    f"{model_parameters.args.calibration}.csv"
+                    )
+
+    save_dataframe_to_csv(
+        df=df,
+        output_path=save_dir
+    )
+
+    return df
+
+

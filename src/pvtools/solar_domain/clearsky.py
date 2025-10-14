@@ -22,6 +22,8 @@ from pvtools.preprocess.preprocess_data import delete_night_period
 def clear_sky(
         clearsky_parameters: ClearSkyParameters,
         show: bool = False,
+        start_time: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
+        end_time: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
         save_dir_plot: Path = None,
         save_dir: Path = None,
         filename: str = None
@@ -56,8 +58,8 @@ def clear_sky(
     poa = poa.rename_axis('time').reset_index()
     poa_filtered = delete_night_period(
         df=poa,
-        start=time(3, 0),  # 3:00 GMT -> 5:00 UTC+2
-        end=time(18, 0)  # 18:00 GMT -> 20:00 UTC+2
+        start=start_time,
+        end=end_time
     )
 
     plot_clear_sky(cs, save_dir=save_dir_plot, show=show)
@@ -158,13 +160,21 @@ def detect_clearsky_periods(
     sunny_intervals = detect_sunny_cloudy_intervals(sunny_mask)
     cloudy_intervals = detect_sunny_cloudy_intervals(cloudy_mask)
 
+    sunny_periods_cutted_short, cloudy_periods_cutted_short = delete_short_periods(
+        sunny_mask=sunny_mask,
+        cloudy_mask=cloudy_mask,
+        sunny_intervals=sunny_intervals,
+        cloudy_intervals=cloudy_intervals,
+        min_length=30
+    )
+
     if save_dir is not None:
         save_dir = Path(save_dir)
         s_name = sanitize_filename(sensor_name_ref)
-        output_path_sunny = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods" + ".csv")
+        output_path_sunny = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods_all" + ".csv")
         save_dataframe_to_csv(sunny_mask, output_path_sunny, index=True)
 
-        output_path_cloudy = save_dir / "calculated_data" / filename / (s_name + "_cloudy_periods" + ".csv")
+        output_path_cloudy = save_dir / "calculated_data" / filename / (s_name + "_cloudy_periods_all" + ".csv")
         save_dataframe_to_csv(cloudy_mask, output_path_cloudy, index=True)
 
         output_path_sunny_intervals = save_dir / "calculated_data" / filename / "sunny_intervals.csv"
@@ -172,6 +182,12 @@ def detect_clearsky_periods(
 
         output_path_cloudy_intervals = save_dir / "calculated_data" / filename / "cloudy_intervals.csv"
         save_dataframe_to_csv(cloudy_intervals, output_path_cloudy_intervals, index=False)
+
+        output_path_sunny = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods_cutted_short" + ".csv")
+        save_dataframe_to_csv(sunny_periods_cutted_short, output_path_sunny, index=True)
+
+        output_path_cloudy = save_dir / "calculated_data" / filename / (s_name + "_cloudy_periods_cutted_short" + ".csv")
+        save_dataframe_to_csv(cloudy_periods_cutted_short, output_path_cloudy, index=True)
 
     return sunny_mask, cloudy_mask
 
@@ -244,4 +260,30 @@ def detect_sunny_cloudy_intervals(s: pd.Series) -> pd.DataFrame:
 
     return intervals
 
+def delete_short_periods(
+        sunny_mask: pd.Series,
+        cloudy_mask: pd.Series,
+        sunny_intervals: pd.DataFrame,
+        cloudy_intervals: pd.DataFrame,
+        min_length: int
+) -> [pd.Series, pd.Series]:
 
+    sunny_mask_filtered = []
+    cloudy_mask_filtered = []
+
+    for _, row in sunny_intervals.iterrows():
+        if row["length"] >= min_length:
+            start_time = row["start"]
+            end_time = row["end"]
+            sunny_mask_filtered.append(sunny_mask.loc[start_time:end_time])
+
+    for _, row in cloudy_intervals.iterrows():
+        if row["length"] >= min_length:
+            start_time = row["start"]
+            end_time = row["end"]
+            cloudy_mask_filtered.append(cloudy_mask.loc[start_time:end_time])
+
+    sunny_mask_combined  =pd.concat(sunny_mask_filtered)
+    cloudy_mask_combined = pd.concat(cloudy_mask_filtered)
+
+    return sunny_mask_combined, cloudy_mask_combined
