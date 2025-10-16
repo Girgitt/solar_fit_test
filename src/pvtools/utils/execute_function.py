@@ -6,7 +6,7 @@ from typing import TypeAlias, Literal
 
 from pvtools.calibration.calibrate import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
     calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression, calibrate_by_mlp_regression, \
-    calibrate_by_fuzzy_regression
+    calibrate_by_fuzzy_linear_regression
 from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
 from pvtools.visualisation.plotter import plot_from_dataframe, plot_predicted_data, plot_poa_vs_reference, \
     plot_poa_reference_with_clearsky_periods
@@ -67,7 +67,15 @@ def calibrate(
         model_parameters: ModelParameters
 ) -> None:
 
-    calibrate_by_fuzzy_regression(
+    calibrate_by_linear_regression(
+        df=df,
+        sensor_names=model_parameters.sensor_names,
+        sensor_name_ref=model_parameters.sensor_name_ref,
+        log_dir=model_parameters.log_dir,
+        folder_data_name=model_parameters.filename
+    )
+
+    calibrate_by_fuzzy_linear_regression(
         df=df,
         poa=poa,
         sensor_names=model_parameters.sensor_names,
@@ -76,19 +84,8 @@ def calibrate(
         folder_data_name=model_parameters.filename
     )
 
-    '''
-    calibrate_by_linear_regression(
-        df=df,
-        poa_global=poa_global,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        log_dir=model_parameters.log_dir,
-        folder_data_name=model_parameters.filename
-    )
-    
     calibrate_by_divided_linear_regression(
         df=df,
-        df_time=model_parameters.df_time,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         log_dir=model_parameters.log_dir,
@@ -118,7 +115,6 @@ def calibrate(
         log_dir=model_parameters.log_dir,
         folder_data_name=model_parameters.filename
     )
-    '''
 
 
 def plot(

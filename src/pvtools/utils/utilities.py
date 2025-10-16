@@ -20,7 +20,7 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
     parser.add_argument("--csv", required=True,
                         help="Path to CSV file with input data")
     parser.add_argument("--calibration",
-                        choices=["linear", "divided_linear", "decision_tree", "poly", "mlp"],
+                        choices=["linear", "fuzzy", "divided_linear", "decision_tree", "poly", "mlp"],
                         default="linear",
                         help="Defines which calibration method use to calibrate sensors")
     parser.add_argument("--sensors", type=int, nargs="+",required=True,

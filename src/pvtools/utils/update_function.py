@@ -25,7 +25,9 @@ def update_function(
     df_sunny_cutted_short, df_cloudy_cutted_short = process_solar_data_with_clearsky_detection_and_masking(
         model_parameters=model_parameters,
         clearsky_parameters=clear_sky_parameters,
-        clearsky_calculated_values=clearsky_calculated_values
+        clearsky_calculated_values=clearsky_calculated_values,
+        start_time=start_time,
+        end_time=end_time
     )
 
     calculate_regression(

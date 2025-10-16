@@ -20,6 +20,8 @@ from datetime import datetime
 
 config = {"wsdlUrl": ["http://localhost:43080/eds.wsdl"],
           "httpUrl": ["http://localhost:43080"]}
+#config = {"wsdlUrl": ["http://192.168.50.51:43080/eds.wsdl"],
+#          "httpUrl": ["http://192.168.50.51:43080"]}
 client = None
 
 

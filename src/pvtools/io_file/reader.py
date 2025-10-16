@@ -41,6 +41,9 @@ def load_and_merge_calibrated_data_from_each_sensor(
     if model_parameters.args.calibration == "linear":
         df_calibrated = create_dataframe_from_csv("linear_regression", col)
 
+    elif model_parameters.args.calibration == "fuzzy":
+        df_calibrated = create_dataframe_from_csv("fuzzy_regression", col)
+
     elif model_parameters.args.calibration == "divided_linear":
         df_calibrated = create_dataframe_from_csv("divided_linear_regression", col)
 

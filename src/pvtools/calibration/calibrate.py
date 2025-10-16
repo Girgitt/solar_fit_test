@@ -24,30 +24,51 @@ def calibrate_by_linear_regression(
         folder_data_name: str,
 ) -> None:
 
-    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "linear_regression", period))
-    log.debug(f"calibration_method_dir:{calibration_method_dir}")
+    calibration_method_dir_sunny = Path(os.path.join(log_dir, folder_data_name, "linear_regression", "sunny"))
+    calibration_method_dir_cloudy = Path(os.path.join(log_dir, folder_data_name, "linear_regression", "cloudy"))
 
-    json_files = list(calibration_method_dir.glob("*.json"))
+    log.debug(f"calibration_method_dir:{calibration_method_dir_sunny}")
+    log.debug(f"calibration_method_dir:{calibration_method_dir_cloudy}")
 
-    if len(json_files) != len(sensor_names):
+    json_files_sunny = list(calibration_method_dir_sunny.glob("*.json"))
+    json_files_cloudy = list(calibration_method_dir_cloudy.glob("*.json"))
+
+    if len(json_files_sunny) != len(sensor_names):
         raise RuntimeError(
-            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_sunny},"
+            f" but found {len(json_files_sunny)}.")
 
-    for idx, json_file_dir in enumerate(json_files):
-        log.debug(f"fitting json: {json_file_dir}")
-        params = linear_regression_load_parameters(json_file_dir)
-        time = df["time"]
-        x = df[sensor_names[idx]].values
-        y_true = df[sensor_name_ref]
-        y_pred = linear_regression_use_calibration_values(x, params)
+    if len(json_files_cloudy) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_cloudy},"
+            f" but found {len(json_files_cloudy)}.")
 
-        output_dir = Path(calibration_method_dir)
-        file_stem = Path(json_file_dir).stem
+    for i, json_file_dir_sunny in enumerate(json_files_sunny):
+        params_sunny = linear_regression_load_parameters(json_file_dir_sunny)
+
+        for j, json_file_dir_cloudy in enumerate(json_files_cloudy):
+            params_cloudy = linear_regression_load_parameters(json_file_dir_cloudy)
+
+            log.debug(f"fitting json: {json_file_dir_sunny}")
+            log.debug(f"fitting json: {json_file_dir_cloudy}")
+
+            time = df["time"]
+            y_true = df[sensor_name_ref]
+
+            y_pred = linear_regression_use_calibration_values(
+                df=df[["time", sensor_names[j], "if_sunny"]],
+                sensor_name=sensor_names[j],
+                params_sunny=params_sunny,
+                params_cloudy=params_cloudy
+            )
+
+        output_dir = Path(calibration_method_dir_sunny).parent
+        file_stem = Path(json_file_dir_sunny).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
         log.debug(f"csv_filename: {csv_filename}")
         save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
 
-def calibrate_by_fuzzy_regression(
+def calibrate_by_fuzzy_linear_regression(
         df: pd.DataFrame,
         poa: pd.DataFrame,
         sensor_names: np.ndarray,
@@ -79,8 +100,9 @@ def calibrate_by_fuzzy_regression(
     y_true = df[sensor_name_ref]
 
     for i, json_file_dir_sunny in enumerate(json_files_sunny):
+        params_sunny = linear_regression_load_parameters(json_file_dir_sunny)
+
         for j, json_file_dir_cloudy in enumerate(json_files_cloudy):
-            params_sunny = linear_regression_load_parameters(json_file_dir_sunny)
             params_cloudy = linear_regression_load_parameters(json_file_dir_cloudy)
 
             left = df[["time", sensor_name_ref]]
@@ -93,7 +115,7 @@ def calibrate_by_fuzzy_regression(
 
             y_pred = fuzzy_regression_use_calibration_values_df(
                 df=df[["time", sensor_names[j], "if_sunny"]],
-                sensor_col=sensor_names[j],
+                sensor_name=sensor_names[j],
                 params_sunny=params_sunny,
                 params_cloudy=params_cloudy,
                 kt=k_t, # uses k_t ramp 0.5→0.7 + smoothing
@@ -103,7 +125,9 @@ def calibrate_by_fuzzy_regression(
                 smooth_window=5
             )
 
-        output_dir = Path(calibration_method_dir_sunny).parent
+        output_dir = Path(calibration_method_dir_sunny).parent.parent / "fuzzy_regression"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
         file_stem = Path(json_file_dir_sunny).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
         log.debug(f"csv_filename: {csv_filename}")
@@ -111,173 +135,242 @@ def calibrate_by_fuzzy_regression(
 
 
 def calibrate_by_divided_linear_regression(
-        df_sunny: pd.DataFrame,
-        df_cloudy: pd.DataFrame,
-        df_time: pd.DataFrame,
+        df: pd.DataFrame,
         sensor_names: np.ndarray,
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
 ) -> None:
 
-    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "divided_linear_regression", period))
+    calibration_method_dir_sunny = Path(os.path.join(log_dir, folder_data_name, "divided_linear_regression", "sunny"))
+    calibration_method_dir_cloudy = Path(os.path.join(log_dir, folder_data_name, "divided_linear_regression", "cloudy"))
 
-    json_files = list(calibration_method_dir.glob("*.json"))
+    log.debug(f"calibration_method_dir:{calibration_method_dir_sunny}")
+    log.debug(f"calibration_method_dir:{calibration_method_dir_cloudy}")
 
-    if len(json_files) != len(sensor_names):
+    json_files_sunny = list(calibration_method_dir_sunny.glob("*.json"))
+    json_files_cloudy = list(calibration_method_dir_cloudy.glob("*.json"))
+
+    if len(json_files_sunny) != len(sensor_names):
         raise RuntimeError(
-            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_sunny},"
+            f" but found {len(json_files_sunny)}.")
 
-    for idx, json_file_dir in enumerate(json_files):
-        params = divided_linear_regression_load_parameters(json_file_dir)
+    if len(json_files_cloudy) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_cloudy},"
+            f" but found {len(json_files_cloudy)}.")
 
-        time = df["time"]
-        x = df[sensor_names[idx]].values
-        y_true = df[sensor_name_ref]
-        y_pred = divided_linear_regression_use_calibration_values(x, df_time, params)
+    for i, json_file_dir_sunny in enumerate(json_files_sunny):
+        params_sunny = divided_linear_regression_load_parameters(json_file_dir_sunny)
 
-        output_dir = Path(calibration_method_dir)
-        file_stem = Path(json_file_dir).stem
+        for j, json_file_dir_cloudy in enumerate(json_files_cloudy):
+            params_cloudy = divided_linear_regression_load_parameters(json_file_dir_cloudy)
+
+            log.debug(f"fitting json: {json_file_dir_sunny}")
+            log.debug(f"fitting json: {json_file_dir_cloudy}")
+
+            time = df["time"]
+            y_true = df[sensor_name_ref]
+
+            y_pred = divided_linear_regression_use_calibration_values(
+                df=df[["time", sensor_names[j], "if_sunny"]],
+                sensor_name=sensor_names[j],
+                params_sunny=params_sunny,
+                params_cloudy=params_cloudy
+            )
+
+        output_dir = Path(calibration_method_dir_sunny).parent
+        file_stem = Path(json_file_dir_sunny).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
-
+        log.debug(f"csv_filename: {csv_filename}")
+        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None, time=time)
 
 def calibrate_by_polynominal_regression(
-        df_sunny: pd.DataFrame,
-        df_cloudy: pd.DataFrame,
+        df: pd.DataFrame,
         sensor_names: np.ndarray,
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
 ) -> None:
 
-    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "polynominal_regression", period))
+    calibration_method_dir_sunny = Path(os.path.join(log_dir, folder_data_name, "polynominal_regression", "sunny"))
+    calibration_method_dir_cloudy = Path(os.path.join(log_dir, folder_data_name, "polynominal_regression", "cloudy"))
 
-    json_files = list(calibration_method_dir.glob("*.json"))
+    log.debug(f"calibration_method_dir:{calibration_method_dir_sunny}")
+    log.debug(f"calibration_method_dir:{calibration_method_dir_cloudy}")
 
-    if len(json_files) != len(sensor_names):
+    json_files_sunny = list(calibration_method_dir_sunny.glob("*.json"))
+    json_files_cloudy = list(calibration_method_dir_cloudy.glob("*.json"))
+
+    if len(json_files_sunny) != len(sensor_names):
         raise RuntimeError(
-            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_sunny},"
+            f" but found {len(json_files_sunny)}.")
 
-    for idx, json_file_dir in enumerate(json_files):
-        params = polynominal_regression_load_parameters(json_file_dir)
+    if len(json_files_cloudy) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_cloudy},"
+            f" but found {len(json_files_cloudy)}.")
 
-        time = df["time"]
-        x = df[sensor_names[idx]].values
-        y_true = df[sensor_name_ref]
-        y_pred = polynominal_regression_use_calibration_values(x, params)
+    for i, json_file_dir_sunny in enumerate(json_files_sunny):
+        params_sunny = polynominal_regression_load_parameters(json_file_dir_sunny)
 
-        output_dir = Path(calibration_method_dir)
-        file_stem = Path(json_file_dir).stem
+        for j, json_file_dir_cloudy in enumerate(json_files_cloudy):
+            params_cloudy = polynominal_regression_load_parameters(json_file_dir_cloudy)
+
+            log.debug(f"fitting json: {json_file_dir_sunny}")
+            log.debug(f"fitting json: {json_file_dir_cloudy}")
+
+            time = df["time"]
+            y_true = df[sensor_name_ref]
+
+            y_pred = polynominal_regression_use_calibration_values(
+                df=df[["time", sensor_names[j], "if_sunny"]],
+                sensor_name=sensor_names[j],
+                params_sunny=params_sunny,
+                params_cloudy=params_cloudy
+            )
+
+        output_dir = Path(calibration_method_dir_sunny).parent
+        file_stem = Path(json_file_dir_sunny).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
+        log.debug(f"csv_filename: {csv_filename}")
+        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None, time=time)
 
 
 def calibrate_by_decision_tree_regression(
-        df_sunny: pd.DataFrame,
-        df_cloudy: pd.DataFrame,
+        df: pd.DataFrame,
         sensor_names: np.ndarray,
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
 ) -> None:
+    calibration_method_dir_sunny = Path(os.path.join(log_dir, folder_data_name, "decision_tree_regression", "sunny"))
+    calibration_method_dir_cloudy = Path(os.path.join(log_dir, folder_data_name, "decision_tree_regression", "cloudy"))
 
-    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "decision_tree_regression", period))
+    log.debug(f"calibration_method_dir:{calibration_method_dir_sunny}")
+    log.debug(f"calibration_method_dir:{calibration_method_dir_cloudy}")
 
-    json_files = list(calibration_method_dir.glob("*.json"))
+    json_files_sunny = list(calibration_method_dir_sunny.glob("*.json"))
+    json_files_cloudy = list(calibration_method_dir_cloudy.glob("*.json"))
 
-    if len(json_files) != len(sensor_names):
+    if len(json_files_sunny) != len(sensor_names):
         raise RuntimeError(
-            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_sunny},"
+            f" but found {len(json_files_sunny)}.")
 
-    for idx, json_file_dir in enumerate(json_files):
-        params = decision_tree_regression_load_parameters(json_file_dir)
+    if len(json_files_cloudy) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_cloudy},"
+            f" but found {len(json_files_cloudy)}.")
 
-        time = df["time"]
-        x = df[sensor_names[idx]].values
-        y_true = df[sensor_name_ref]
-        y_pred = decision_tree_regression_use_calibration_values(x, params)
+    for i, json_file_dir_sunny in enumerate(json_files_sunny):
+        params_sunny = decision_tree_regression_load_parameters(json_file_dir_sunny)
 
-        output_dir = Path(calibration_method_dir)
-        file_stem = Path(json_file_dir).stem
+        for j, json_file_dir_cloudy in enumerate(json_files_cloudy):
+            params_cloudy = decision_tree_regression_load_parameters(json_file_dir_cloudy)
+
+            log.debug(f"fitting json: {json_file_dir_sunny}")
+            log.debug(f"fitting json: {json_file_dir_cloudy}")
+
+            time = df["time"]
+            y_true = df[sensor_name_ref]
+
+            y_pred = decision_tree_regression_use_calibration_values(
+                df=df[["time", sensor_names[j], "if_sunny"]],
+                sensor_name=sensor_names[j],
+                params_sunny=params_sunny,
+                params_cloudy=params_cloudy
+            )
+
+        output_dir = Path(calibration_method_dir_sunny).parent
+        file_stem = Path(json_file_dir_sunny).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
+        log.debug(f"csv_filename: {csv_filename}")
+        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None, time=time)
 
 
 def calibrate_by_mlp_regression(
-        df_sunny: pd.DataFrame,
-        df_cloudy: pd.DataFrame,
+        df: pd.DataFrame,
         sensor_names: np.ndarray,
         sensor_name_ref: np.ndarray,
         log_dir: Path,
         folder_data_name: str
 ) -> None:
 
-    calibration_method_dir = Path(os.path.join(log_dir, folder_data_name, "mlp_regression", period))
+    calibration_method_dir_sunny = Path(os.path.join(log_dir, folder_data_name, "mlp_regression", "sunny"))
+    calibration_method_dir_cloudy = Path(os.path.join(log_dir, folder_data_name, "mlp_regression", "cloudy"))
 
-    json_files = list(calibration_method_dir.glob("*.json"))
+    log.debug(f"calibration_method_dir:{calibration_method_dir_sunny}")
+    log.debug(f"calibration_method_dir:{calibration_method_dir_cloudy}")
 
-    if len(json_files) != len(sensor_names):
+    json_files_sunny = list(calibration_method_dir_sunny.glob("*.json"))
+    json_files_cloudy = list(calibration_method_dir_cloudy.glob("*.json"))
+
+    if len(json_files_sunny) != len(sensor_names):
         raise RuntimeError(
-            f"Expected {len(sensor_names)} .json files in {calibration_method_dir}, but found {len(json_files)}.")
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_sunny},"
+            f" but found {len(json_files_sunny)}.")
 
-    for idx, json_file_dir in enumerate(json_files):
-        params = mlp_load_parameters(json_file_dir)
+    if len(json_files_cloudy) != len(sensor_names):
+        raise RuntimeError(
+            f"Expected {len(sensor_names)} .json files in {calibration_method_dir_cloudy},"
+            f" but found {len(json_files_cloudy)}.")
 
-        time = df["time"]
-        x = df[sensor_names[idx]].values
-        y_true = df[sensor_name_ref]
-        y_pred = mlp_use_calibration_values(x, params, activation="relu")
+    for i, json_file_dir_sunny in enumerate(json_files_sunny):
+        params_sunny = mlp_load_parameters(json_file_dir_sunny)
 
-        output_dir = Path(calibration_method_dir)
-        file_stem = Path(json_file_dir).stem
+        for j, json_file_dir_cloudy in enumerate(json_files_cloudy):
+            params_cloudy = mlp_load_parameters(json_file_dir_cloudy)
+
+            log.debug(f"fitting json: {json_file_dir_sunny}")
+            log.debug(f"fitting json: {json_file_dir_cloudy}")
+
+            time = df["time"]
+            y_true = df[sensor_name_ref]
+
+            y_pred = mlp_use_calibration_values(
+                df=df[["time", sensor_names[j], "if_sunny"]],
+                sensor_name=sensor_names[j],
+                params_sunny=params_sunny,
+                params_cloudy=params_cloudy
+            )
+
+        output_dir = Path(calibration_method_dir_sunny).parent
+        file_stem = Path(json_file_dir_sunny).stem
         csv_filename = output_dir / f"{file_stem}_all_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None,time=time)
+        log.debug(f"csv_filename: {csv_filename}")
+        save_true_and_predicted_data_to_csv(y_true, y_pred, csv_filename, index=None, time=time)
 
 
 def linear_regression_use_calibration_values(
-        x: np.ndarray,
-        params: dict
-) -> np.ndarray:
-    a = params["a"]
-    b = params["b"]
-    x = np.asarray(x).flatten()
+        df: pd.DataFrame,
+        sensor_name: str,
+        params_sunny: dict,
+        params_cloudy: dict
+) -> pd.Series:
 
-    y_pred = a * x + b
+    check_if_any_column_is_missing(
+        df=df,
+        sensor_name=sensor_name,
+        time_col="time",
+        if_sunny_col="if_sunny"
+    )
+
+    x = df[sensor_name]
+    is_sunny = df["if_sunny"].astype(bool)
+
+    y_pred = pd.Series(index=df.index, dtype=float)
+    y_pred[is_sunny] = params_sunny["a"] * x[is_sunny] + params_sunny["b"]
+    y_pred[~is_sunny] = params_cloudy["a"] * x[~is_sunny] + params_cloudy["b"]
+
     return y_pred
 
-def _moving_average_1d(x: np.ndarray, window: int) -> np.ndarray:
-    """Centered moving average; preserves length; interpolates NaNs."""
-    if window is None or window <= 1:
-        return np.asarray(x, dtype=float)
-    x = np.asarray(x, dtype=float)
-    nan = np.isnan(x)
-    if nan.any():
-        idx = np.arange(x.size)
-        x[nan] = np.interp(idx[nan], idx[~nan], x[~nan]) if (~nan).any() else 0.0
-    kernel = np.ones(int(window), dtype=float) / float(window)
-    return np.convolve(x, kernel, mode="same")
-
-def _fuzzy_weight_from_kt(
-    k_t: np.ndarray,
-    t0: float = 0.50,
-    t1: float = 0.70,
-    smooth_window: int = 5
-) -> np.ndarray:
-    """
-    Sunny membership in [0,1] from k_t with a smoothed linear ramp:
-      k_t <= t0 -> 0 (cloudy),  k_t >= t1 -> 1 (sunny)
-    """
-    k_t = np.asarray(k_t, dtype=float).flatten()
-    k_t = np.clip(k_t, 0.0, 1.0)
-    k_t_s = _moving_average_1d(k_t, smooth_window)
-    eps = 1e-12
-    w = (k_t_s - t0) / max(t1 - t0, eps)
-    return np.clip(w, 0.0, 1.0)
 
 def fuzzy_regression_use_calibration_values_df(
     df: pd.DataFrame,
-    sensor_col: str,
+    sensor_name: str,
     params_sunny: dict,
     params_cloudy: dict,
     *,
@@ -289,23 +382,19 @@ def fuzzy_regression_use_calibration_values_df(
     t1: float = 0.70,
     smooth_window: int = 5
 ) -> np.ndarray:
-    """
-    Fuzzy blend of two linear models on a single DataFrame.
-    y_hat = w*(a_s*x + b_s) + (1-w)*(a_c*x + b_c), aligned to df.index.
 
-    df must contain:
-      - sensor_col (e.g., VEML7700 reading)
-      - 'if_sunny' (bool) if use_mask_as_weight=True
-      - optionally a clearness index column if kt_col is provided
-    """
-    if sensor_col not in df.columns:
-        raise KeyError(f"Missing column: {sensor_col}")
+    check_if_any_column_is_missing(
+        df=df,
+        sensor_name=sensor_name,
+        time_col="time",
+        if_sunny_col="if_sunny"
+    )
 
     a_s, b_s = float(params_sunny["a"]), float(params_sunny["b"])
     a_c, b_c = float(params_cloudy["a"]), float(params_cloudy["b"])
 
     # feature vector (all rows; ensures shapes line up)
-    x = np.asarray(df[sensor_col].to_numpy(), dtype=float).flatten()
+    x = np.asarray(df[sensor_name].to_numpy(), dtype=float).flatten()
 
     # per-regime predictions for ALL rows (avoids shape mismatch)
     y_s = a_s * x + b_s
@@ -340,109 +429,181 @@ def fuzzy_regression_use_calibration_values_df(
     y_hat = w * y_s + (1.0 - w) * y_c
     return y_hat
 
-'''
-def fuzzy_regression_use_calibration_values(
-        x_sunny: np.ndarray,
-        x_cloudy: np.ndarray,
-        params_sunny: dict,
-        params_cloudy: dict
+
+def _moving_average_1d(x: np.ndarray, window: int) -> np.ndarray:
+    """Centered moving average; preserves length; interpolates NaNs."""
+    if window is None or window <= 1:
+        return np.asarray(x, dtype=float)
+    x = np.asarray(x, dtype=float)
+    nan = np.isnan(x)
+    if nan.any():
+        idx = np.arange(x.size)
+        x[nan] = np.interp(idx[nan], idx[~nan], x[~nan]) if (~nan).any() else 0.0
+    kernel = np.ones(int(window), dtype=float) / float(window)
+    return np.convolve(x, kernel, mode="same")
+
+
+def _fuzzy_weight_from_kt(
+    k_t: np.ndarray,
+    t0: float = 0.50,
+    t1: float = 0.70,
+    smooth_window: int = 5
 ) -> np.ndarray:
-    a_sunny = params_sunny["a"]
-    b_sunny = params_sunny["b"]
-
-    a_cloudy = params_cloudy["a"]
-    b_cloudy = params_cloudy["b"]
-
-    x_sunny = np.asarray(x_sunny).flatten()
-    x_cloudy = np.asarray(x_cloudy).flatten()
-
-    y_pred = a * x + b
-    return y_pred
-'''
+    """
+    Sunny membership in [0,1] from k_t with a smoothed linear ramp:
+      k_t <= t0 -> 0 (cloudy),  k_t >= t1 -> 1 (sunny)
+    """
+    k_t = np.asarray(k_t, dtype=float).flatten()
+    k_t = np.clip(k_t, 0.0, 1.0)
+    k_t_s = _moving_average_1d(k_t, smooth_window)
+    eps = 1e-12
+    w = (k_t_s - t0) / max(t1 - t0, eps)
+    return np.clip(w, 0.0, 1.0)
 
 def divided_linear_regression_use_calibration_values(
-        x: np.ndarray,
-        time: np.ndarray,
-        params: dict
-) -> np.ndarray:
-    intervals = sorted([
-        (pd.to_datetime(c["hour"]), c["a"], c["b"])
-        for c in params
-        if all(k in c for k in ("hour", "a", "b"))
-    ], key=lambda x: x[0])
+        df: pd.DataFrame,
+        sensor_name: str,
+        params_sunny: list[dict],
+        params_cloudy: list[dict]
+) -> pd.Series:
 
-    time = pd.to_datetime(time)
+    check_if_any_column_is_missing(
+        df=df,
+        sensor_name=sensor_name,
+        time_col="time",
+        if_sunny_col="if_sunny"
+    )
 
+    def build_intervals(param_list: list[dict]) -> list[tuple[pd.Timestamp, float, float]]:
+        return sorted(
+            [
+                (p["hour"], p["a"], p["b"]) for p in param_list
+                if all(k in p for k in ("hour", "a", "b"))
+            ],
+            key=lambda x: x[0],
+        )
+
+    intervals_sunny = build_intervals(params_sunny)
+    intervals_cloudy = build_intervals(params_cloudy)
+
+    if not intervals_sunny or not intervals_cloudy:
+        raise ValueError("Both params_sunny and params_cloudy must contain valid (hour, a, b) entries.")
+
+    x = df[sensor_name]
+    time = df["time"]
+    is_sunny = df["if_sunny"]
     y_pred = np.empty_like(x, dtype=float)
 
     for i in range(len(x)):
-        t = time[i]
+        current_time = time.iloc[i]
+        current_params = intervals_sunny if is_sunny.iloc[i] else intervals_cloudy
+
         a, b = 0.0, 0.0
-
-        for j in range(len(intervals)):
-            t_start, a_j, b_j = intervals[j]
-            t_end = intervals[j + 1][0] if j + 1 < len(intervals) else pd.Timestamp.max.tz_localize('Europe/Warsaw')
-
-            if t_start <= t < t_end:
+        for j, (t_start, a_j, b_j) in enumerate(current_params):
+            t_end = (
+                current_params[j + 1][0]
+                if j + 1 < len(current_params)
+                else pd.Timestamp.max
+            )
+            if t_start <= current_time < t_end:
                 a, b = a_j, b_j
                 break
 
-        y_pred[i] = a * x[i] + b
+        y_pred[i] = a * x.iloc[i] + b
 
-    return y_pred
+    result = pd.Series(y_pred, index=df.index, name=f"{sensor_name}_calibrated")
+
+    return result
 
 
 def polynominal_regression_use_calibration_values(
-        x: np.ndarray,
-        params: dict
-) -> np.ndarray:
-    a = params["a"]
-    b = params["b"]
-    c = params["c"]
+        df: pd.DataFrame,
+        sensor_name: str,
+        params_sunny: dict,
+        params_cloudy: dict
+) -> pd.Series:
 
-    x = np.asarray(x).flatten()
-    y_pred = a * x ** 2 + b * x + c
+    check_if_any_column_is_missing(
+        df=df,
+        sensor_name=sensor_name,
+        time_col="time",
+        if_sunny_col="if_sunny"
+    )
+
+    x = df[sensor_name]
+    is_sunny = df["if_sunny"].astype(bool)
+
+    y_pred = pd.Series(index=df.index, dtype=float)
+
+    y_pred[is_sunny] = (
+            params_sunny["a"] * x[is_sunny] ** 2
+            + params_sunny["b"] * x[is_sunny]
+            + params_sunny["c"]
+    )
+
+    y_pred[~is_sunny] = (
+            params_cloudy["a"] * x[~is_sunny] ** 2
+            + params_cloudy["b"] * x[~is_sunny]
+            + params_cloudy["c"]
+    )
 
     return y_pred
 
 
 def decision_tree_regression_use_calibration_values(
-        x: np.ndarray,
-        params: dict
-) -> np.ndarray:
-    tree = params #params["params"]
-    x = np.asarray(x).flatten()
-    y_pred = np.array([_traverse_tree(tree, val) for val in x])
+        df: pd.DataFrame,
+        sensor_name: str,
+        params_sunny: dict,
+        params_cloudy: dict
+) -> pd.Series:
 
-    return y_pred
+    check_if_any_column_is_missing(
+        df=df,
+        sensor_name=sensor_name,
+        time_col="time",
+        if_sunny_col="if_sunny"
+    )
+
+    x = df[sensor_name].to_numpy().flatten()
+    is_sunny = df["if_sunny"].astype(bool).to_numpy()
+
+    if params_sunny is None or params_cloudy is None:
+        raise ValueError("Both params_sunny and params_cloudy must contain a 'params' key with a tree structure.")
+
+    y_pred = np.empty_like(x, dtype=float)
+
+    for i in range(len(x)):
+        model = params_sunny if is_sunny[i] else params_cloudy
+        y_pred[i] = _traverse_tree(model, x[i])
+
+    return pd.Series(y_pred, index=df.index)
 
 
 def mlp_use_calibration_values(
-        x: np.ndarray,
-        params: dict,
+        df: pd.DataFrame,
+        sensor_name: str,
+        params_sunny: dict,
+        params_cloudy: dict,
         activation: str='relu'
-) -> np.ndarray:
-    W1 = np.array(params["layer_1_weights"])  # shape (n_inputs, 10)
-    b1 = np.array(params["layer_1_biases"])  # (10,)
-    W2 = np.array(params["layer_2_weights"])  # shape (10, 10)
-    b2 = np.array(params["layer_2_biases"])  # (10,)
-    W3 = np.array(params["output_weights"])  # (10, 1)
-    b3 = np.array(params["output_biases"])  # (1,)
+) -> pd.Series:
 
-    x = np.atleast_2d(x).reshape(-1, W1.shape[0])  # x: shape (n_samples, n_inputs)
+    check_if_any_column_is_missing(
+        df=df,
+        sensor_name=sensor_name,
+        time_col="time",
+        if_sunny_col="if_sunny"
+    )
 
-    # Forward pass through first hidden layer
-    z1 = x @ W1 + b1  # shape: (n_samples, n_hidden)
-    a1 = _apply_activation(z1, activation)
+    x = df[sensor_name].to_numpy().reshape(-1, 1)  # shape (n_samples, n_inputs)
+    is_sunny = df["if_sunny"].astype(bool).to_numpy()
+    y_pred = np.empty_like(x.flatten(), dtype=float)
 
-    # Forward pass through second hidden layer
-    z2 = a1 @ W2 + b2
-    a2 = _apply_activation(z2, activation) # shape: (h_hidden, n_hidden)
+    if np.any(is_sunny):
+        y_pred[is_sunny] = _forward_pass(x[is_sunny], params_sunny, activation)
+    if np.any(~is_sunny):
+        y_pred[~is_sunny] = _forward_pass(x[~is_sunny], params_cloudy, activation)
 
-    # Output layer
-    output = a2 @ W3 + b3 # shape: (n_samples, 1)
-
-    return output.flatten()
+    return pd.Series(y_pred, index=df.index)
 
 
 def _apply_activation(z, activation) -> np.ndarray:
@@ -454,3 +615,37 @@ def _apply_activation(z, activation) -> np.ndarray:
         return z
     else:
         raise ValueError(f"Unsupported activation: {activation}")
+
+def _forward_pass(
+        x: np.ndarray,
+        params: dict,
+        activation: str,
+) -> np.ndarray:
+
+    W1 = np.array(params["layer_1_weights"])
+    b1 = np.array(params["layer_1_biases"])
+    W2 = np.array(params["layer_2_weights"])
+    b2 = np.array(params["layer_2_biases"])
+    W3 = np.array(params["output_weights"])
+    b3 = np.array(params["output_biases"])
+
+    z1 = x @ W1 + b1
+    a1 = _apply_activation(z1, activation)
+
+    z2 = a1 @ W2 + b2
+    a2 = _apply_activation(z2, activation)
+
+    output = a2 @ W3 + b3
+
+    return output.flatten()
+
+def check_if_any_column_is_missing(
+        df: pd.DataFrame,
+        sensor_name: str,
+        time_col: str,
+        if_sunny_col: str
+) -> None:
+    required_cols = {time_col, if_sunny_col, sensor_name}
+    missing = required_cols - set(df.columns)
+    if missing:
+        raise ValueError(f"DataFrame missing required columns: {missing}")
