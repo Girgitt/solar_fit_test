@@ -64,3 +64,8 @@ class DatatypeCoefficientsForMLPRegression(TypedDict):
     layer_2_biases: List[float]
     output_weights: List[List[float]]
     output_biases: List[float]
+    x_scaler_mean: float
+    x_scaler_scale: float
+    y_scaler_mean: float
+    y_scaler_scale: float
+    activation: str

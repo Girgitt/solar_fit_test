@@ -598,36 +598,66 @@ def mlp_use_calibration_values(
     is_sunny = df["if_sunny"].astype(bool).to_numpy()
     y_pred = np.empty_like(x.flatten(), dtype=float)
 
+    activation_sunny = params_sunny["scalers"].get("activation", activation)
+    activation_cloudy = params_cloudy["scalers"].get("activation", activation)
+
     if np.any(is_sunny):
-        y_pred[is_sunny] = _forward_pass(x[is_sunny], params_sunny, activation)
+        xs = _scale_in(x[is_sunny], params_sunny["scalers"])
+        ys = _forward_pass(xs, params_sunny["coefficients"], activation_sunny).reshape(-1, 1)
+        y_pred[is_sunny] = _inv_out(ys, params_sunny["scalers"]).ravel()
+
     if np.any(~is_sunny):
-        y_pred[~is_sunny] = _forward_pass(x[~is_sunny], params_cloudy, activation)
+        xc = _scale_in(x[~is_sunny], params_cloudy["scalers"])
+        yc = _forward_pass(xc, params_cloudy["coefficients"], activation_cloudy).reshape(-1, 1)
+        y_pred[~is_sunny] = _inv_out(yc, params_cloudy["scalers"]).ravel()
 
     return pd.Series(y_pred, index=df.index)
 
+def _scale_in(
+        x2d: np.ndarray,
+        scaler: dict
+) -> np.ndarray:
 
-def _apply_activation(z, activation) -> np.ndarray:
-    if activation == 'relu':
-        return np.maximum(0, z)
-    elif activation == 'tanh':
-        return np.tanh(z)
-    elif activation == 'identity':
-        return z
-    else:
-        raise ValueError(f"Unsupported activation: {activation}")
+    mean = scaler.get("x_scaler_mean", None)
+    scale = scaler.get("x_scaler_scale", None)
+
+    if mean is not None and scale is not None:
+        mean = np.asarray(mean)
+        scale = np.asarray(scale)
+        scale = np.where(scale == 0, 1.0, scale)
+        return (x2d - mean) / scale
+
+    return x2d
+
+
+def _inv_out(
+        y: np.ndarray,
+        scaler: dict
+) -> np.ndarray:
+
+    mean = scaler.get("y_scaler_mean", None)
+    scale = scaler.get("y_scaler_scale", None)
+
+    if mean is not None and scale is not None:
+        mean = np.asarray(mean)
+        scale = np.asarray(scale)
+        return y * scale + mean
+
+    return y
+
 
 def _forward_pass(
         x: np.ndarray,
-        params: dict,
+        coeffs: dict,
         activation: str,
 ) -> np.ndarray:
 
-    W1 = np.array(params["layer_1_weights"])
-    b1 = np.array(params["layer_1_biases"])
-    W2 = np.array(params["layer_2_weights"])
-    b2 = np.array(params["layer_2_biases"])
-    W3 = np.array(params["output_weights"])
-    b3 = np.array(params["output_biases"])
+    W1 = np.array(coeffs["layer_1_weights"])
+    b1 = np.array(coeffs["layer_1_biases"])
+    W2 = np.array(coeffs["layer_2_weights"])
+    b2 = np.array(coeffs["layer_2_biases"])
+    W3 = np.array(coeffs["output_weights"])
+    b3 = np.array(coeffs["output_biases"])
 
     z1 = x @ W1 + b1
     a1 = _apply_activation(z1, activation)
@@ -638,6 +668,20 @@ def _forward_pass(
     output = a2 @ W3 + b3
 
     return output.flatten()
+
+
+def _apply_activation(
+        z: float,
+        activation: str
+) -> np.ndarray:
+    if activation == 'relu':
+        return np.maximum(0, z)
+    elif activation == 'tanh':
+        return np.tanh(z)
+    elif activation == 'identity':
+        return z
+    else:
+        raise ValueError(f"Unsupported activation: {activation}")
 
 def check_if_any_column_is_missing(
         df: pd.DataFrame,

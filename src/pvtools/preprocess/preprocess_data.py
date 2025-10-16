@@ -142,21 +142,6 @@ def average_measurements(
     return df_resampled
 
 
-def normalize_values(df: pd.DataFrame) -> pd.DataFrame:
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError("Expected 'df' to be a pandas DataFrame")
-
-    df = df.copy()
-
-    scaler = MinMaxScaler()
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    scaled_array = scaler.fit_transform(df[numeric_cols])
-    df_scaled = df.copy()
-    df_scaled[numeric_cols] = scaled_array
-
-    return df_scaled
-
-
 def sanitize_filename(name: str) -> str:
     name = name.split("@")[-1]
     name = re.sub(r'[^a-zA-Z0-9_\-]', '_', name)

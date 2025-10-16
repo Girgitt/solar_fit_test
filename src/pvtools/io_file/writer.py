@@ -14,8 +14,9 @@ required_metric_fields = ["mse", "mae", "rmse", "r2", "mape", "max_error", "bias
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,
         samples_count: int,
-        coefficients_list: list[dict],
-        filename_path: Path = None
+        coefficients_list: list[dict] = None,
+        filename_path: Path = None,
+        scalers_list: list[dict] = None
 ) -> None:
     for attr in required_metric_fields:
         if not hasattr(metrics, attr):
@@ -37,6 +38,9 @@ def save_metrics_to_json(
 
     if coefficients_list is not None:
         metrics_json["coefficients"] = coefficients_list
+
+    if scalers_list is not None:
+        metrics_json["scalers"] = scalers_list
 
     if filename_path is not None:
         filename_path.parent.mkdir(parents=True, exist_ok=True)

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Any
 from sklearn.linear_model import LinearRegression, HuberRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.tree import _tree
@@ -14,7 +14,7 @@ from typing import TypeAlias, Literal
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 from pvtools.io_file.writer import save_metrics_to_json, save_true_and_predicted_data_to_csv
-from pvtools.preprocess.preprocess_data import sanitize_filename, normalize_values
+from pvtools.preprocess.preprocess_data import sanitize_filename
 
 '''
 MAE does not indicate whether the model overestimates or underestimates values
@@ -269,8 +269,6 @@ def mlp_regression(
     df = df.copy()
     coefficients = []
 
-    df = normalize_values(df)
-
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
@@ -281,18 +279,37 @@ def mlp_regression(
 
         indices = np.arange(len(df))
         x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
-            x, y, indices, test_size=my_test_size, random_state=my_random_state
+            x, y, indices, test_size=my_test_size, random_state=my_random_state, shuffle=True
             )
 
         time_test = time.iloc[idx_test]
 
+        # scale x and y on train only (not the whole data)
+        x_scaler = StandardScaler().fit(x_train)
+        y_scaler = StandardScaler().fit(y_train.reshape(-1, 1))
+        x_train_s = x_scaler.transform(x_train)
+        x_test_s = x_scaler.transform(x_test)
+        y_train_s = y_scaler.transform(y_train.reshape(-1, 1)).ravel()
+
         model = MLPRegressor(
             loss='squared_error',
             hidden_layer_sizes=(10, 10),
-            activation='relu'
+            activation='relu',
+            solver='adam',
+            learning_rate_init=1e-3,
+            alpha=1e-4,
+            early_stopping=True,
+            n_iter_no_change=20,
+            validation_fraction=0.15,
+            max_iter=5000,
+            random_state=my_random_state
         )
-        model.fit(x_train, y_train)
-        y_pred = model.predict(x_test)
+
+        model.fit(x_train_s, y_train_s)
+
+        y_pred_s = model.predict(x_test_s).reshape(-1, 1)
+        y_pred = y_pred_s * y_scaler.scale_ + y_scaler.mean_
+        y_pred = y_pred.ravel()
 
         metrics = SensorCalibrationMetrics(y_test, y_pred)
 
@@ -304,14 +321,20 @@ def mlp_regression(
                 "layer_2_biases": model.intercepts_[1].tolist(),
                 "output_weights": model.coefs_[2].tolist(),
                 "output_biases": model.intercepts_[2].tolist()
-
         }
+            scalers = {
+                "x_scaler_mean": x_scaler.mean_.tolist(),
+                "x_scaler_scale": x_scaler.scale_.tolist(),
+                "y_scaler_mean": y_scaler.mean_.tolist(),
+                "y_scaler_scale": y_scaler.scale_.tolist(),
+                "activation": model.activation
+            }
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
         data_filename = sanitize_filename(Path(data_filename).stem)
         json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
-        save_metrics_to_json(metrics, len(x), coefficients, json_filename)
+        save_metrics_to_json(metrics, len(x), coefficients, json_filename, scalers)
 
         csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
         save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
