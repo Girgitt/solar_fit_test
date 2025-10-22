@@ -10,6 +10,8 @@
 '''
 python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
 python ../src/main.py --action=update --model_id=25-09-04_08 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
+
+python ../src/main.py --action=execute --model_id=test_1_0 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ../test_1_0 --calibration_metrics_dir ../test_update/25-09-04_08 --reference 3
 '''
 
 import os
@@ -21,12 +23,12 @@ import pandas as pd
 from pathlib import Path
 from datetime import time
 
-from pvtools.utils.utilities import initialize_dirs_for_base_dir, select_available_data_columns_to_process, \
-    print_available_data_columns, argument_parsing
+from pvtools.utils.utilities import initialize_dirs_for_base_dir, initialize_dirs_for_loading_dependencies, \
+    select_available_data_columns_to_process, print_available_data_columns, argument_parsing
 from pvtools.utils.update_function import update_function
 
 from pvtools.utils.execute_function import execute_function
-from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
+from pvtools.config.params import ModelParameters, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues
 from pvtools.preprocess.preprocess_data import preprocess_data
 
 
@@ -49,28 +51,36 @@ def main():
 
     parser = argparse.ArgumentParser()
     args = argument_parsing(parser)
-    target_frequency = '1min'
+    target_frequency = args.frequency
 
-    arg_data_dir = args.data_dir if args.data_dir else None
+    if args.action == "update" and args.reference == None:
+        raise(AttributeError("Cannot update without reference sensor!"))
 
-    if arg_data_dir is None:
-        data_dir = Path(os.getcwd())
+    if args.reference == None and args.calibration_metrics_dir == None:
+        raise(AttributeError("Cannot execute without specified calibration metrics directory!"))
+
+    arg_project_dir = args.project_dir if args.project_dir else None
+
+    if arg_project_dir is None:
+        project_dir = Path(os.getcwd()).resolve().parent
     else:
-        data_dir = Path(arg_data_dir)
+        project_dir = Path(arg_project_dir).resolve().parent
 
-    log_dir, plot_dir, data_dir = initialize_dirs_for_base_dir(data_dir)
+    log_dir, plot_dir, data_dir = initialize_dirs_for_base_dir(project_dir)
+    load_metrics_dir = initialize_dirs_for_loading_dependencies(args.calibration_metrics_dir)
 
     df = pd.read_csv(args.csv, parse_dates=["time"])
 
-    start_time = time(4, 0) # 4:00 GMT -> 6:00 UTC+2
-    end_time = time(17, 0) # 17:00 GMT -> 19:00 UTC+2
+    start_time = time(args.start_time_hour, args.start_time_minute) # 4:00 GMT -> 6:00 UTC+2
+    end_time = time(args.end_time_hour, args.end_time_minute) # 17:00 GMT -> 19:00 UTC+2
 
     df_filtered = preprocess_data(
         df=df,
         target_timedelta=target_frequency, # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
         start_time=start_time,
         end_time=end_time,
-        save_dir=Path(args.csv),
+        save_dir=Path(args.project_dir),
+        filename=Path(args.csv).stem,
     )
 
     data_columns = [col for col in df_filtered.columns if col != "time"]
@@ -86,27 +96,31 @@ def main():
     model_parameters = ModelParameters(
         df=df_filtered,
         df_time = df_filtered["time"],
-        args = args,
-        log_dir = log_dir,
-        data_dir = data_dir, # data/
-        filename= Path(args.csv).stem, # data/org/filename.csv
-        plot_dir = plot_dir,
         sensor_names = sensor_names,
         sensor_name_ref = sensor_name_ref
+    )
+
+    model_directories = ModelDirectories(
+        project_dir=project_dir,
+        log_dir=log_dir,
+        data_dir=data_dir,
+        plot_dir=plot_dir,
+        filename=Path(args.csv).stem,
+        load_metrics_dir=load_metrics_dir,
     )
 
     clearsky_parameters = ClearSkyParameters(
         start_time=model_parameters.df_time.iloc[0],
         end_time=model_parameters.df_time.iloc[-1],
-        warsaw_lat=52.22977,
-        warsaw_lon=21.01178,
-        tz='Europe/Warsaw',
-        altitude=170,
-        name='Warsaw',
+        warsaw_lat=args.latitude,
+        warsaw_lon=args.longtitude,
+        tz=args.timezone,
+        altitude=args.altitude,
+        name=args.name,
         frequency=target_frequency,
-        albedo=0.2,
-        surface_tilt=0,  # degrees from horizontal
-        surface_azimuth = 180,  # south-facing
+        albedo=args.albedo,
+        surface_tilt=args.surface_tilt,  # degrees from horizontal
+        surface_azimuth = args.surface_azimuth,  # south-facing
     )
 
     clearsky_calculated_values = ClearSkyCalculatedValues(
@@ -115,9 +129,12 @@ def main():
         cloudy_periods=pd.Series()
     )
 
+    # FIXME - WRZUCIĆ KOD NA GITA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     if args.action == "update":
         update_function(
             model_parameters=model_parameters,
+            model_directories=model_directories,
             clear_sky_parameters=clearsky_parameters,
             clearsky_calculated_values=clearsky_calculated_values,
             start_time = start_time,
@@ -127,7 +144,14 @@ def main():
     elif args.action == "execute":
         execute_function(
             model_parameters=model_parameters,
-            clearsky_calculated_values=clearsky_calculated_values
+            model_directories=model_directories,
+            clearsky_parameters=clearsky_parameters,
+            clearsky_calculated_values=clearsky_calculated_values,
+            start_time=start_time,
+            end_time=end_time,
+            surface_tilt=args.surface_tilt,
+            surface_azimuth = args.surface_azimuth,
+            calibration_method=args.calibration
         )
 
 

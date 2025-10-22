@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 
-from typing import Dict, Any, List, TypeAlias, Literal
+from typing import Dict, Any, List, TypeAlias, Literal, Optional
 from pathlib import Path
 
 from pvtools.config.params import DatatypeCoefficientsForMLPRegression, DatatypeCoefficientsForDividedLinearRegression
@@ -11,58 +11,64 @@ from pvtools.preprocess.preprocess_data import sanitize_filename
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
+
 def load_and_merge_calibrated_data_from_each_sensor(
         df: pd.DataFrame,
-        model_parameters: ModelParameters
+        sensor_names: list[str],
+        log_dir: Path,
+        filename: str,
+        calibration_method: str,
+        sensor_name_ref: Optional[str] = None
 ) -> pd.DataFrame:
 
-    df = df.copy()
-    df = df.reset_index(drop=True)
+    df = df.copy().reset_index(drop=True)
 
-    def create_dataframe_from_csv(
-            calibration_name: str,
-            col: list = None,
-    ) -> list:
+    method_dirs = {
+        "linear": "linear_regression",
+        "fuzzy": "fuzzy_regression",
+        "divided_linear": "divided_linear_regression",
+        "decision_tree": "decision_tree_regression",
+        "poly": "polynominal_regression",
+        "mlp": "mlp_regression",
+    }
 
-        for s_name in model_parameters.sensor_names:
-            sanitized_name = sanitize_filename(s_name)
-            tmp_df = load_dataframe_from_csv(Path(directory / calibration_name /
-                                                  f"{sanitized_name}_all_true_vs_pred.csv"))
-            col.append(tmp_df['y_pred'].rename(sanitized_name))
+    if calibration_method not in method_dirs:
+        raise ValueError(f"Unsupported calibration method: {calibration_method}")
 
-        return col
+    directory = Path(log_dir) / filename / method_dirs[calibration_method]
 
-    directory = Path(model_parameters.log_dir / model_parameters.filename)
+    merged_df = pd.DataFrame()
 
-    col = []
-    df_calibrated = []
-    col.append(df["time"])
+    for s_name in sensor_names:
+        sanitized_name = sanitize_filename(s_name)
+        csv_path = directory / f"{sanitized_name}_all_predicted.csv"
 
-    if model_parameters.args.calibration == "linear":
-        df_calibrated = create_dataframe_from_csv("linear_regression", col)
+        if not csv_path.exists():
+            raise FileNotFoundError(f"[ERROR] File not found: {csv_path}")
 
-    elif model_parameters.args.calibration == "fuzzy":
-        df_calibrated = create_dataframe_from_csv("fuzzy_regression", col)
+        tmp_df = pd.read_csv(csv_path)
 
-    elif model_parameters.args.calibration == "divided_linear":
-        df_calibrated = create_dataframe_from_csv("divided_linear_regression", col)
+        if "y_pred" not in tmp_df.columns or "time" not in tmp_df.columns:
+            raise KeyError(f"[ERROR] File {csv_path} must contain 'y_pred' and 'time' columns")
 
-    elif model_parameters.args.calibration == "decision_tree":
-        df_calibrated = create_dataframe_from_csv("decision_tree_regression", col)
+        tmp_df["time"] = pd.to_datetime(tmp_df["time"])
+        tmp_df.rename(columns={"y_pred": sanitized_name}, inplace=True)
 
-    elif model_parameters.args.calibration == "poly":
-        df_calibrated = create_dataframe_from_csv("polynominal_regression", col)
+        if merged_df.empty:
+            merged_df = tmp_df[["time", sanitized_name]]
+        else:
+            merged_df = pd.merge(merged_df, tmp_df[["time", sanitized_name]], on="time", how="outer")
 
-    elif model_parameters.args.calibration == "mlp":
-        df_calibrated = create_dataframe_from_csv("mlp_regression", col)
+    if sensor_name_ref is not None:
+        sanitized_ref = sanitize_filename(sensor_name_ref)
+        if sensor_name_ref not in df.columns:
+            raise KeyError(f"[ERROR] Reference sensor '{sensor_name_ref}' not found in original dataframe")
+        merged_df[sanitized_ref] = df[sensor_name_ref].values
 
-    df_calibrated.append(df[model_parameters.sensor_name_ref].rename(
-        sanitize_filename(model_parameters.sensor_name_ref)))
+    merged_df.sort_values(by="time", inplace=True)
+    merged_df.reset_index(drop=True, inplace=True)
 
-    result_df = pd.concat(df_calibrated, axis=1)
-
-    return result_df
-
+    return merged_df
 
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
 

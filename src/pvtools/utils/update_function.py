@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TypeAlias, Literal
 from datetime import time
 
-from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
+from pvtools.config.params import ModelParameters, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues
 from pvtools.modeling.calculate_calibration_parameters import linear_regression, divided_linear_regression, polynominal_regression, \
     decision_tree_regression, mlp_regression
 from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
@@ -17,6 +17,7 @@ Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
 def update_function(
         model_parameters: ModelParameters,
+        model_directories: ModelDirectories,
         clear_sky_parameters: ClearSkyParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues,
         start_time: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
@@ -24,6 +25,7 @@ def update_function(
 ) -> None:
     df_sunny_cutted_short, df_cloudy_cutted_short = process_solar_data_with_clearsky_detection_and_masking(
         model_parameters=model_parameters,
+        model_directories=model_directories,
         clearsky_parameters=clear_sky_parameters,
         clearsky_calculated_values=clearsky_calculated_values,
         start_time=start_time,
@@ -33,18 +35,14 @@ def update_function(
     calculate_regression(
         df=df_sunny_cutted_short,
         model_parameters=model_parameters,
+        model_directories=model_directories,
         period="sunny"
-    )
-
-    calculate_regression(
-        df=df_cloudy_cutted_short,
-        model_parameters=model_parameters,
-        period="cloudy"
     )
 
 
 def process_solar_data_with_clearsky_detection_and_masking(
         model_parameters: ModelParameters,
+        model_directories: ModelDirectories,
         clearsky_parameters: ClearSkyParameters,
         clearsky_calculated_values: ClearSkyCalculatedValues,
         start_time: time = time(4, 0),
@@ -56,9 +54,9 @@ def process_solar_data_with_clearsky_detection_and_masking(
         show=False,
         start_time=start_time,
         end_time=end_time,
-        save_dir_plot=model_parameters.plot_dir / Path(model_parameters.args.csv).stem,
-        save_dir=model_parameters.data_dir,
-        filename=model_parameters.filename
+        save_dir_plot=model_directories.plot_dir / model_directories.filename,
+        save_dir=model_directories.data_dir,
+        filename=model_directories.filename
     )
 
     clearsky_calculated_values.poa = poa
@@ -68,8 +66,8 @@ def process_solar_data_with_clearsky_detection_and_masking(
         clearsky_df=clearsky_calculated_values.poa,
         sensor_name_ref=model_parameters.sensor_name_ref,
         poa_global_name='poa_global',
-        save_dir=model_parameters.data_dir,
-        filename=model_parameters.filename
+        save_dir=model_directories.data_dir,
+        filename=model_directories.filename
     )
 
     model_parameters.df = df_limited
@@ -78,8 +76,8 @@ def process_solar_data_with_clearsky_detection_and_masking(
         poa=poa,
         df=model_parameters.df,
         sensor_name_ref=model_parameters.sensor_name_ref,
-        save_dir=model_parameters.data_dir,
-        filename=model_parameters.filename
+        save_dir=model_directories.data_dir,
+        filename=model_directories.filename
     )
 
     determine_system_azimuth_and_tilt(
@@ -93,17 +91,17 @@ def process_solar_data_with_clearsky_detection_and_masking(
     )
 
     df_sunny_periods_cutted_short = apply_mask_for_dataframe(
-        data_filename=model_parameters.filename,
+        data_filename=model_directories.filename,
         sensor_name_ref=model_parameters.sensor_name_ref,
         period_type="sunny",
-        save_dir=model_parameters.data_dir
+        save_dir=model_directories.data_dir
     )
 
     df_cloudy_periods_cutted_short = apply_mask_for_dataframe(
-        data_filename=model_parameters.filename,
+        data_filename=model_directories.filename,
         sensor_name_ref=model_parameters.sensor_name_ref,
         period_type="cloudy",
-        save_dir=model_parameters.data_dir
+        save_dir=model_directories.data_dir
     )
 
     return df_sunny_periods_cutted_short, df_cloudy_periods_cutted_short
@@ -112,13 +110,15 @@ def process_solar_data_with_clearsky_detection_and_masking(
 def calculate_regression(
         df: pd.DataFrame,
         model_parameters: ModelParameters,
+        model_directories: ModelDirectories,
         period: Period_type
 ) -> None:
+
     linear_regression(
         df=df,
         period=period,
-        log_dir=model_parameters.log_dir,
-        data_filename=model_parameters.filename,
+        log_dir=model_directories.log_dir,
+        data_filename=model_directories.filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -126,8 +126,8 @@ def calculate_regression(
     divided_linear_regression(
         df=df,
         period=period,
-        log_dir=model_parameters.log_dir,
-        data_filename=model_parameters.filename,
+        log_dir=model_directories.log_dir,
+        data_filename=model_directories.filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -135,8 +135,8 @@ def calculate_regression(
     polynominal_regression(
         df=df,
         period=period,
-        log_dir=model_parameters.log_dir,
-        data_filename=model_parameters.filename,
+        log_dir=model_directories.log_dir,
+        data_filename=model_directories.filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -144,8 +144,8 @@ def calculate_regression(
     decision_tree_regression(
         df=df,
         period=period,
-        log_dir=model_parameters.log_dir,
-        data_filename=model_parameters.filename,
+        log_dir=model_directories.log_dir,
+        data_filename=model_directories.filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )
@@ -153,8 +153,8 @@ def calculate_regression(
     mlp_regression(
         df=df,
         period=period,
-        log_dir=model_parameters.log_dir,
-        data_filename=model_parameters.filename,
+        log_dir=model_directories.log_dir,
+        data_filename=model_directories.filename,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
     )

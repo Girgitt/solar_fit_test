@@ -22,6 +22,7 @@ def plot_from_dataframe(
     show: bool=True,
     title: str = "Plot"
 ) -> tuple[Figure, Axes]:
+
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
@@ -34,7 +35,10 @@ def plot_from_dataframe(
 
     # Plot 1: Raw input series over time
     fig, ax = plt.subplots(figsize=(9, 4))
-    ax.plot(x, df[sensor_name_ref], label="Power Reference (actual)", linewidth=0.9)
+
+    if sensor_name_ref is not None:
+        ax.plot(x, df[sensor_name_ref], label="Power Reference (actual)", linewidth=0.9)
+
     for sensor_col in sensor_names:
         ax.plot(x, df[sensor_col], label=f"Sensor: {sensor_col}", linewidth=0.9)
     ax.set_title(title)

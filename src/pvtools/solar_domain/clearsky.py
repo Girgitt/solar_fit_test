@@ -5,11 +5,9 @@ import pvlib
 from itertools import product
 from pathlib import Path
 from typing import Optional
-from pvlib import clearsky, atmosphere, solarposition, irradiance
+from pvlib import solarposition, irradiance
 from pvlib.location import Location
-from pvlib.iotools import read_tmy3
 from pvlib.clearsky import detect_clearsky
-from pvanalytics.features.clearsky import reno
 from datetime import time
 
 from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
@@ -101,6 +99,7 @@ def detect_clearsky_periods(
         save_dir: Optional[Path] = None,
         filename: str = None,
 ) -> [pd.Series, pd.Series]:
+
     df = df.copy()
     poa = poa.copy()
 

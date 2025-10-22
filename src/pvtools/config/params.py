@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 from dataclasses import dataclass
@@ -12,13 +11,18 @@ from typing import TypedDict, List
 class ModelParameters:
     df: pd.DataFrame
     df_time: pd.DataFrame
-    args: Namespace
-    log_dir: Path
-    data_dir: Path
-    filename: Path
-    plot_dir: str
     sensor_names: list[str]
     sensor_name_ref: str
+
+
+@dataclass
+class ModelDirectories:
+    project_dir: Path
+    log_dir: Path
+    data_dir: Path
+    plot_dir: Path
+    filename: str
+    load_metrics_dir: Path
 
 
 @dataclass

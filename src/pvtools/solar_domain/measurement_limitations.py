@@ -52,11 +52,11 @@ def limit_sensors_irradiance_to_clear_sky_model(
     if 'time' not in df.columns or 'time' not in clearsky_df.columns:
         raise ValueError("'time' column needs to be provided!")
 
-    mismatched_times = set(df['time']) - set(clearsky_df['time'])
-    if mismatched_times:
+    if not (df["time"] == clearsky_df["time"]).all():
         raise ValueError("Timestamps are mismatched!")
 
     df = df.copy()
+    clearsky_df["time"] = pd.to_datetime(clearsky_df["time"])
 
     merged = (df[['time', *sensor_names]].merge(clearsky_df[['time', poa_global_name]], on='time', how='inner', sort=False))
 

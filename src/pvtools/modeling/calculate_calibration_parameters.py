@@ -76,7 +76,7 @@ def linear_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_metrics_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def divided_linear_regression(
@@ -156,8 +156,8 @@ def divided_linear_regression(
         save_metrics_to_json(avg_metrics, len(x), coefficients_list, json_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(
-            y_test_all_hours, y_pred_all_hours, csv_filename, idx_test_all_hours, time_test_all_hours)
+        save_true_and_predicted_data_to_csv(y_pred_all_hours, csv_filename, y_test_all_hours, idx_test_all_hours,
+                                            time_test_all_hours)
 
 
 def polynominal_regression(
@@ -210,7 +210,7 @@ def polynominal_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def decision_tree_regression(
@@ -255,7 +255,7 @@ def decision_tree_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
         csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def mlp_regression(
@@ -337,7 +337,7 @@ def mlp_regression(
         save_metrics_to_json(metrics, len(x), coefficients, json_filename, scalers)
 
         csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:

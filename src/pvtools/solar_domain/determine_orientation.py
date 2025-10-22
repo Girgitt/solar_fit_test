@@ -64,6 +64,7 @@ def infer_orientation_daily_peak(
         dhi,
         dni
 ) -> List[float]:
+
     peak_times = _peak_times(power_or_poa[sunny])
     azimuth_by_minute = solar_azimuth.resample('1min').interpolate(method='linear')
     modeled_azimuth = azimuth_by_minute[peak_times]
@@ -83,8 +84,8 @@ def infer_orientation_daily_peak(
                 dni=dni
             ).poa_global
             idx_daily_max = by_day(poa).idxmax()
-            poa_azimuths = azimuth_by_minute.reindex(idx_daily_max, method="nearest", tolerance="30s")
-            #poa_azimuths = azimuth_by_minute[by_day(poa).idxmax()] - this was originally in library. But it does not work!
+            #poa_azimuths = azimuth_by_minute.reindex(idx_daily_max, method="nearest", tolerance="30s")
+            poa_azimuths = azimuth_by_minute[by_day(poa).idxmax()] #- this was originally in library. But it does not work!
             filtered_azimuths = poa_azimuths[np.isin(
                 poa_azimuths.index.date,
                 modeled_azimuth.index.date

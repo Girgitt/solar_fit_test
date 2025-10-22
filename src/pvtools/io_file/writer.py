@@ -50,13 +50,17 @@ def save_metrics_to_json(
 
 
 def save_true_and_predicted_data_to_csv(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    output_path: Path,
-    index: np.ndarray = None,
-    time: np.ndarray = None,
+        y_pred: np.ndarray,
+        output_path: Path,
+        y_true: np.ndarray = None,
+        index: np.ndarray = None,
+        time: np.ndarray = None
 ) -> None:
-    columns = {"y_true": y_true, "y_pred": y_pred}
+
+    if y_true is not None:
+        columns = {"y_true": y_true, "y_pred": y_pred}
+    else:
+        columns = {"y_pred": y_pred}
 
     if index is not None:
         columns["index"] = index # NOTE: index added on purpose, need for identyfing test/train split!

@@ -133,7 +133,7 @@ def test_save_true_and_predicted_data_to_csv_default_index(tmp_path: Path, simpl
     y_true, y_pred = simple_arrays
     out_path = tmp_path / "pred" / "y.csv"
 
-    save_true_and_predicted_data_to_csv(y_true=y_true, y_pred=y_pred, output_path=out_path)
+    save_true_and_predicted_data_to_csv(y_pred=y_pred, output_path=out_path, y_true=y_true)
 
     assert out_path.exists(), "Output CSV was not created."
     df = pd.read_csv(out_path)
@@ -148,9 +148,7 @@ def test_save_true_and_predicted_data_to_csv_custom_index(tmp_path: Path, simple
     custom_index = np.array([101, 105, 108])
     out_path = tmp_path / "pred_custom" / "y.csv"
 
-    save_true_and_predicted_data_to_csv(
-        y_true=y_true, y_pred=y_pred, output_path=out_path, index=custom_index
-    )
+    save_true_and_predicted_data_to_csv(y_pred=y_pred, output_path=out_path, y_true=y_true, index=custom_index)
 
     assert out_path.exists()
     df = pd.read_csv(out_path)

@@ -17,7 +17,8 @@ def preprocess_data(
         target_timedelta: str = '1min',
         start_time: time = time(4,0), # 4:00 GMT -> 6:00 UTC+2
         end_time: time = time(17,0), # 17:00 GMT -> 19:00 UTC+2
-        save_dir: Path = None
+        save_dir: Path = None,
+        filename: str = None,
 ) -> pd.DataFrame:
     df = df.copy()
 
@@ -45,7 +46,7 @@ def preprocess_data(
 
     if save_dir is not None:
         save_dir = Path(save_dir)
-        output_path = save_dir.parent.parent / "filtered" / (save_dir.stem + save_dir.suffix)
+        output_path = save_dir / "data" / "filtered" / f"{filename}.csv"
         save_dataframe_to_csv(df_filtered, output_path, index=False)
 
     return df_filtered

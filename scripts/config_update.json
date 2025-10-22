@@ -1,0 +1,35 @@
+{
+  "launch_python_script": {
+    "python_file_directory": "../src/main.py",
+    "action": "update",
+    "model_id": "test_update",
+    "csv_input_file_directory": "../data/org/25-09-04_08.csv",
+    "calibration_method": "linear",
+    "sensors_id": "0 1 2",
+    "reference_sensor_id": "3",
+    "project_directory": "../test_update",
+    "calibration_metrics_directory": "../test_general"
+  },
+  "clearsky_input_parameters": {
+    "latitude": 52.22977,
+    "longtitude": 21.01178,
+    "timezone": "Europe/Warsaw",
+    "altitude": 170,
+    "name": "Warsaw",
+    "frequency": "1min",
+    "albedo": 0.25,
+    "surface_tilt": 0,
+    "surface_azimuth": 180
+  },
+  "filtering_data_parameters": {
+    "delete_night_period": {
+      "start_hour": 4,
+      "start_minute": 0,
+      "end_hour": 18,
+      "end_minute": 0
+    }
+  }
+
+
+
+}
