@@ -39,6 +39,13 @@ def update_function(
         period="sunny"
     )
 
+    calculate_regression(
+        df=df_cloudy_cutted_short,
+        model_parameters=model_parameters,
+        model_directories=model_directories,
+        period="cloudy"
+    )
+
 
 def process_solar_data_with_clearsky_detection_and_masking(
         model_parameters: ModelParameters,

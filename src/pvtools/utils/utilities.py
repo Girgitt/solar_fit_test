@@ -216,14 +216,11 @@ def load_filtered_and_calculated_data_needed_for_execute_function_periods_detect
 
 def load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected(
         model_directoires: ModelDirectories
-) -> tuple[DataFrame, DataFrame]:
+) -> pd.DataFrame:
     df = load_dataframe_from_csv(
         Path(model_directoires.data_dir / "filtered" / f"{model_directoires.filename}.csv"))
 
-    poa = load_dataframe_from_csv(
-        Path(model_directoires.data_dir / "calculated_data" / model_directoires.filename / "poa_values.csv"))
-
-    return df, poa
+    return df
 
 
 def check_if_sunny_cloudy_periods_exists(model_directories: ModelDirectories) -> bool:
@@ -285,3 +282,87 @@ def create_calibrated_dataframe(
     )
 
     return df
+
+def create_dataframe_with_sensor_values_and_poa(
+        df_postprocess: pd.DataFrame,
+        df_calibrated: pd.DataFrame,
+        sensor_names: list[str],
+        poa: pd.DataFrame,
+        data_dir: Path,
+        filename: str,
+) -> [pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+
+    df_org = load_dataframe_from_csv(Path(data_dir / "filtered" / f"{filename}.csv"))
+    df_org.columns = [sanitize_filename(name) for name in df_org.columns]
+    df_org["time"] = pd.to_datetime(df_org["time"])
+
+    df_tmp_org = df_postprocess["time"].copy()
+    df_tmp_postprocess_calibrated = df_postprocess["time"].copy()
+    df_tmp_calibrated = df_calibrated["time"].copy()
+
+
+    df_org_sensor_data_with_poa_global = df_postprocess["time"].copy()
+    df_postprocess_calibrated_sensor_data_with_poa_global = df_postprocess["time"].copy()
+    df_calibrated_sensor_data_with_poa_global = df_calibrated["time"].copy()
+
+    for col in sensor_names:
+        df_tmp_org = pd.merge(df_tmp_org, df_org[["time", col]], on="time", how="left")
+        df_tmp_postprocess_calibrated = pd.merge(df_tmp_postprocess_calibrated, df_postprocess[["time", col]],
+                                                 on="time", how="left")
+        df_tmp_calibrated = pd.merge(df_tmp_calibrated, df_calibrated[["time", col]],
+                                                 on="time", how="left")
+
+    df_org_sensor_data_with_poa_global = pd.merge(
+        df_tmp_org,
+        poa[["time", "poa_global"]],
+        on="time",
+        how="left"
+    )
+
+    df_postprocess_calibrated_sensor_data_with_poa_global = pd.merge(
+        df_tmp_postprocess_calibrated,
+        poa[["time", "poa_global"]],
+        on="time",
+        how="left"
+    )
+
+    df_calibrated_sensor_data_with_poa_global = pd.merge(
+        df_tmp_calibrated,
+        poa[["time", "poa_global"]],
+        on="time",
+        how="left"
+    )
+
+    output_path_org = Path(data_dir) / "filtered" / f"df_org_sensor_data_with_poa_global.csv"
+    output_path_postprocess_calibrated = Path(data_dir) / "filtered" / f"df_postprocess_calibrated_sensor_data_with_poa_global.csv"
+    output_path_calibrated = Path(data_dir) / "filtered" / f"df_calibrated_sensor_data_with_poa_global.csv"
+
+    save_dataframe_to_csv(
+        df=df_org_sensor_data_with_poa_global,
+        output_path=output_path_org,
+        index=False,
+        index_label=None
+    )
+
+    save_dataframe_to_csv(
+        df=df_postprocess_calibrated_sensor_data_with_poa_global,
+        output_path=output_path_postprocess_calibrated,
+        index=False,
+        index_label=None
+    )
+
+    save_dataframe_to_csv(
+        df=df_calibrated_sensor_data_with_poa_global,
+        output_path=output_path_calibrated,
+        index=False,
+        index_label=None
+    )
+
+    dfs_result = [
+        df_org,
+        df_postprocess_calibrated_sensor_data_with_poa_global,
+        df_calibrated_sensor_data_with_poa_global,
+        df_org_sensor_data_with_poa_global
+    ]
+
+    return dfs_result

@@ -46,7 +46,7 @@ def preprocess_data(
 
     if save_dir is not None:
         save_dir = Path(save_dir)
-        output_path = save_dir / "data" / "filtered" / f"{filename}.csv"
+        output_path = save_dir / "filtered" / f"{filename}.csv"
         save_dataframe_to_csv(df_filtered, output_path, index=False)
 
     return df_filtered

@@ -79,7 +79,7 @@ cmd=(
   --end_time_hour "$END_H"
   --end_time_minute "$END_M"
   --latitude "$LAT"
-  --longtitude "$LON"        # matches your parser flag spelling
+  --longtitude "$LON"
   --timezone="$TZ"
   --altitude "$ALT"
   --name="$NAME"

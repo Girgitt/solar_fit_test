@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import logging
 
 from pathlib import Path
 from typing import TypeAlias, Literal
@@ -10,18 +11,19 @@ from pvtools.calibration.calibrate import (calibrate_by_linear_regression, calib
     calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression, calibrate_by_mlp_regression,
     calibrate_by_fuzzy_linear_regression)
 from pvtools.config.params import ModelParameters, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues
-from pvtools.visualisation.plotter import (plot_from_dataframe, plot_predicted_data, plot_poa_vs_reference,
+from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
     plot_poa_reference_with_clearsky_periods)
 from pvtools.io_file.reader import load_dataframe_from_csv
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
                                      load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
                                      sanitize_filename, create_calibrated_dataframe,
-                                     check_if_sunny_cloudy_periods_exists)
+                                     check_if_sunny_cloudy_periods_exists, create_dataframe_with_sensor_values_and_poa)
 from pvtools.postprocess.postprocess_data import postprocess_data, merge_sunny_and_cloudy_calibrated_dataframes
 from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
 from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
 
+log = logging.getLogger("calibrate")
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
@@ -38,11 +40,21 @@ def execute_function(
         calibration_method: str = "linear"
 ) -> None:
 
-    clearsky_calculated_values.clearsky_periods=None
-    clearsky_calculated_values.cloudy_periods=None
+    poa = clear_sky(
+        clearsky_parameters=clearsky_parameters,
+        show=False,
+        start_time=start_time,
+        end_time=end_time,
+        save_dir_plot=model_directories.plot_dir / model_directories.filename,
+        save_dir=model_directories.data_dir,
+        filename=model_directories.filename
+    )
+
+    clearsky_periods=None
+    cloudy_periods=None
 
     if not check_if_sunny_cloudy_periods_exists(model_directories):
-        [df, poa] = load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected(model_directories)
+        df = load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected(model_directories)
 
         if model_parameters.sensor_name_ref is not None:
             clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
@@ -119,7 +131,7 @@ def execute_function(
         calibration_method=calibration_method
     )
 
-    postprocess_df = postprocess_data(
+    df_postprocess = postprocess_data(
         df=df_calibrated,
         sensor_names=model_parameters.sensor_names,
         data_dir=model_directories.data_dir,
@@ -129,10 +141,31 @@ def execute_function(
         calibration_method=calibration_method
     )
 
-    model_parameters.df = postprocess_df
+    model_parameters.df = df_postprocess
+
+    [df_org,
+     df_postprocess_calibrated_sensor_data_with_poa_global,
+     df_calibrated_sensor_data_with_poa_global,
+     df_org_sensor_data_with_poa_global] = (
+        create_dataframe_with_sensor_values_and_poa(
+            df_postprocess=df_postprocess,
+            df_calibrated=df_calibrated,
+            sensor_names=model_parameters.sensor_names,
+            poa = clearsky_calculated_values.poa,
+            data_dir=model_directories.data_dir,
+            filename=model_directories.filename
+    ))
+
+    list_of_dataframes = [
+        df_postprocess,
+        df_org,
+        df_postprocess_calibrated_sensor_data_with_poa_global,
+        df_calibrated_sensor_data_with_poa_global,
+        df_org_sensor_data_with_poa_global
+    ]
 
     plot(
-        df=model_parameters.df,
+        dataframes=list_of_dataframes,
         sensor_names=model_parameters.sensor_names,
         sensor_name_ref=model_parameters.sensor_name_ref,
         data_dir=model_directories.data_dir,
@@ -207,7 +240,7 @@ def calibrate(
 
 
 def plot(
-        df: pd.DataFrame,
+        dataframes: list[pd.DataFrame],
         sensor_names: list[str],
         sensor_name_ref: str,
         data_dir: Path,
@@ -219,11 +252,11 @@ def plot(
         calibration_method: str,
 ) -> None:
 
-    df_org = load_dataframe_from_csv(Path(data_dir / "filtered" / f"{filename}.csv"))
-    df_org.columns = [sanitize_filename(name) for name in df_org.columns]
-
-    df_filtered = load_dataframe_from_csv(Path(data_dir / "filtered" / "calibrated" / filename /
-                                               f"{calibration_method}.csv"))
+    [df_postprocess,
+     df_org,
+     df_postprocess_calibrated_sensor_data_with_poa_global,
+     df_calibrated_sensor_data_with_poa_global,
+     df_org_sensor_data_with_poa_global] = dataframes
 
     plot_from_dataframe(
         df=df_org,
@@ -232,40 +265,61 @@ def plot(
         sensor_names=sensor_names,
         sensor_name_ref=sensor_name_ref,
         show=True,
-        title="Original series vs. time"
+        title="Original series vs time"
     )
 
     plot_from_dataframe(
-        df=df_filtered,
+        df=df_postprocess,
         save_dir=plot_dir / filename,
-        filename=f"predicted_series_vs_time_{calibration_method}.png",
+        filename=f"calibrated_series_vs_time_{calibration_method}.png",
         sensor_names=sensor_names,
         sensor_name_ref=sensor_name_ref,
         show=True,
-        title="Predicted series vs. time"
+        title="Calibrated series vs time"
     )
 
-    plot_predicted_data(
-        calibration_method_dir=log_dir / filename,
-        show=False,
+    plot_from_dataframe(
+        df=df_org_sensor_data_with_poa_global,
         save_dir=plot_dir / filename,
+        filename="org_series_with_poa_vs_time.png",
+        sensor_names=sensor_names,
+        sensor_name_ref="poa_global",
+        show=True,
+        title="Original series with poa global vs time"
+    )
+
+    plot_from_dataframe(
+        df=df_postprocess_calibrated_sensor_data_with_poa_global,
+        save_dir=plot_dir / filename,
+        filename=f"postprocess_calibrated_series_with_poa_vs_time_{calibration_method}.png",
+        sensor_names=sensor_names,
+        sensor_name_ref="poa_global",
+        show=True,
+        title="Postprocess calibrated series with poa global vs time"
+    )
+
+    plot_from_dataframe(
+        df=df_calibrated_sensor_data_with_poa_global,
+        save_dir=plot_dir / filename,
+        filename=f"calibrated_series_with_poa_vs_time_{calibration_method}.png",
+        sensor_names=sensor_names,
+        sensor_name_ref="poa_global",
+        show=True,
+        title="Calibrated series with poa global vs time"
     )
 
     if sensor_name_ref is not None:
         plot_poa_vs_reference(
             poa_global=poa['poa_global'],
-            sensor_reference=df[sensor_name_ref],
+            sensor_reference=df_postprocess[sensor_name_ref],
             save_dir=plot_dir / filename,
             show=True,
         )
 
         plot_poa_reference_with_clearsky_periods(
             poa_global=poa['poa_global'],
-            sensor_reference=df[sensor_name_ref],
+            sensor_reference=df_postprocess[sensor_name_ref],
             sunny=clearsky_periods['if_sunny'],
             save_dir=plot_dir / filename,
             show=True,
         )
-
-    # FIXME - plot calibrated values and poa on one graph, and reference (if calibrated with other metrics)
-    # FIXME with calibrated sensors!

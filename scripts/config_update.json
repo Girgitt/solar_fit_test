@@ -7,8 +7,8 @@
     "calibration_method": "linear",
     "sensors_id": "0 1 2",
     "reference_sensor_id": "3",
-    "project_directory": "../test_update",
-    "calibration_metrics_directory": "../test_general"
+    "project_directory": "./test_update",
+    "calibration_metrics_directory": ""
   },
   "clearsky_input_parameters": {
     "latitude": 52.22977,

@@ -3,12 +3,12 @@
     "python_file_directory": "../src/main.py",
     "action": "execute",
     "model_id": "test_execute",
-    "csv_input_file_directory": "../data/org/25-09-04_08.csv",
+    "csv_input_file_directory": "../data/org/25-09-26__25-10-02.csv",
     "calibration_method": "linear",
     "sensors_id": "0 1 2",
-    "reference_sensor_id": "3",
-    "project_directory": "../test_execute",
-    "calibration_metrics_directory": "../test_update/25-09-04_08"
+    "reference_sensor_id": "",
+    "project_directory": "./test_execute",
+    "calibration_metrics_directory": "../test_update/logs/25-09-04_08"
   },
   "clearsky_input_parameters": {
     "latitude": 52.22977,
@@ -29,7 +29,4 @@
       "end_minute": 0
     }
   }
-
-
-
 }

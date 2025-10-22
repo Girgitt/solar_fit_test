@@ -44,7 +44,7 @@ def plot_from_dataframe(
     ax.set_title(title)
     ax.set_xlabel("Time")
     ax.set_ylabel("Power (W/m²)")
-    ax.legend()
+    ax.legend(loc="upper right")
     ax.grid(True)
     fig.tight_layout()
 
@@ -90,37 +90,6 @@ def subplot_predicted_data(
         figures.append((sensor_name, calibration_method, fig))
 
     return figures
-
-
-def plot_predicted_data(
-        calibration_method_dir: Path,
-        show: bool = True,
-        save_dir: Path = None,
-) -> None:
-    all_data = load_true_and_predicted_data_for_all_methods(calibration_method_dir)
-
-    calibration_method_names = [name for name in os.listdir(calibration_method_dir)
-                                if os.path.isdir(os.path.join(calibration_method_dir, name))]
-
-    for calibration_method in calibration_method_names:
-        figures = subplot_predicted_data(
-            all_data[calibration_method],
-            y_true="y_true",
-            y_pred="y_pred",
-            calibration_method=calibration_method,
-        )
-
-        save_predicted_data_figures(
-            figures=figures,
-            save_dir=save_dir / calibration_method,
-        )
-
-        if not show:
-            for _, _, fig in figures:
-                plt.close(fig)
-
-    if show:
-        plt.show()
 
 
 def plot_clear_sky(

@@ -11,7 +11,8 @@
 python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
 python ../src/main.py --action=update --model_id=25-09-04_08 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
 
-python ../src/main.py --action=execute --model_id=test_1_0 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ../test_1_0 --calibration_metrics_dir ../test_update/25-09-04_08 --reference 3
+python ../src/main.py --action=update --model_id=test_update_1 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./test_update_1
+python ../src/main.py --action=execute --model_id=test_execute_1 --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./test_execute_1 --calibration_metrics_dir ../test_update_1/logs/25-09-04_08
 '''
 
 import os
@@ -79,7 +80,7 @@ def main():
         target_timedelta=target_frequency, # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
         start_time=start_time,
         end_time=end_time,
-        save_dir=Path(args.project_dir),
+        save_dir=Path(data_dir),
         filename=Path(args.csv).stem,
     )
 
@@ -128,8 +129,6 @@ def main():
         clearsky_periods=pd.Series(),
         cloudy_periods=pd.Series()
     )
-
-    # FIXME - WRZUCIĆ KOD NA GITA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     if args.action == "update":
         update_function(
