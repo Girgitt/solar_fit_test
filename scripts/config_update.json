@@ -2,12 +2,12 @@
   "launch_python_script": {
     "python_file_directory": "../src/main.py",
     "action": "update",
-    "model_id": "test_update",
+    "model_id": "test_divided_linear_regression_update",
     "csv_input_file_directory": "../data/org/25-09-04_08.csv",
-    "calibration_method": "linear",
+    "calibration_method": "divided_linear",
     "sensors_id": "0 1 2",
     "reference_sensor_id": "3",
-    "project_directory": "./test_update",
+    "project_directory": "../test_divided_linear_regression/update",
     "calibration_metrics_directory": ""
   },
   "clearsky_input_parameters": {
@@ -29,7 +29,4 @@
       "end_minute": 0
     }
   }
-
-
-
 }

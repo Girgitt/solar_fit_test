@@ -2,13 +2,13 @@
   "launch_python_script": {
     "python_file_directory": "../src/main.py",
     "action": "execute",
-    "model_id": "test_execute",
+    "model_id": "test_divided_linear_regression_execute",
     "csv_input_file_directory": "../data/org/25-09-26__25-10-02.csv",
-    "calibration_method": "linear",
+    "calibration_method": "divided_linear",
     "sensors_id": "0 1 2",
     "reference_sensor_id": "",
-    "project_directory": "./test_execute",
-    "calibration_metrics_directory": "../test_update/logs/25-09-04_08"
+    "project_directory": "../test_divided_linear_regression/execute",
+    "calibration_metrics_directory": "../test_divided_linear_regression/update/logs/25-09-04_08"
   },
   "clearsky_input_parameters": {
     "latitude": 52.22977,
