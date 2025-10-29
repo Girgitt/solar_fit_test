@@ -6,7 +6,7 @@ from typing import TypeAlias, Literal
 
 from pvtools.solar_domain.measurement_limitations import limit_sensors_irradiance_to_clear_sky_model, remove_negative_measurements
 from pvtools.io_file.writer import save_dataframe_to_csv
-from pvtools.config.params import ModelParameters, ModelDirectories
+from pvtools.config.params import ModelData, ModelDirectories
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 

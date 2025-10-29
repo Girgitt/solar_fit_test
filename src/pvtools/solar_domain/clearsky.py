@@ -4,40 +4,42 @@ import pvlib
 
 from itertools import product
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
+
+from pandas import DatetimeIndex, DataFrame
 from pvlib import solarposition, irradiance
 from pvlib.location import Location
 from pvlib.clearsky import detect_clearsky
 from datetime import time
 
 from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
-from pvtools.config.params import ClearSkyParameters, SolarDataForLocationAndTime
+from pvtools.config.params import ClearSkyParameters, ModelTimes
 from pvtools.preprocess.preprocess_data import sanitize_filename
 from pvtools.io_file.writer import save_dataframe_to_csv
 from pvtools.preprocess.preprocess_data import delete_night_period
 
 
 def clear_sky(
-        clearsky_parameters: ClearSkyParameters,
+        clearsky_params: ClearSkyParameters,
+        model_times: ModelTimes,
         show: bool = False,
-        start_time: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
-        end_time: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
         save_dir_plot: Path = None,
         save_dir: Path = None,
         filename: str = None
 ) -> pd.DataFrame:
-    tus, times, sol, cs = get_solar_data_for_location_and_time(clearsky_parameters)
+
+    tus, times, sol, cs = get_solar_data_for_location_and_time(clearsky_params, model_times)
 
     dni = cs['dni']
     dhi = cs['dhi']
     ghi = cs['ghi']
 
     dni_extra = irradiance.get_extra_radiation(times)
-    solarpos = solarposition.get_solarposition(times, clearsky_parameters.warsaw_lat, clearsky_parameters.warsaw_lon)
+    solarpos = solarposition.get_solarposition(times, clearsky_params.warsaw_lat, clearsky_params.warsaw_lon)
 
     # panel orientation
-    surface_tilt = clearsky_parameters.surface_tilt
-    surface_azimuth = clearsky_parameters.surface_azimuth
+    surface_tilt = clearsky_params.surface_tilt
+    surface_azimuth = clearsky_params.surface_azimuth
 
     # get POA
     poa = irradiance.get_total_irradiance(
@@ -49,44 +51,43 @@ def clear_sky(
         ghi=ghi,
         dhi=dhi,
         dni_extra=dni_extra,
-        albedo=clearsky_parameters.albedo,  # ground reflectance for ground‐reflected component
+        albedo=clearsky_params.albedo,  # ground reflectance for ground‐reflected component
         model='perez'  # you can choose 'isotropic', 'haydavies', 'dirint', etc.
     )
 
     poa = poa.rename_axis('time').reset_index()
-    poa_filtered = delete_night_period(
-        df=poa,
-        start=start_time,
-        end=end_time
-    )
 
     plot_clear_sky(cs, save_dir=save_dir_plot, show=show)
-    plot_poa_components(poa_filtered, save_dir=save_dir_plot, show=show)
+    plot_poa_components(poa, save_dir=save_dir_plot, show=show)
 
     if save_dir is not None:
         save_dir = Path(save_dir)
         output_path = save_dir / "calculated_data" / filename / ("poa_values" + ".csv")
-        save_dataframe_to_csv(poa_filtered, output_path, index=False)
+        save_dataframe_to_csv(poa, output_path, index=False)
 
-    return poa_filtered
+    return poa
 
 
-def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameters) -> SolarDataForLocationAndTime:
+def get_solar_data_for_location_and_time(
+        clearsky_params: ClearSkyParameters,
+        model_times: ModelTimes
+) -> tuple[Location, DatetimeIndex, Any, Any]:
+
     tus = Location(
-        latitude=clear_sky_parameters.warsaw_lat,
-        longitude=clear_sky_parameters.warsaw_lon,
-        tz=clear_sky_parameters.tz,
-        altitude=clear_sky_parameters.altitude,
-        name=clear_sky_parameters.name
+        latitude=clearsky_params.warsaw_lat,
+        longitude=clearsky_params.warsaw_lon,
+        tz=clearsky_params.tz,
+        altitude=clearsky_params.altitude,
+        name=clearsky_params.name
     )
 
     times = pd.date_range(
-        start=clear_sky_parameters.start_time,
-        end=clear_sky_parameters.end_time,
-        freq=clear_sky_parameters.frequency
+        start=model_times.start_time,
+        end=model_times.end_time,
+        freq=model_times.frequency
     )
 
-    sol = pvlib.solarposition.get_solarposition(times, clear_sky_parameters.warsaw_lat, clear_sky_parameters.warsaw_lon)
+    sol = pvlib.solarposition.get_solarposition(times, clearsky_params.warsaw_lat, clearsky_params.warsaw_lon)
     cs = tus.get_clearsky(times)
 
     return tus, times, sol, cs

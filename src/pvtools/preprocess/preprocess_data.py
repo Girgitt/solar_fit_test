@@ -1,13 +1,9 @@
-import datetime
-
 import pandas as pd
-import numpy as np
 import re
 
 from datetime import time
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
 
@@ -15,8 +11,8 @@ from pvtools.io_file.writer import save_dataframe_to_csv
 def preprocess_data(
         df: pd.DataFrame,
         target_timedelta: str = '1min',
-        start_time: time = time(4,0), # 4:00 GMT -> 6:00 UTC+2
-        end_time: time = time(17,0), # 17:00 GMT -> 19:00 UTC+2
+        start_daytime: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
+        end_daytime: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
         save_dir: Path = None,
         filename: str = None,
 ) -> pd.DataFrame:
@@ -40,8 +36,8 @@ def preprocess_data(
 
     df_filtered = delete_night_period(
         df=df_avereged,
-        start=start_time,
-        end=end_time
+        start=start_daytime,
+        end=end_daytime
     )
 
     if save_dir is not None:
@@ -68,6 +64,7 @@ def ensure_datetime_contains_timezone(
         tz_name: str = 'Europe/Warsaw',
         save_dir: Path = None,
 ) -> pd.DataFrame:
+
     df = df.copy()
 
     if "time" not in df.columns:
@@ -104,6 +101,7 @@ def delete_night_period(
         start: time = time(3,0), # 3:00 GMT -> 5:00 UTC+2
         end: time = time(18,0), # 18:00 GMT -> 20:00 UTC+2
 ) -> pd.DataFrame:
+
     df_time_only = df['time'].dt.tz_convert(None).dt.time
 
     mask = df_time_only.between(start, end)

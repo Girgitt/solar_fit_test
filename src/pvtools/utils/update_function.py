@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd
 
-from pathlib import Path
 from typing import TypeAlias, Literal
 from datetime import time
 
-from pvtools.config.params import ModelParameters, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues
+from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.modeling.calculate_calibration_parameters import linear_regression, divided_linear_regression, polynominal_regression, \
     decision_tree_regression, mlp_regression
 from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
@@ -16,99 +15,107 @@ from pvtools.solar_domain.measurement_limitations import limit_sensor_ref_irradi
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
 def update_function(
-        model_parameters: ModelParameters,
-        model_directories: ModelDirectories,
-        clear_sky_parameters: ClearSkyParameters,
-        clearsky_calculated_values: ClearSkyCalculatedValues,
-        start_time: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
-        end_time: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
+        clearsky_params: ClearSkyParameters,
+        clearsky_cal_val: ClearSkyCalculatedValues,
 ) -> None:
+
+    df = model_data.df
+
     df_sunny_cutted_short, df_cloudy_cutted_short = process_solar_data_with_clearsky_detection_and_masking(
-        model_parameters=model_parameters,
-        model_directories=model_directories,
-        clearsky_parameters=clear_sky_parameters,
-        clearsky_calculated_values=clearsky_calculated_values,
-        start_time=start_time,
-        end_time=end_time
+        model_data=model_data,
+        model_dirs=model_dirs,
+        model_times=model_times,
+        clearsky_params=clearsky_params,
+        clearsky_cal_val=clearsky_cal_val,
+    )
+
+    calculate_regression(
+        df=df,
+        model_data=model_data,
+        model_dirs=model_dirs,
+        model_times=model_times,
+        period="all"
     )
 
     calculate_regression(
         df=df_sunny_cutted_short,
-        model_parameters=model_parameters,
-        model_directories=model_directories,
+        model_data=model_data,
+        model_dirs=model_dirs,
+        model_times=model_times,
         period="sunny"
     )
 
     calculate_regression(
         df=df_cloudy_cutted_short,
-        model_parameters=model_parameters,
-        model_directories=model_directories,
+        model_data=model_data,
+        model_dirs=model_dirs,
+        model_times=model_times,
         period="cloudy"
     )
 
 
 def process_solar_data_with_clearsky_detection_and_masking(
-        model_parameters: ModelParameters,
-        model_directories: ModelDirectories,
-        clearsky_parameters: ClearSkyParameters,
-        clearsky_calculated_values: ClearSkyCalculatedValues,
-        start_time: time = time(4, 0),
-        end_time: time = time(17, 0),
-) -> [pd.DataFrame, pd.DataFrame]:
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
+        clearsky_params: ClearSkyParameters,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     poa = clear_sky(
-        clearsky_parameters=clearsky_parameters,
+        clearsky_params=clearsky_params,
+        model_times=model_times,
         show=False,
-        start_time=start_time,
-        end_time=end_time,
-        save_dir_plot=model_directories.plot_dir / model_directories.filename,
-        save_dir=model_directories.data_dir,
-        filename=model_directories.filename
+        save_dir_plot=model_dirs.plot_dir / model_dirs.filename,
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
     )
 
-    clearsky_calculated_values.poa = poa
+    clearsky_cal_val.poa = poa
 
     df_limited = limit_sensor_ref_irradiance_to_clear_sky_model(
-        df=model_parameters.df,
-        clearsky_df=clearsky_calculated_values.poa,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        df=model_data.df,
+        clearsky_df=clearsky_cal_val.poa,
+        sensor_name_ref=model_data.sensor_name_ref,
         poa_global_name='poa_global',
-        save_dir=model_directories.data_dir,
-        filename=model_directories.filename
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
     )
 
-    model_parameters.df = df_limited
+    model_data.df = df_limited
 
     clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
         poa=poa,
-        df=model_parameters.df,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        save_dir=model_directories.data_dir,
-        filename=model_directories.filename
+        df=model_data.df,
+        sensor_name_ref=model_data.sensor_name_ref,
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
     )
 
+    model_data.df = df_limited
+
     determine_system_azimuth_and_tilt(
-        clear_sky_parameters=clearsky_parameters,
-        df=model_parameters.df,
+        model_data=model_data,
+        model_times=model_times,
+        clearsky_params=clearsky_params,
         sunny_mask=clearsky_periods_all,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        tilts=np.arange(0, 30, 1),  # None
-        azimuths=np.arange(170, 190, 1)  # None
     )
 
     df_sunny_periods_cutted_short = apply_mask_for_dataframe(
-        data_filename=model_directories.filename,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        data_filename=model_dirs.filename,
+        sensor_name_ref=model_data.sensor_name_ref,
         period_type="sunny",
-        save_dir=model_directories.data_dir
+        save_dir=model_dirs.data_dir
     )
 
     df_cloudy_periods_cutted_short = apply_mask_for_dataframe(
-        data_filename=model_directories.filename,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        data_filename=model_dirs.filename,
+        sensor_name_ref=model_data.sensor_name_ref,
         period_type="cloudy",
-        save_dir=model_directories.data_dir
+        save_dir=model_dirs.data_dir
     )
 
     return df_sunny_periods_cutted_short, df_cloudy_periods_cutted_short
@@ -116,52 +123,44 @@ def process_solar_data_with_clearsky_detection_and_masking(
 
 def calculate_regression(
         df: pd.DataFrame,
-        model_parameters: ModelParameters,
-        model_directories: ModelDirectories,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
         period: Period_type
 ) -> None:
 
     linear_regression(
         df=df,
         period=period,
-        log_dir=model_directories.log_dir,
-        data_filename=model_directories.filename,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        model_data=model_data,
+        model_dirs=model_dirs,
     )
 
     divided_linear_regression(
         df=df,
         period=period,
-        log_dir=model_directories.log_dir,
-        data_filename=model_directories.filename,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        model_data=model_data,
+        model_dirs=model_dirs,
+        model_times=model_times
     )
 
     polynominal_regression(
         df=df,
         period=period,
-        log_dir=model_directories.log_dir,
-        data_filename=model_directories.filename,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        model_data=model_data,
+        model_dirs=model_dirs,
     )
 
     decision_tree_regression(
         df=df,
         period=period,
-        log_dir=model_directories.log_dir,
-        data_filename=model_directories.filename,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        model_data=model_data,
+        model_dirs=model_dirs,
     )
 
     mlp_regression(
         df=df,
         period=period,
-        log_dir=model_directories.log_dir,
-        data_filename=model_directories.filename,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
+        model_data=model_data,
+        model_dirs=model_dirs,
     )

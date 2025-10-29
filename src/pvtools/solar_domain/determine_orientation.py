@@ -3,33 +3,35 @@ import numpy as np
 import pvlib
 
 from typing import List
-from pvanalytics import system
 from pvanalytics.system import _peak_times # infer_orientation_daily_peak
 
 from pvtools.solar_domain.clearsky import get_solar_data_for_location_and_time
-from pvtools.config.params import ClearSkyParameters
+from pvtools.config.params import ClearSkyParameters, ModelData, ModelTimes
 
 
 def determine_system_azimuth_and_tilt(
-        clear_sky_parameters: ClearSkyParameters,
-        df: pd.DataFrame,
+        model_data: ModelData,
+        model_times: ModelTimes,
+        clearsky_params: ClearSkyParameters,
         sunny_mask: pd.Series,
-        sensor_names: List[str] = None,
-        sensor_name_ref: str = None,
-        tilts: np.ndarray = None,
-        azimuths: np.ndarray = None
-) -> List[float]:
+) -> tuple[float, float]:
+
+    df = model_data.df.copy()
+    sensor_name_ref = model_data.sensor_name_ref
+    input_tilt = clearsky_params.surface_tilt
+    input_azimuth = clearsky_params.surface_azimuth
+
+    tilts = np.arange(input_tilt-10, input_tilt+10, 1)
+    azimuths = np.arange(input_azimuth-10, input_azimuth+10, 1)
+
     measured = pd.Series(df[sensor_name_ref].values, index=df['time'])
 
-    # candidate grid to search
-    if tilts is None:
-        tilts = np.arange(0, 10, 1)
-    if azimuths is None:
-        azimuths = np.arange(175, 185, 1) # 180 is south
+    tus, times, sol, cs = get_solar_data_for_location_and_time(
+        clearsky_params=clearsky_params,
+        model_times=model_times
+    )
 
-    tus, times, sol, cs = get_solar_data_for_location_and_time(clear_sky_parameters)
-
-    freq = pd.Timedelta(clear_sky_parameters.frequency)
+    freq = pd.Timedelta(model_times.frequency)
     measured = measured.reindex(times, method="nearest", tolerance=freq)
     sunny_mask = (sunny_mask.astype('boolean')
                   .reindex(times, method='nearest', tolerance=freq)

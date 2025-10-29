@@ -4,9 +4,8 @@ import pandas as pd
 from argparse import ArgumentParser, Namespace
 from typing import Tuple, Optional
 from pathlib import Path
-from pandas import DataFrame
 
-from pvtools.config.params import ModelParameters, ModelDirectories
+from pvtools.config.params import ModelData, ModelDirectories
 from pvtools.io_file.reader import load_dataframe_from_csv, load_and_merge_calibrated_data_from_each_sensor
 from pvtools.io_file.writer import save_dataframe_to_csv
 from pvtools.preprocess.preprocess_data import sanitize_filename
@@ -28,7 +27,8 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
                         help="Path to CSV file with input data")
 
     parser.add_argument("--calibration",
-                        choices=["linear", "fuzzy", "divided_linear", "decision_tree", "poly", "mlp"],
+                        choices=["linear", "fuzzy", "divided_linear", "divided_linear_mean", "decision_tree", "poly",
+                                 "mlp"],
                         default="linear",
                         help="Defines which calibration method use to calibrate sensors")
 
@@ -135,6 +135,13 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
                       default=0,
                       required=True,
                       help="Surface azimuth of the sensor in degrees (default 180, south)")
+    parser.add_argument("--divided_linear_regression_intervals",
+                        type=str,
+                        default="4h",
+                        required=False,
+                        help="Time interval for one block in divided linear regression."
+                             "For all possibilities refer to:"
+                             "https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases")
 
     return parser.parse_args()
 
@@ -186,7 +193,7 @@ def select_available_data_columns_to_process(
 def load_filtered_and_calculated_data_needed_for_execute_function_periods_detected(
         model_directories: ModelDirectories,
         sensor_name_ref: str
-) -> tuple[DataFrame, DataFrame, DataFrame, DataFrame, DataFrame, DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     df = load_dataframe_from_csv(
         Path(model_directories.data_dir / "filtered" / f"{model_directories.filename}.csv"))
 
@@ -214,19 +221,19 @@ def load_filtered_and_calculated_data_needed_for_execute_function_periods_detect
 
     return df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods
 
+
 def load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected(
-        model_directoires: ModelDirectories
+        data_dir: Path,
+        filename: str,
 ) -> pd.DataFrame:
-    df = load_dataframe_from_csv(
-        Path(model_directoires.data_dir / "filtered" / f"{model_directoires.filename}.csv"))
 
-    return df
+    return load_dataframe_from_csv(Path(data_dir / "filtered" / f"{filename}.csv"))
 
 
-def check_if_sunny_cloudy_periods_exists(model_directories: ModelDirectories) -> bool:
+def check_if_sunny_cloudy_periods_exists(data_dir: Path) -> bool:
 
-    check_dir_sunny = Path(model_directories.data_dir / "filtered" / "sunny_periods")
-    check_dir_cloudy = Path(model_directories.data_dir / "filtered" / "cloudy_periods")
+    check_dir_sunny = Path(data_dir / "filtered" / "sunny_periods")
+    check_dir_cloudy = Path(data_dir / "filtered" / "cloudy_periods")
 
     if check_dir_sunny.exists() and check_dir_cloudy.exists():
         return True
@@ -247,18 +254,18 @@ def initialize_dirs_for_base_dir(project_dir):
     return log_dir, plot_dir, data_dir
 
 
-def initialize_dirs_for_loading_dependencies(project_dir_path):
+def initialize_dirs_for_loading_dependencies(calibration_metrics_path):
 
-    log_dir_dependencies = Path(project_dir_path)
+    log_dir_dependencies = Path(calibration_metrics_path).resolve()
     log_dir_dependencies.mkdir(parents=True, exist_ok=True)
 
     return log_dir_dependencies
 
 
 def create_calibrated_dataframe(
-        model_parameters: ModelParameters,
+        model_parameters: ModelData,
         model_directories: ModelDirectories,
-        calibration_method: str
+        calibration_directory: Path,
 ) -> pd.DataFrame:
 
     df = model_parameters.df.copy()
@@ -266,14 +273,12 @@ def create_calibrated_dataframe(
     df = load_and_merge_calibrated_data_from_each_sensor(
         df=model_parameters.df,
         sensor_names=model_parameters.sensor_names,
-        log_dir=model_directories.log_dir,
-        filename=model_directories.filename,
-        calibration_method=calibration_method,
+        calibration_directory=calibration_directory,
         sensor_name_ref = model_parameters.sensor_name_ref
     )
 
     save_dir = Path(model_directories.data_dir / "filtered" / "calibrated" / model_directories.filename /
-                    f"{calibration_method}.csv"
+                    f"{calibration_directory.stem}.csv"
                     )
 
     save_dataframe_to_csv(
@@ -366,3 +371,26 @@ def create_dataframe_with_sensor_values_and_poa(
     ]
 
     return dfs_result
+
+def check_if_calibration_method_available(
+        log_dir: Path,
+        filename: str,
+        calibration_method: str
+) -> Path:
+
+    method_dirs = {
+        "linear": "linear_regression",
+        "fuzzy": "fuzzy_regression",
+        "divided_linear": "divided_linear_regression",
+        "divided_linear_mean": "divided_linear_regression_mean", # Later need to be changed
+        "decision_tree": "decision_tree_regression",
+        "poly": "polynominal_regression",
+        "mlp": "mlp_regression",
+    }
+
+    if calibration_method not in method_dirs:
+        raise ValueError(f"Unsupported calibration method: {calibration_method}")
+
+    directory = Path(log_dir) / filename / method_dirs[calibration_method]
+
+    return directory

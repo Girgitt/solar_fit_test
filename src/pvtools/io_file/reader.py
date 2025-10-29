@@ -4,9 +4,8 @@ import pandas as pd
 from typing import Dict, Any, List, TypeAlias, Literal, Optional
 from pathlib import Path
 
-from pvtools.config.params import DatatypeCoefficientsForMLPRegression, DatatypeCoefficientsForDividedLinearRegression
+from pvtools.config.params import DatatypeMLPRegressionParameters, DatatypeCoefficientsForDividedLinearRegression
 from pvtools.calibration.validate_decision_tree import _validate_tree_structure
-from pvtools.config.params import ModelParameters
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
@@ -15,33 +14,17 @@ Period_type: TypeAlias = Literal['sunny', 'cloudy']
 def load_and_merge_calibrated_data_from_each_sensor(
         df: pd.DataFrame,
         sensor_names: list[str],
-        log_dir: Path,
-        filename: str,
-        calibration_method: str,
+        calibration_directory: Path,
         sensor_name_ref: Optional[str] = None
 ) -> pd.DataFrame:
 
     df = df.copy().reset_index(drop=True)
 
-    method_dirs = {
-        "linear": "linear_regression",
-        "fuzzy": "fuzzy_regression",
-        "divided_linear": "divided_linear_regression",
-        "decision_tree": "decision_tree_regression",
-        "poly": "polynominal_regression",
-        "mlp": "mlp_regression",
-    }
-
-    if calibration_method not in method_dirs:
-        raise ValueError(f"Unsupported calibration method: {calibration_method}")
-
-    directory = Path(log_dir) / filename / method_dirs[calibration_method]
-
     merged_df = pd.DataFrame()
 
     for s_name in sensor_names:
         sanitized_name = sanitize_filename(s_name)
-        csv_path = directory / f"{sanitized_name}_all_predicted.csv"
+        csv_path = calibration_directory / f"{sanitized_name}_all_predicted.csv"
 
         if not csv_path.exists():
             raise FileNotFoundError(f"[ERROR] File not found: {csv_path}")
@@ -117,7 +100,9 @@ def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str,
     return params
 
 
-def divided_linear_regression_load_parameters(calibration_method_dir: Path) -> List[DatatypeCoefficientsForDividedLinearRegression]:
+def divided_linear_regression_load_parameters(
+        calibration_method_dir: Path
+) -> List[DatatypeCoefficientsForDividedLinearRegression]:
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -176,7 +161,7 @@ def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Di
     return params["params"]
 
 
-def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsForMLPRegression:
+def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeMLPRegressionParameters:
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -185,7 +170,7 @@ def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsFor
     if coeffs not in data or not data[coeffs]:
         raise ValueError(f"JSON file does not contain {coeffs} list.")
 
-    coeff_params = data[coeffs]
+    coeff_params = data.get(coeffs)
 
     required_keys = ["layer_1_weights", "layer_1_biases", "layer_2_weights", "layer_2_biases", "output_weights", "output_biases"]
     for key in required_keys:
@@ -196,13 +181,16 @@ def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsFor
     if scalers not in data or not data[scalers]:
         raise ValueError(f"JSON file does not contain {scalers} list.")
 
-    scaler_params = data[scalers]
+    scaler_params = data.get(scalers)
 
     required_keys = ["x_scaler_mean", "x_scaler_scale", "y_scaler_mean", "y_scaler_scale", "activation"]
     for key in required_keys:
         if key not in scaler_params:
             raise ValueError(f"Missing key '{key}' in {scalers}")
 
-    params = {coeffs: coeff_params, scalers: scaler_params}
+    params: DatatypeMLPRegressionParameters = {
+        "coefficients": coeff_params,
+        "scalers": scaler_params
+    }
 
     return params

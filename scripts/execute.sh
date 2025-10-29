@@ -46,6 +46,8 @@ ST_M=$(jq -r '.filtering_data_parameters.delete_night_period.start_minute' "$CON
 END_H=$(jq -r '.filtering_data_parameters.delete_night_period.end_hour' "$CONFIG_JSON")
 END_M=$(jq -r '.filtering_data_parameters.delete_night_period.end_minute' "$CONFIG_JSON")
 
+INTERVALS=$(jq -r '.filtering_data_parameters.process_data.divided_linear_regression_intervals', "$CONFIG_JSON")
+
 ### -------- Resolve CSV path (file or directory) --------
 # Your JSON key is named "..._directory". If a directory is given, pick the first *.csv in it.
 if [ -d "$CSV_INPUT" ]; then
@@ -87,6 +89,7 @@ cmd=(
   --albedo "$ALBEDO"
   --surface_tilt "$TILT"
   --surface_azimuth "$AZIMUTH"
+  --divided_linear_regression_intervals "$INTERVALS"
 )
 
 # Optional flags (only if present in JSON)

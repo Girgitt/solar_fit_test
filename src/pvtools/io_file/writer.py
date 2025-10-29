@@ -4,7 +4,7 @@ import json
 
 from pathlib import Path
 from matplotlib.figure import Figure
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Any
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 
@@ -14,7 +14,7 @@ required_metric_fields = ["mse", "mae", "rmse", "r2", "mape", "max_error", "bias
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,
         samples_count: int,
-        coefficients_list: list[dict] = None,
+        coefficients_list: Any = None,
         filename_path: Path = None,
         scalers_list: list[dict] = None
 ) -> None:
@@ -50,11 +50,11 @@ def save_metrics_to_json(
 
 
 def save_true_and_predicted_data_to_csv(
-        y_pred: np.ndarray,
+        y_pred: pd.Series,
         output_path: Path,
-        y_true: np.ndarray = None,
-        index: np.ndarray = None,
-        time: np.ndarray = None
+        y_true: pd.Series = None,
+        index: pd.Series = None,
+        time: pd.Series = None
 ) -> None:
 
     if y_true is not None:

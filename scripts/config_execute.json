@@ -27,6 +27,9 @@
       "start_minute": 0,
       "end_hour": 18,
       "end_minute": 0
+    },
+    "process_data": {
+      "divided_linear_regression_intervals": "4h"
     }
   }
 }
