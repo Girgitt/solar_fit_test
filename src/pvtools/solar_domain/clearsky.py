@@ -6,27 +6,24 @@ from itertools import product
 from pathlib import Path
 from typing import Optional, Any
 
-from pandas import DatetimeIndex, DataFrame
+from pandas import DatetimeIndex
 from pvlib import solarposition, irradiance
 from pvlib.location import Location
 from pvlib.clearsky import detect_clearsky
-from datetime import time
 
-from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
-from pvtools.config.params import ClearSkyParameters, ModelTimes
+from pvtools.config.params import ClearSkyParameters, ModelTimes, ModelDirectories
 from pvtools.preprocess.preprocess_data import sanitize_filename
 from pvtools.io_file.writer import save_dataframe_to_csv
-from pvtools.preprocess.preprocess_data import delete_night_period
 
 
 def clear_sky(
         clearsky_params: ClearSkyParameters,
+        model_dirs: ModelDirectories,
         model_times: ModelTimes,
-        show: bool = False,
-        save_dir_plot: Path = None,
-        save_dir: Path = None,
-        filename: str = None
-) -> pd.DataFrame:
+) -> list[pd.DataFrame]:
+
+    filename = model_dirs.filename
+    save_dir = model_dirs.data_dir
 
     tus, times, sol, cs = get_solar_data_for_location_and_time(clearsky_params, model_times)
 
@@ -57,15 +54,12 @@ def clear_sky(
 
     poa = poa.rename_axis('time').reset_index()
 
-    plot_clear_sky(cs, save_dir=save_dir_plot, show=show)
-    plot_poa_components(poa, save_dir=save_dir_plot, show=show)
-
     if save_dir is not None:
         save_dir = Path(save_dir)
         output_path = save_dir / "calculated_data" / filename / ("poa_values" + ".csv")
         save_dataframe_to_csv(poa, output_path, index=False)
 
-    return poa
+    return poa, cs
 
 
 def get_solar_data_for_location_and_time(

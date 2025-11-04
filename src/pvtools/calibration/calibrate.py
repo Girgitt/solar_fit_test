@@ -61,7 +61,6 @@ def calibrate_by_linear_regression(
     y_pred = pd.Series()
 
     if period_flag is True:
-
         y_true = df[sensor_name_ref]
 
         for i, json_file_dir_sunny in enumerate(json_files_sunny):
@@ -1145,7 +1144,6 @@ def select_calibration_parameters(
     missing_from_sunny = sorted(set(expected_times) - set(json_hours_sunny))
 
     if all_ok:
-
         if missing_from_sunny:
             log.info(f"Filling {len(missing_from_sunny)} missing intervals from all params.")
 
@@ -1163,7 +1161,6 @@ def select_calibration_parameters(
             return params_all
 
     else:
-
         log.error("Cannot calibrate! Not enough data in both sunny and all parameter sets.")
         raise ValueError("Cannot calibrate! Missing intervals in both sunny and all parameter sets.")
 
@@ -1173,6 +1170,8 @@ def check_if_params_contains_data_for_all_time_intervals(
         df_time: pd.Series,
         frequency: str
 ) -> bool:
+
+    df_time = pd.to_datetime(df_time).dt.tz_localize(None).dt.tz_localize("Europe/Warsaw").dt.tz_convert("UTC")
 
     json_hours = sorted([item["hour"] for item in coeffs])
 

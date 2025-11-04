@@ -137,6 +137,7 @@ def plot_poa_vs_reference(
         save_dir: Optional[Path] = None,
         show: bool = True,
 ) -> Figure:
+
     if len(poa_global) == len(sensor_reference):
         sensor_copy = sensor_reference.copy()
         sensor_copy.index = poa_global.index
@@ -163,15 +164,19 @@ def plot_poa_vs_reference(
 
 
 def plot_poa_reference_with_clearsky_periods(
-        poa_global: pd.Series,
-        sensor_reference: pd.Series,
+        poa_global: pd.DataFrame,
+        sensor_reference: pd.DataFrame,
         sunny: pd.Series,
         save_dir: Optional[Path] = None,
         show: bool = True
 ) -> Figure:
+
     poa_global = poa_global.copy()
     sensor_reference = sensor_reference.copy()
     sunny = sunny.copy()
+
+    poa_global = poa_global.set_index("time")
+    sensor_reference = sensor_reference.set_index("time")
 
     fig = plot_poa_vs_reference(
         poa_global=poa_global,
@@ -180,14 +185,10 @@ def plot_poa_reference_with_clearsky_periods(
         show=False
     )
 
-    sensor_aligned = sensor_reference
-    sensor_aligned.index = poa_global.index
-    sunny_aligned = sunny.reindex(poa_global.index).fillna(False).astype(bool)
-
     ax = fig.axes[0]
     ax.scatter(
-        poa_global.index[sunny_aligned],
-        sensor_aligned[sunny_aligned],
+        sunny.index[sunny],
+        sensor_reference[sunny],
         s=12,
         zorder=5,
         label="Clear-sky samples"
@@ -195,6 +196,7 @@ def plot_poa_reference_with_clearsky_periods(
 
     ax.set_title("POA Global vs Sensor Reference (clear-sky highlighted)")
     ax.legend(title="")
+    ax.legend(loc="upper right")
     fig.tight_layout()
 
     if save_dir is not None:

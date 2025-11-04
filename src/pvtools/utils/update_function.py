@@ -1,16 +1,17 @@
-import numpy as np
 import pandas as pd
 
 from typing import TypeAlias, Literal
-from datetime import time
 
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
-from pvtools.modeling.calculate_calibration_parameters import linear_regression, divided_linear_regression, polynominal_regression, \
-    decision_tree_regression, mlp_regression
+from pvtools.modeling.calculate_calibration_parameters import (linear_regression, divided_linear_regression,
+                                                               polynominal_regression, decision_tree_regression,
+                                                               mlp_regression)
 from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
 from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
 from pvtools.solar_domain.measurement_limitations import limit_sensor_ref_irradiance_to_clear_sky_model
+from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components, plot_poa_reference_with_clearsky_periods
+from pvtools.preprocess.preprocess_data import delete_night_period
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
@@ -65,17 +66,27 @@ def process_solar_data_with_clearsky_detection_and_masking(
         clearsky_cal_val: ClearSkyCalculatedValues,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
 
-    poa = clear_sky(
+    poa, cs = clear_sky(
         clearsky_params=clearsky_params,
-        model_times=model_times,
-        show=False,
-        save_dir_plot=model_dirs.plot_dir / model_dirs.filename,
-        save_dir=model_dirs.data_dir,
-        filename=model_dirs.filename
+        model_dirs=model_dirs,
+        model_times=model_times
     )
+
+    poa = delete_night_period(
+        df=poa,
+        start=model_times.start_daytime_cut,
+        end=model_times.end_daytime_cut
+    )
+
+    filename = model_dirs.filename
+    save_dir_plot = model_dirs.plot_dir / filename
+
+    plot_clear_sky(cs, save_dir=save_dir_plot, show=False)
+    plot_poa_components(poa, save_dir=save_dir_plot, show=False)
 
     clearsky_cal_val.poa = poa
 
+    #FIXME - does it have any sense?
     df_limited = limit_sensor_ref_irradiance_to_clear_sky_model(
         df=model_data.df,
         clearsky_df=clearsky_cal_val.poa,
@@ -97,6 +108,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
 
     model_data.df = df_limited
 
+    #FIXME - jesli przechylenie rozne od 0!
     determine_system_azimuth_and_tilt(
         model_data=model_data,
         model_times=model_times,
@@ -116,6 +128,14 @@ def process_solar_data_with_clearsky_detection_and_masking(
         sensor_name_ref=model_data.sensor_name_ref,
         period_type="cloudy",
         save_dir=model_dirs.data_dir
+    )
+
+    plot_poa_reference_with_clearsky_periods(
+        poa_global=poa[["time", "poa_global"]],
+        sensor_reference=model_data.df[["time", model_data.sensor_name_ref]],
+        sunny=clearsky_periods_all,
+        save_dir=save_dir_plot,
+        show=False
     )
 
     return df_sunny_periods_cutted_short, df_cloudy_periods_cutted_short

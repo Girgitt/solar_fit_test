@@ -27,7 +27,7 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
                         help="Path to CSV file with input data")
 
     parser.add_argument("--calibration",
-                        choices=["linear", "fuzzy", "divided_linear", "divided_linear_mean", "decision_tree", "poly",
+                        choices=["linear", "fuzzy", "divided", "divided_mean", "decision_tree", "poly",
                                  "mlp"],
                         default="linear",
                         help="Defines which calibration method use to calibrate sensors")
@@ -44,8 +44,7 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
                         type=int,
                         default=None,
                         required=False,
-                        help="Number of reference sensors."
-                             " Number of specified column, counting from 0, skipping time column."
+                        help="Number of specified column, counting from 0, skipping time column."
                              " Accept single number")
 
     parser.add_argument("--project_dir",
@@ -56,9 +55,9 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
 
     parser.add_argument("--calibration_metrics_dir",
                         type=Path,
-                        default=Path.cwd(),
-                        help="Directory which contains all metrics needed for calibration. "
-                             "(default: current working directory)")
+                        required=False,
+                        default=None,
+                        help="Directory which contains all metrics needed for calibration.")
 
     parser.add_argument("--start_time_hour",
                       type=int,
@@ -295,7 +294,7 @@ def create_dataframe_with_sensor_values_and_poa(
         poa: pd.DataFrame,
         data_dir: Path,
         filename: str,
-) -> [pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> list[pd.DataFrame]:
 
     df_org = load_dataframe_from_csv(Path(data_dir / "filtered" / f"{filename}.csv"))
     df_org.columns = [sanitize_filename(name) for name in df_org.columns]
@@ -381,8 +380,8 @@ def check_if_calibration_method_available(
     method_dirs = {
         "linear": "linear_regression",
         "fuzzy": "fuzzy_regression",
-        "divided_linear": "divided_linear_regression",
-        "divided_linear_mean": "divided_linear_regression_mean", # Later need to be changed
+        "divided": "divided_linear_regression",
+        "divided_mean": "divided_linear_regression_mean", # Later need to be changed
         "decision_tree": "decision_tree_regression",
         "poly": "polynominal_regression",
         "mlp": "mlp_regression",

@@ -10,6 +10,9 @@
 '''
 python ../src/main.py --action=update --model_id=test_update_1 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./test_update_1
 python ../src/main.py --action=execute --model_id=test_execute_1 --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./test_execute_1 --calibration_metrics_dir ../test_update_1/logs/25-09-04_08
+
+python ../src/main.py --action=update --model_id=test_aa --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./update
+python ../src/main.py --action=execute --model_id=test_aa --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./execute --calibration_metrics_dir ./update/logs/25-09-26_25-10-02
 '''
 
 import os
@@ -52,10 +55,7 @@ def main():
     target_frequency = args.frequency
 
     if args.action == "update" and args.reference == None:
-        raise(AttributeError("Cannot update without reference sensor!"))
-
-    if args.reference == None and args.calibration_metrics_dir == None:
-        raise(AttributeError("Cannot execute without specified calibration metrics directory!"))
+        raise AttributeError("Cannot update without reference sensor!")
 
     arg_project_dir = args.project_dir if args.project_dir else None
 
@@ -65,7 +65,11 @@ def main():
         project_dir = Path(arg_project_dir).resolve()
 
     log_dir, plot_dir, data_dir = initialize_dirs_for_base_dir(project_dir)
-    load_metrics_dir = initialize_dirs_for_loading_dependencies(args.calibration_metrics_dir)
+
+    if args.calibration_metrics_dir is not None:
+        load_metrics_dir = initialize_dirs_for_loading_dependencies(args.calibration_metrics_dir)
+    else:
+        load_metrics_dir = None
 
     df = pd.read_csv(args.csv, parse_dates=["time"])
 
@@ -143,6 +147,9 @@ def main():
         )
 
     elif args.action == "execute":
+        if model_dirs.load_metrics_dir is None:
+            raise AttributeError(f"Calibration metrics directory not found!")
+
         execute_function(
             model_data=model_data,
             model_dirs=model_dirs,

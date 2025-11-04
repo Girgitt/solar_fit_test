@@ -13,6 +13,7 @@ def limit_sensor_ref_irradiance_to_clear_sky_model(
         save_dir: Path = None,
         filename: str = None
 ) -> pd.DataFrame:
+
     if not isinstance(df, pd.DataFrame) or not isinstance(clearsky_df, pd.DataFrame):
         raise TypeError("Expected 'df' and 'clear_sky_df' to be a pandas DataFrame")
 

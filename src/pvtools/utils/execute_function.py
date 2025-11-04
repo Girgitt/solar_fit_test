@@ -1,7 +1,6 @@
 import pandas as pd
 import logging
 
-from pathlib import Path
 from typing import TypeAlias, Literal
 
 from pvtools.calibration.calibrate import (calibrate_by_linear_regression, calibrate_by_divided_linear_regression,
@@ -21,6 +20,7 @@ from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
 from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
 from pvtools.preprocess.preprocess_data import delete_night_period
+from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
 
 log = logging.getLogger("calibrate")
 
@@ -36,13 +36,10 @@ def execute_function(
         calibration_method: str = "linear"
 ) -> None:
 
-    poa = clear_sky(
+    poa, cs = clear_sky(
         clearsky_params=clearsky_params,
-        model_times=model_times,
-        show=False,
-        save_dir_plot=model_dirs.plot_dir / model_dirs.filename,
-        save_dir=model_dirs.data_dir,
-        filename=model_dirs.filename
+        model_dirs=model_dirs,
+        model_times=model_times
     )
 
     poa = delete_night_period(
@@ -51,76 +48,57 @@ def execute_function(
         end=model_times.end_daytime_cut,
     )
 
-    clearsky_periods=None
-    cloudy_periods=None
+    filename = model_dirs.filename
+    save_dir_plot = model_dirs.plot_dir / filename
 
-    period_flag = check_if_sunny_cloudy_periods_exists(model_dirs.data_dir)
+    plot_clear_sky(cs, save_dir=save_dir_plot, show=False)
+    plot_poa_components(poa, save_dir=save_dir_plot, show=False)
 
-    if not period_flag:
+    clearsky_cal_val.poa = poa
+    clearsky_periods = None
+    cloudy_periods = None
+    period_flag=False
+
+    if model_data.sensor_name_ref is not None:
+        clearsky_periods, cloudy_periods, df_cutted_short_periods = run_full_clearsky_data_pipeline(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            clearsky_cal_val=clearsky_cal_val
+        )
+
+        #model_data.df = df_cutted_short_periods
+        period_flag=True
+
+        plot_poa_reference_with_clearsky_periods(
+            poa_global=poa[["time", "poa_global"]],
+            sensor_reference=model_data.df[["time", model_data.sensor_name_ref]],
+            sunny=clearsky_periods,
+            save_dir=save_dir_plot,
+            show=False
+        )
+
+    else:
         df = load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected(
             data_dir=model_dirs.data_dir,
             filename=model_dirs.filename,
         )
 
-        if model_data.sensor_name_ref is not None:
-            clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
-                poa=clearsky_cal_val.poa,
-                df=model_data.df,
-                sensor_name_ref=model_data.sensor_name_ref,
-                save_dir=model_dirs.data_dir,
-                filename=model_dirs.filename
-            )
-
-            df_sunny_periods_cutted_short = apply_mask_for_dataframe(
-                data_filename=model_dirs.filename,
-                sensor_name_ref=model_data.sensor_name_ref,
-                period_type="sunny",
-                save_dir=model_dirs.data_dir
-            )
-
-            df_cloudy_periods_cutted_short = apply_mask_for_dataframe(
-                data_filename=model_dirs.filename,
-                sensor_name_ref=model_data.sensor_name_ref,
-                period_type="cloudy",
-                save_dir=model_dirs.data_dir
-            )
-
-            df_cutted_short_periods = merge_sunny_and_cloudy_calibrated_dataframes(
-                df_sunny=df_sunny_periods_cutted_short,
-                df_cloudy=df_cloudy_periods_cutted_short
-            )
-
-            model_data.df = df_cutted_short_periods
-
         model_data.df = df
 
-    else:
-        [df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods] = (
-            load_filtered_and_calculated_data_needed_for_execute_function_periods_detected(
-                model_directories=model_dirs,
-                sensor_name_ref=model_data.sensor_name_ref
-            ))
-
-        clearsky_cal_val.clearsky_periods = clearsky_periods
-        clearsky_cal_val.cloudy_periods = cloudy_periods
-
-        df_cutted_short_periods = merge_sunny_and_cloudy_calibrated_dataframes(
-            df_sunny=df_sunny,
-            df_cloudy=df_cloudy
-        )
-
-        model_data.df = df_cutted_short_periods
-
+    clearsky_cal_val.clearsky_periods = clearsky_periods
+    clearsky_cal_val.cloudy_periods = cloudy_periods
     clearsky_cal_val.poa = poa
+
+    model_data.df["if_sunny"] = clearsky_periods
+
     surface_tilt = clearsky_params.surface_tilt
-    surface_azimuth = clearsky_params.surface_azimuth
 
     if surface_tilt != 0:
-        determine_system_azimuth_and_tilt(
+        clearsky_params.surface_tilt, clearsky_params.surface_azimuth = determine_system_azimuth_and_tilt(
             model_data=model_data,
             model_times=model_times,
             clearsky_params=clearsky_params,
-            sunny_mask=clearsky_periods_all,
+            sunny_mask=clearsky_periods
         )
 
     calibration_directory = check_if_calibration_method_available(
@@ -179,14 +157,9 @@ def execute_function(
 
     plot(
         dataframes=list_of_dataframes,
-        sensor_names=model_data.sensor_names,
-        sensor_name_ref=model_data.sensor_name_ref,
-        data_dir=model_dirs.data_dir,
-        plot_dir=model_dirs.plot_dir,
-        log_dir=model_dirs.log_dir,
-        filename=model_dirs.filename,
-        poa=clearsky_cal_val.poa,
-        clearsky_periods=clearsky_cal_val.clearsky_periods,
+        model_data=model_data,
+        model_dirs=model_dirs,
+        clearsky_cal_val=clearsky_cal_val,
         calibration_method=calibration_method
     )
 
@@ -215,14 +188,14 @@ def calibrate(
             period_flag=period_flag
         )
 
-    elif calibration_method == "divided_linear":
+    elif calibration_method == "divided":
         calibrate_by_divided_linear_regression(
             model_data=model_data,
             model_dirs=model_dirs,
             period_flag=period_flag
         )
 
-    elif calibration_method == "divided_linear_mean":
+    elif calibration_method == "divided_mean":
         calibrate_by_divided_linear_regression_mean(
             model_data=model_data,
             model_dirs=model_dirs,
@@ -256,16 +229,20 @@ def calibrate(
 
 def plot(
         dataframes: list[pd.DataFrame],
-        sensor_names: list[str],
-        sensor_name_ref: str,
-        data_dir: Path,
-        plot_dir: Path,
-        log_dir: Path,
-        filename: str,
-        poa: pd.DataFrame,
-        clearsky_periods: pd.Series,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        clearsky_cal_val: ClearSkyCalculatedValues,
         calibration_method: str,
 ) -> None:
+
+    sensor_names = model_data.sensor_names
+    sensor_name_ref = model_data.sensor_name_ref
+    plot_dir = model_dirs.plot_dir
+    filename = model_dirs.filename
+    poa = clearsky_cal_val.poa
+    clearsky_periods = clearsky_cal_val.clearsky_periods
+
+    save_dir = plot_dir / filename
 
     [df_postprocess,
      df_org,
@@ -275,7 +252,7 @@ def plot(
 
     plot_from_dataframe(
         df=df_org,
-        save_dir=plot_dir / filename,
+        save_dir=save_dir,
         filename="org_series_vs_time.png",
         sensor_names=sensor_names,
         sensor_name_ref=sensor_name_ref,
@@ -285,7 +262,7 @@ def plot(
 
     plot_from_dataframe(
         df=df_postprocess,
-        save_dir=plot_dir / filename,
+        save_dir=save_dir,
         filename=f"calibrated_series_vs_time_{calibration_method}.png",
         sensor_names=sensor_names,
         sensor_name_ref=sensor_name_ref,
@@ -295,7 +272,7 @@ def plot(
 
     plot_from_dataframe(
         df=df_org_sensor_data_with_poa_global,
-        save_dir=plot_dir / filename,
+        save_dir=save_dir,
         filename="org_series_with_poa_vs_time.png",
         sensor_names=sensor_names,
         sensor_name_ref="poa_global",
@@ -305,7 +282,7 @@ def plot(
 
     plot_from_dataframe(
         df=df_postprocess_calibrated_sensor_data_with_poa_global,
-        save_dir=plot_dir / filename,
+        save_dir=save_dir,
         filename=f"postprocess_calibrated_series_with_poa_vs_time_{calibration_method}.png",
         sensor_names=sensor_names,
         sensor_name_ref="poa_global",
@@ -315,7 +292,7 @@ def plot(
 
     plot_from_dataframe(
         df=df_calibrated_sensor_data_with_poa_global,
-        save_dir=plot_dir / filename,
+        save_dir=save_dir,
         filename=f"calibrated_series_with_poa_vs_time_{calibration_method}.png",
         sensor_names=sensor_names,
         sensor_name_ref="poa_global",
@@ -327,14 +304,47 @@ def plot(
         plot_poa_vs_reference(
             poa_global=poa['poa_global'],
             sensor_reference=df_postprocess[sensor_name_ref],
-            save_dir=plot_dir / filename,
+            save_dir=save_dir,
             show=True,
         )
 
-        plot_poa_reference_with_clearsky_periods(
-            poa_global=poa['poa_global'],
-            sensor_reference=df_postprocess[sensor_name_ref],
-            sunny=clearsky_periods['if_sunny'],
-            save_dir=plot_dir / filename,
-            show=True,
-        )
+def run_full_clearsky_data_pipeline(
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+) -> list[pd.DataFrame]:
+
+    clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
+        poa=clearsky_cal_val.poa,
+        df=model_data.df,
+        sensor_name_ref=model_data.sensor_name_ref,
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
+    )
+
+    df_sunny_periods_cutted_short = apply_mask_for_dataframe(
+        data_filename=model_dirs.filename,
+        sensor_name_ref=model_data.sensor_name_ref,
+        period_type="sunny",
+        save_dir=model_dirs.data_dir
+    )
+
+    df_cloudy_periods_cutted_short = apply_mask_for_dataframe(
+        data_filename=model_dirs.filename,
+        sensor_name_ref=model_data.sensor_name_ref,
+        period_type="cloudy",
+        save_dir=model_dirs.data_dir
+    )
+
+    df_cutted_short_periods = merge_sunny_and_cloudy_calibrated_dataframes(
+        df_sunny=df_sunny_periods_cutted_short,
+        df_cloudy=df_cloudy_periods_cutted_short
+    )
+
+    return_dfs = [
+        clearsky_periods_all,
+        cloudy_periods_all,
+        df_cutted_short_periods
+    ]
+
+    return return_dfs
