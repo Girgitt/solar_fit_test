@@ -3,6 +3,14 @@
 logs/
 plots/
 
+data/calculated_data/
+data/filtered/
+
+scripts/config_execute.json
+scripts/config_update.json
+scripts/execute.sh
+scripts/update.sh
+
 src/pvtools/__pycache__/
 src/pvtools/calibration/__pycache__/
 src/pvtools/config/__pycache__/
@@ -22,3 +30,4 @@ tests/preprocess/__pycache__/
 tests/solar_domain/__pycache__/
 tests/utils/__pycache__/
 tests/visualisation/__pycache__/
+
