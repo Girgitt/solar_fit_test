@@ -26,7 +26,7 @@ def determine_system_azimuth_and_tilt(
 
     measured = pd.Series(df[sensor_name_ref].values, index=df['time'])
 
-    tus, times, sol, cs = get_solar_data_for_location_and_time(
+    (tus, times, solarpos, cs, airmass, dni_extra) = get_solar_data_for_location_and_time(
         clearsky_params=clearsky_params,
         model_times=model_times
     )
@@ -43,8 +43,8 @@ def determine_system_azimuth_and_tilt(
         sunny=sunny_mask,
         tilts=tilts,
         azimuths=azimuths,
-        solar_azimuth=sol['azimuth'],
-        solar_zenith=sol['apparent_zenith'],
+        solar_azimuth=solarpos['azimuth'],
+        solar_zenith=solarpos['apparent_zenith'],
         ghi=cs['ghi'],
         dhi=cs['dhi'],
         dni=cs['dni'],
@@ -67,7 +67,7 @@ def infer_orientation_daily_peak(
         dni
 ) -> List[float]:
 
-    peak_times = _peak_times(power_or_poa[sunny])
+    peak_times = _peak_times(power_or_poa[sunny]) #FIXME - function _peak_times() not always works correct. Test tilt=15 and azimuth=90
     azimuth_by_minute = solar_azimuth.resample('1min').interpolate(method='linear')
     modeled_azimuth = azimuth_by_minute[peak_times]
     best_azimuth = None

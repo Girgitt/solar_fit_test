@@ -192,7 +192,7 @@ def select_available_data_columns_to_process(
 def load_filtered_and_calculated_data_needed_for_execute_function_periods_detected(
         model_directories: ModelDirectories,
         sensor_name_ref: str
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+) -> list[pd.DataFrame]:
     df = load_dataframe_from_csv(
         Path(model_directories.data_dir / "filtered" / f"{model_directories.filename}.csv"))
 
@@ -218,7 +218,9 @@ def load_filtered_and_calculated_data_needed_for_execute_function_periods_detect
     df_sunny['if_sunny'] = True
     df_cloudy['if_sunny'] = False
 
-    return df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods
+    return_dfs = [df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods]
+
+    return return_dfs
 
 
 def load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected(
@@ -245,6 +247,7 @@ def initialize_dirs_for_base_dir(project_dir):
     log_dir = Path(os.path.join(project_dir, "logs"))
     plot_dir = Path(os.path.join(project_dir, "plots"))
     data_dir = Path(os.path.join(project_dir, "data"))
+    output_dir = Path()
 
     log_dir.mkdir(parents=True, exist_ok=True)
     plot_dir.mkdir(parents=True, exist_ok=True)

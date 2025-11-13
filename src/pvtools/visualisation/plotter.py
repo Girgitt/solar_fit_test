@@ -1,4 +1,3 @@
-import os
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -8,9 +7,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from typing import Dict
 
-from pvtools.io_file.reader import load_true_and_predicted_data_for_all_methods
-from pvtools.io_file.writer import save_figure, save_predicted_data_figures
-from pvtools.preprocess.preprocess_data import sanitize_filename
+from pvtools.io_file.writer import save_figure
 
 
 def plot_from_dataframe(
@@ -44,7 +41,10 @@ def plot_from_dataframe(
     ax.set_title(title)
     ax.set_xlabel("Time")
     ax.set_ylabel("Power (W/m²)")
-    ax.legend(loc="upper right")
+    ax.legend(
+        loc="upper right",
+        fontsize=5
+    )
     ax.grid(True)
     fig.tight_layout()
 
@@ -102,6 +102,11 @@ def plot_clear_sky(
     ax.set_ylabel("Irradiance (W/m²)")
     ax.set_title("Clear‐sky irradiance (DNI, GHI, DHI)")
     ax.grid(True)
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=5
+    )
     fig.tight_layout()
 
     save_figure(fig, save_dir, "clear_sky_model.png")
@@ -120,7 +125,11 @@ def plot_poa_components(
     poa[['poa_global', 'poa_direct', 'poa_diffuse', 'poa_ground_diffuse']].plot(ax=ax)
     ax.set_ylabel("Irradiance (W/m²)")
     ax.set_title("Plane‐of‐Array Irradiance (Perez model)")
-    ax.legend(title="")
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=5
+    )
     ax.grid(True)
     fig.tight_layout()
 
@@ -150,7 +159,11 @@ def plot_poa_vs_reference(
     df.plot(ax=ax, linewidth=0.9)
     ax.set_ylabel("Irradiance / Power (W/m²)")
     ax.set_title("POA Global vs Sensor Reference")
-    ax.legend(title="")
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=5
+    )
     ax.grid(True)
     fig.tight_layout()
 
@@ -196,7 +209,10 @@ def plot_poa_reference_with_clearsky_periods(
 
     ax.set_title("POA Global vs Sensor Reference (clear-sky highlighted)")
     ax.legend(title="")
-    ax.legend(loc="upper right")
+    ax.legend(
+        loc="upper right",
+        fontsize=5
+    )
     fig.tight_layout()
 
     if save_dir is not None:

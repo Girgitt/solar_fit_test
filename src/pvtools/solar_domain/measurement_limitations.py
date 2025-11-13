@@ -47,6 +47,7 @@ def limit_sensors_irradiance_to_clear_sky_model(
         sensor_names: list[str] = None,
         poa_global_name: str = 'poa_global'
 ) -> pd.DataFrame:
+
     if not isinstance(df, pd.DataFrame) or not isinstance(clearsky_df, pd.DataFrame):
         raise TypeError("Expected 'df' and 'clear_sky_df' to be a pandas DataFrame")
 

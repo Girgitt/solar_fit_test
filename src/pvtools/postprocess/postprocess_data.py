@@ -20,6 +20,7 @@ def postprocess_data(
         calibration_method: str = "linear"
 ) -> pd.DataFrame:
 
+    '''
     limit_df = limit_sensors_irradiance_to_clear_sky_model(
         df=df,
         clearsky_df=clearsky_df,
@@ -28,15 +29,16 @@ def postprocess_data(
     )
 
     result_df = remove_negative_measurements(df=limit_df)
+    '''
 
     save_dataframe_to_csv(
-        df=result_df,
+        df=df,
         output_path= Path(data_dir) / "filtered" / "calibrated" / filename / f"{calibration_method}.csv",
         index=False,
         index_label=None,
     )
 
-    return result_df
+    return df
 
 def merge_sunny_and_cloudy_calibrated_dataframes(
         df_sunny: pd.DataFrame,

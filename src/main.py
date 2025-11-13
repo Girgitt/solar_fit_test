@@ -11,7 +11,7 @@
 python ../src/main.py --action=update --model_id=test_update_1 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./test_update_1
 python ../src/main.py --action=execute --model_id=test_execute_1 --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./test_execute_1 --calibration_metrics_dir ../test_update_1/logs/25-09-04_08
 
-python ../src/main.py --action=update --model_id=test_aa --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./update
+python ../../src/main.py --action=update --model_id=test_aa --csv=../../data/org/25-07-05_12.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 3 --start_time_minute 0 --end_time_hour 20 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 4 --surface_azimuth 130 --project_dir=./
 python ../src/main.py --action=execute --model_id=test_aa --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./execute --calibration_metrics_dir ./update/logs/25-09-26_25-10-02
 '''
 
@@ -54,7 +54,7 @@ def main():
     args = argument_parsing(parser)
     target_frequency = args.frequency
 
-    if args.action == "update" and args.reference == None:
+    if args.action == "update" and args.reference is None:
         raise AttributeError("Cannot update without reference sensor!")
 
     arg_project_dir = args.project_dir if args.project_dir else None
@@ -76,7 +76,7 @@ def main():
     start_daytime = time(args.start_time_hour, args.start_time_minute) # 4:00 GMT -> 6:00 UTC+2
     end_daytime = time(args.end_time_hour, args.end_time_minute) # 17:00 GMT -> 19:00 UTC+2
 
-    df_filtered = preprocess_data(
+    df_filtered, target_frequency = preprocess_data(
         df=df,
         target_timedelta=target_frequency, # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
         start_daytime=start_daytime,

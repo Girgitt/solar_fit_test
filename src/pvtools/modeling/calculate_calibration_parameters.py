@@ -33,7 +33,7 @@ Bias shows whether the model regularly over- or under-predicts
 
 log = logging.getLogger("calculate_calibration_parameters")
 
-Period_type: TypeAlias = Literal['sunny', 'cloudy']
+Period_type: TypeAlias = Literal['sunny', 'cloudy', 'all']
 
 my_test_size=0.3
 my_random_state=42

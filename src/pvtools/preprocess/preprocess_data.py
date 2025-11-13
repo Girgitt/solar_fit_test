@@ -15,7 +15,8 @@ def preprocess_data(
         end_daytime: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
         save_dir: Path = None,
         filename: str = None,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.Timedelta]:
+
     df = df.copy()
 
     df.columns = [sanitize_filename(name) for name in df.columns]
@@ -26,7 +27,12 @@ def preprocess_data(
         tz_name='Europe/Warsaw'
     )
 
-    if check_if_target_frequency_is_lower_than_measurements(df=df, target_timedelta=target_timedelta) is False:
+    target_timedelta, check_freq = check_if_target_frequency_is_lower_than_measurements(
+        df=df,
+        target_timedelta=target_timedelta
+    )
+
+    if check_freq is False:
         df_avereged = average_measurements(
             df=df,
             target_timedelta=target_timedelta
@@ -45,7 +51,7 @@ def preprocess_data(
         output_path = save_dir / "filtered" / f"{filename}.csv"
         save_dataframe_to_csv(df_filtered, output_path, index=False)
 
-    return df_filtered
+    return df_filtered, target_timedelta
 
 
 def ensure_dataframe_contains_valid_data(df: pd.DataFrame) -> pd.DataFrame:
@@ -113,11 +119,14 @@ def delete_night_period(
 def check_if_target_frequency_is_lower_than_measurements(
         df: pd.DataFrame,
         target_timedelta: str = '1min'
-) -> bool:
+) -> tuple[pd.Timedelta, bool]:
+
     if len(df.index) >= 2:
         measured_timedelta = df['time'][1] - df['time'][0] # all data has same timedelta
     else:
         raise ValueError(f"Not enough samples!")
+
+    target_freq = pd.to_timedelta(target_timedelta)
 
     if measured_timedelta:
         measured_freq = pd.to_timedelta(measured_timedelta)
@@ -125,15 +134,17 @@ def check_if_target_frequency_is_lower_than_measurements(
 
         if measured_freq > target_freq:
             print(f"[INFO] Data has already less frequent measurements: {measured_freq.total_seconds()}s > {target_freq.total_seconds()}s. Nothing to do.")
-            return True
+            target_freq = measured_freq
+            return target_freq, True
 
-    return False
+    return target_freq, False
 
 
 def average_measurements(
         df: pd.DataFrame,
-        target_timedelta: str = '1min',
+        target_timedelta: pd.Timedelta = '1min',
 ) -> pd.DataFrame:
+
     df.set_index('time', inplace=True)
     df_resampled = df.resample(target_timedelta).mean()
     df_resampled = df_resampled.reset_index()
@@ -142,6 +153,7 @@ def average_measurements(
 
 
 def sanitize_filename(name: str) -> str:
+
     name = name.split("@")[-1]
     name = re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
     name = re.sub(r'_+', '_', name)

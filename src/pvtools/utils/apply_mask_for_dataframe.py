@@ -36,6 +36,9 @@ def apply_mask_for_dataframe(
     df_mask_cutted = load_dataframe_from_csv(Path(save_dir / "calculated_data" / data_filename /
                                            f"{sanitize_filename(sensor_name_ref)}_{period_type}_periods_cutted_short.csv"))
 
+    if df_mask_cutted.empty:
+        return pd.DataFrame(None)
+
     df_mask_cutted["time"] = pd.to_datetime(df_mask_cutted["time"])
     df_merged_cutted = df_data.merge(df_mask_cutted, on="time")
     df_result_cutted = df_merged_cutted.loc[df_merged_cutted["if_sunny"], df_data.columns]

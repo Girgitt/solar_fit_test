@@ -4,12 +4,12 @@ import pvlib
 
 from itertools import product
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional
 
 from pandas import DatetimeIndex
-from pvlib import solarposition, irradiance
+from pvlib import irradiance
 from pvlib.location import Location
-from pvlib.clearsky import detect_clearsky
+from pvlib.clearsky import detect_clearsky, simplified_solis
 
 from pvtools.config.params import ClearSkyParameters, ModelTimes, ModelDirectories
 from pvtools.preprocess.preprocess_data import sanitize_filename
@@ -25,14 +25,11 @@ def clear_sky(
     filename = model_dirs.filename
     save_dir = model_dirs.data_dir
 
-    tus, times, sol, cs = get_solar_data_for_location_and_time(clearsky_params, model_times)
+    (tus, times, solarpos, cs, airmass, dni_extra) = get_solar_data_for_location_and_time(clearsky_params, model_times)
 
     dni = cs['dni']
     dhi = cs['dhi']
     ghi = cs['ghi']
-
-    dni_extra = irradiance.get_extra_radiation(times)
-    solarpos = solarposition.get_solarposition(times, clearsky_params.warsaw_lat, clearsky_params.warsaw_lon)
 
     # panel orientation
     surface_tilt = clearsky_params.surface_tilt
@@ -40,32 +37,34 @@ def clear_sky(
 
     # get POA
     poa = irradiance.get_total_irradiance(
-        surface_tilt,
-        surface_azimuth,
-        solarpos['zenith'],
-        solarpos['azimuth'],
+        surface_tilt=surface_tilt,
+        surface_azimuth=surface_azimuth,
+        solar_zenith=solarpos['zenith'],
+        solar_azimuth=solarpos['azimuth'],
         dni=dni,
         ghi=ghi,
         dhi=dhi,
         dni_extra=dni_extra,
-        albedo=clearsky_params.albedo,  # ground reflectance for ground‐reflected component
-        model='perez'  # you can choose 'isotropic', 'haydavies', 'dirint', etc.
+        airmass=airmass,
+        albedo=clearsky_params.albedo,
+        model='perez-driesse'
     )
 
     poa = poa.rename_axis('time').reset_index()
+    poa = pd.DataFrame(poa)
 
     if save_dir is not None:
         save_dir = Path(save_dir)
         output_path = save_dir / "calculated_data" / filename / ("poa_values" + ".csv")
         save_dataframe_to_csv(poa, output_path, index=False)
 
-    return poa, cs
+    return [poa, cs]
 
 
 def get_solar_data_for_location_and_time(
         clearsky_params: ClearSkyParameters,
         model_times: ModelTimes
-) -> tuple[Location, DatetimeIndex, Any, Any]:
+) -> tuple[Location, DatetimeIndex, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
     tus = Location(
         latitude=clearsky_params.warsaw_lat,
@@ -81,10 +80,62 @@ def get_solar_data_for_location_and_time(
         freq=model_times.frequency
     )
 
-    sol = pvlib.solarposition.get_solarposition(times, clearsky_params.warsaw_lat, clearsky_params.warsaw_lon)
-    cs = tus.get_clearsky(times)
+    solpos = pvlib.solarposition.get_solarposition(
+        time=times,
+        latitude=clearsky_params.warsaw_lat,
+        longitude=clearsky_params.warsaw_lon,
+        altitude=clearsky_params.altitude,
+        method='pyephem', #'nrel_numba'
+    )
 
-    return tus, times, sol, cs
+    '''
+    apparent_zenith = solpos['apparent_zenith']
+    airmass = pvlib.atmosphere.get_relative_airmass(apparent_zenith)
+    pressure = pvlib.atmosphere.alt2pres(clearsky_params.altitude)
+    airmass = pvlib.atmosphere.get_absolute_airmass(airmass, pressure)
+    linke_turbidity = pvlib.clearsky.lookup_linke_turbidity(times, clearsky_params.warsaw_lat, clearsky_params.warsaw_lon)
+
+    cs = tus.get_clearsky(
+        times=times,
+        model='ineichen',
+        solar_position=solpos,
+        linke_turbidity=linke_turbidity - 3, #linke_turbidity, #0.75
+        #airmass=airmass
+    )
+    
+    cs = tus.get_clearsky(
+        times=times,
+        model='simplified_solis',
+        solar_position=solpos,
+        # linke_turbidity=linke_turbidity - 3, #linke_turbidity, #0.75
+        # airmass=airmass
+    )
+    '''
+
+    apparent_zenith = solpos['apparent_zenith']
+    airmass = pvlib.atmosphere.get_relative_airmass(apparent_zenith)
+
+    apparent_elevation = solpos['apparent_elevation']
+    aod700 = 0 #0.1
+    precipitable_water = 0 #1.5 #FIXME This parameters shouldn't be hard-coded. Wait for response to download data!
+    pressure = pvlib.atmosphere.alt2pres(clearsky_params.altitude)
+
+    #FIXME - variables should be input variables. Hard coded for testing
+    dni_extra = pvlib.irradiance.get_extra_radiation(
+        datetime_or_doy=times,
+        solar_constant=1366.1,
+        method='pyephem', #'nrel'
+        )
+
+    cs = simplified_solis(
+        apparent_elevation=apparent_elevation,
+        aod700=aod700,
+        precipitable_water=precipitable_water,
+        pressure=pressure,
+        dni_extra=dni_extra
+    )
+
+    return tus, times, solpos, cs, airmass, dni_extra
 
 
 def detect_clearsky_periods(
@@ -134,7 +185,7 @@ def detect_clearsky_periods(
         mask = detect_clearsky(
             sub['measured'],
             sub['poa_global'],
-            window_length=4,
+            window_length=10, #before 4
             mean_diff=100,
             max_diff=125,
         )
@@ -260,7 +311,7 @@ def delete_short_periods(
         sunny_intervals: pd.DataFrame,
         cloudy_intervals: pd.DataFrame,
         min_length: int
-) -> [pd.Series, pd.Series]:
+) -> [pd.DataFrame, pd.DataFrame]:
 
     sunny_mask_filtered = []
     cloudy_mask_filtered = []
@@ -277,7 +328,13 @@ def delete_short_periods(
             end_time = row["end"]
             cloudy_mask_filtered.append(cloudy_mask.loc[start_time:end_time])
 
-    sunny_mask_combined  =pd.concat(sunny_mask_filtered)
-    cloudy_mask_combined = pd.concat(cloudy_mask_filtered)
+    sunny_mask_combined = pd.DataFrame()
+    cloudy_mask_combined = pd.DataFrame()
+
+    if sunny_mask_filtered:
+        sunny_mask_combined = pd.concat(sunny_mask_filtered)
+
+    if cloudy_mask_filtered:
+        cloudy_mask_combined = pd.concat(cloudy_mask_filtered)
 
     return sunny_mask_combined, cloudy_mask_combined

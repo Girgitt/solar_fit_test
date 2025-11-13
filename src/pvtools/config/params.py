@@ -3,7 +3,7 @@ import pandas as pd
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import time
-from typing import TypedDict, Any
+from typing import TypedDict
 
 
 @dataclass
