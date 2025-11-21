@@ -3,10 +3,10 @@ import sys
 import pandas as pd
 import numpy as np
 import logging
+import datetime
 
 from pathlib import Path
 from typing import TypeAlias, Literal
-from datetime import datetime
 
 from urllib3.util.util import to_str
 
@@ -79,11 +79,11 @@ def calibrate_by_linear_regression(
                     params_cloudy=params_cloudy
                 )
 
-            output_dir = Path(save_dir) / filename / linear_regression
-            file_stem = Path(json_file_dir_sunny).stem
-            csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
-            log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+                output_dir = Path(save_dir) / filename / linear_regression
+                file_stem = Path(json_file_dir_sunny).stem
+                csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
+                log.debug(f"csv_filename: {csv_filename}")
+                save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None) # time passed as an index of series
 
     else:
 
@@ -185,7 +185,7 @@ def calibrate_by_fuzzy_linear_regression(
             file_stem = Path(json_file_dir_sunny).stem
             csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
     else:
 
@@ -276,7 +276,7 @@ def calibrate_by_divided_linear_regression(
         for file in (file_stem_sunny, file_stem_cloudy):
             csv_filename = output_dir / f"{file}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
 
 def calibrate_by_divided_linear_regression_mean(
@@ -432,7 +432,7 @@ def calibrate_by_polynominal_regression(
             file_stem = Path(json_file_dir_sunny).stem
             csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
     else:
         df["if_sunny"] = True
@@ -458,7 +458,7 @@ def calibrate_by_polynominal_regression(
             file_stem = Path(json_file_dir_sunny).stem
             csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
 
 def calibrate_by_decision_tree_regression(
@@ -521,7 +521,7 @@ def calibrate_by_decision_tree_regression(
             file_stem = Path(json_file_dir_sunny).stem
             csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
     else:
         df["if_sunny"] = True
@@ -547,7 +547,7 @@ def calibrate_by_decision_tree_regression(
             file_stem = Path(json_file_dir_sunny).stem
             csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
 
 def calibrate_by_mlp_regression(
@@ -610,7 +610,7 @@ def calibrate_by_mlp_regression(
             file_stem = Path(json_file_dir_sunny).stem
             csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
     else:
         df["if_sunny"] = True
@@ -636,7 +636,7 @@ def calibrate_by_mlp_regression(
             file_stem = Path(json_file_dir_sunny).stem
             csv_filename = output_dir / f"{file_stem}_all_predicted.csv"
             log.debug(f"csv_filename: {csv_filename}")
-            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=time)
+            save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_true, index=None, time=None)
 
 
 def linear_regression_use_calibration_values(
@@ -659,11 +659,13 @@ def linear_regression_use_calibration_values(
     )
 
     x = df[sensor_name]
+    x.index = df["time"]
 
     if params_cloudy is not None:
         is_sunny = df["if_sunny"].astype(bool)
+        is_sunny.index = df["time"]
 
-        y_pred = pd.Series(index=df.index, dtype=float)
+        y_pred = pd.Series(index=df["time"], dtype=float)
         y_pred[is_sunny] = params_sunny["a"] * x[is_sunny] + params_sunny["b"]
         y_pred[~is_sunny] = params_cloudy["a"] * x[~is_sunny] + params_cloudy["b"]
     else:
@@ -685,7 +687,7 @@ def fuzzy_regression_use_calibration_values(
     t0: float = 0.50,
     t1: float = 0.70,
     smooth_window: int = 5
-) -> np.ndarray:
+) -> pd.Series:
 
     if params_cloudy is not None:
         if_sunny_col = "if_sunny"
@@ -736,6 +738,8 @@ def fuzzy_regression_use_calibration_values(
 
     # final blended prediction (shape == len(df))
     y_hat = w * y_s + (1.0 - w) * y_c
+
+    y_hat = pd.Series(y_hat, index=df["time"])
     return y_hat
 
 
@@ -773,7 +777,7 @@ def _fuzzy_weight_from_kt(
 def divided_linear_regression_use_calibration_values(
         df: pd.DataFrame,
         sensor_name: str,
-        params_sunny:  list[dict],
+        params_sunny:  list[DatatypeCoefficientsForDividedLinearRegression],
         params_cloudy: list[DatatypeCoefficientsForDividedLinearRegression] | None = None
 ) -> pd.Series:
 
@@ -814,13 +818,18 @@ def divided_linear_regression_use_calibration_values(
         raise ValueError("At least params_sunny must contain valid (hour, a, b) entries.")
 
     x = df[sensor_name]
+    x.index = df["time"]
+
     time = df["time"]
     time = pd.to_datetime(time)
+
     is_sunny = df["if_sunny"]
+    is_sunny.index = df["time"]
+
     y_pred = np.empty_like(x, dtype=float)
 
     for i in range(len(x)):
-        current_time = time.iloc[i]
+        current_time = time.iloc[i].time()
         current_params = intervals_sunny if is_sunny.iloc[i] else intervals_cloudy
 
         a, b = 0.0, 0.0
@@ -831,7 +840,9 @@ def divided_linear_regression_use_calibration_values(
                 else pd.Timestamp.max
             )
 
-            current_time = pd.to_datetime(current_time).strftime("%H:%M")
+            t_start = pd.to_datetime(t_start).time()
+            t_end = pd.to_datetime(t_end).time()
+            #current_time = current_time.time()
 
             if t_start <= current_time < t_end:
                 a, b = a_j, b_j
@@ -839,7 +850,8 @@ def divided_linear_regression_use_calibration_values(
 
         y_pred[i] = a * x.iloc[i] + b
 
-    result = pd.Series(y_pred, index=df.index, name=f"{sensor_name}_calibrated")
+    #result = pd.Series(y_pred, index=df.index, name=f"{sensor_name}_calibrated")
+    result = pd.Series(y_pred, index=df["time"])
 
     return result
 
@@ -873,9 +885,12 @@ def divided_linear_regression_use_calibration_values_mean(
     intervals_sunny = build_intervals(params_sunny)
 
     x = df[sensor_name]
+    x.index = df["time"]
+
     time = df["time"]
     time = pd.to_datetime(time)
-    y_pred = np.empty_like(x, dtype=float)
+
+    y_pred = np.empty_like(x, index=df["time"], dtype=float)
 
     for i in range(len(x)):
         current_time = time.iloc[i].time()
@@ -888,8 +903,8 @@ def divided_linear_regression_use_calibration_values_mean(
                 else str("23:59")
             )
 
-            t_start = datetime.strptime(t_start, "%H:%M").time()
-            t_end = datetime.strptime(t_end, "%H:%M").time()
+            t_start = datetime.datetime.strptime(t_start).time()
+            t_end = datetime.datetime.strptime(t_end).time()
 
             if t_start <= current_time < t_end:
                 a, b = a_j, b_j
@@ -897,7 +912,7 @@ def divided_linear_regression_use_calibration_values_mean(
 
         y_pred[i] = a * x.iloc[i] + b
 
-    result = pd.Series(y_pred, index=df.index, name=f"{sensor_name}_calibrated")
+    result = pd.Series(y_pred, index=df["time"])
     return result
 
 
@@ -921,9 +936,12 @@ def polynominal_regression_use_calibration_values(
     )
 
     x = df[sensor_name]
-    is_sunny = df["if_sunny"].astype(bool)
+    x.index = df["time"]
 
-    y_pred = pd.Series(index=df.index, dtype=float)
+    is_sunny = df["if_sunny"].astype(bool)
+    is_sunny.index = df["time"]
+
+    y_pred = pd.Series(index=df["time"], dtype=float)
 
     y_pred[is_sunny] = (
             params_sunny["a"] * x[is_sunny] ** 2
@@ -972,7 +990,7 @@ def decision_tree_regression_use_calibration_values(
         model = params_sunny if is_sunny[i] else params_cloudy
         y_pred[i] = _traverse_tree(model, x[i])
 
-    return pd.Series(y_pred, index=df.index)
+    return pd.Series(y_pred, index=df["time"])
 
 
 def mlp_use_calibration_values(
@@ -1014,7 +1032,7 @@ def mlp_use_calibration_values(
         yc = _forward_pass(xc, params_cloudy["coefficients"], activation_cloudy).reshape(-1, 1)
         y_pred[~is_sunny] = _inv_out(yc, params_cloudy["scalers"]).ravel()
 
-    return pd.Series(y_pred, index=df.index)
+    return pd.Series(y_pred, index=df["time"])
 
 def _scale_in(
         x2d: np.ndarray,
@@ -1112,7 +1130,7 @@ def select_calibration_parameters(
         params_cloudy: list[DatatypeCoefficientsForDividedLinearRegression],
         df_time: pd.Series,
         frequency: str
-) -> list[dict]:
+) -> list[DatatypeCoefficientsForDividedLinearRegression]:
 
     log.info("Checking coverage for sunny parameters...")
 
@@ -1137,10 +1155,10 @@ def select_calibration_parameters(
     json_hours_sunny = sorted([item["hour"] for item in params_sunny])
 
     df_time = pd.to_datetime(df_time)
-    start = pd.Timestamp(df_time.iloc[0]).strftime("%H:%M")
-    end = pd.Timestamp(df_time.iloc[-1]).strftime("%H:%M")
+    start = pd.Timestamp(df_time.iloc[0]).time()
+    end = pd.Timestamp(df_time.iloc[-1]).time()
 
-    expected_times = pd.date_range(start, end, freq=frequency, inclusive="left").strftime("%H:%M").to_list()
+    expected_times = date_range_only_hh_mm(start=start, end=end, freq=frequency)
     missing_from_sunny = sorted(set(expected_times) - set(json_hours_sunny))
 
     if all_ok:
@@ -1163,6 +1181,25 @@ def select_calibration_parameters(
     else:
         log.error("Cannot calibrate! Not enough data in both sunny and all parameter sets.")
         raise ValueError("Cannot calibrate! Missing intervals in both sunny and all parameter sets.")
+
+
+def date_range_only_hh_mm(
+        start: datetime.time,
+        end: datetime.time,
+        freq: str
+):
+
+    delta = pd.to_timedelta(freq)
+
+    sample_date = datetime.date(2000, 1, 1)
+    cur = datetime.datetime.combine(sample_date, start)
+    stop = datetime.datetime.combine(sample_date, end)
+
+    times = []
+    while cur < stop:
+        times.append(cur.time())
+        cur += delta
+    return times
 
 
 def check_if_params_contains_data_for_all_time_intervals(

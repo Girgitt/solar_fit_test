@@ -58,19 +58,21 @@ def save_true_and_predicted_data_to_csv(
 ) -> None:
 
     if y_true is not None:
-        columns = {"y_true": y_true, "y_pred": y_pred}
+        columns = pd.DataFrame({"y_true": y_true, "y_pred": y_pred})
     else:
-        columns = {"y_pred": y_pred}
+        columns = pd.DataFrame({"y_pred": y_pred})
 
     if index is not None:
         columns["index"] = index # NOTE: index added on purpose, need for identyfing test/train split!
     if time is not None:
         columns["time"] = time
 
-    df_out = pd.DataFrame(columns)
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    df_out.to_csv(output_path, index=False)
+
+    if index is None and time is None:
+        columns.to_csv(output_path, index=True)
+    else:
+        columns.to_csv(output_path, index=False)
 
 
 def save_dataframe_to_csv(

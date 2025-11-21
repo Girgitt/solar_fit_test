@@ -6,7 +6,7 @@ from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameter
 from pvtools.modeling.calculate_calibration_parameters import (linear_regression, divided_linear_regression,
                                                                polynominal_regression, decision_tree_regression,
                                                                mlp_regression)
-from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
+from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods, detect_clearsky_periods_v2
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
 from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
 from pvtools.solar_domain.measurement_limitations import limit_sensor_ref_irradiance_to_clear_sky_model
@@ -113,6 +113,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
     model_data.df = df_limited
     '''
 
+    '''
     clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
         poa=poa,
         df=model_data.df,
@@ -120,7 +121,19 @@ def process_solar_data_with_clearsky_detection_and_masking(
         save_dir=model_dirs.data_dir,
         filename=model_dirs.filename
     )
+    '''
 
+    clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods_v2(
+        measured=model_data.df[model_data.sensor_name_ref],
+        clearsky=poa["poa_global"], #cs["ghi"],
+        times=model_data.df["time"],
+        sensor_name_ref=model_data.sensor_name_ref,
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
+    )
+
+
+    '''
     if clearsky_params.surface_tilt != 0:
         clearsky_params.surface_tilt, clearsky_params.surface_azimuth = determine_system_azimuth_and_tilt(
             model_data=model_data,
@@ -128,15 +141,16 @@ def process_solar_data_with_clearsky_detection_and_masking(
             clearsky_params=clearsky_params,
             sunny_mask=clearsky_periods_all,
         )
+    '''
 
-    df_sunny_periods_cutted_short = apply_mask_for_dataframe(
+    df_sunny_periods = apply_mask_for_dataframe(
         data_filename=model_dirs.filename,
         sensor_name_ref=model_data.sensor_name_ref,
         period_type="sunny",
         save_dir=model_dirs.data_dir
     )
 
-    df_cloudy_periods_cutted_short = apply_mask_for_dataframe(
+    df_cloudy_periods = apply_mask_for_dataframe(
         data_filename=model_dirs.filename,
         sensor_name_ref=model_data.sensor_name_ref,
         period_type="cloudy",
@@ -151,7 +165,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
         show=False
     )
 
-    return df_sunny_periods_cutted_short, df_cloudy_periods_cutted_short
+    return df_sunny_periods, df_cloudy_periods
 
 
 def calculate_regression(

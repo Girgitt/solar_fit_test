@@ -3,11 +3,11 @@ import logging
 
 from typing import TypeAlias, Literal
 
-from pvtools.calibration.calibrate import (calibrate_by_linear_regression, calibrate_by_divided_linear_regression,
-                                           calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression,
-                                           calibrate_by_mlp_regression,
-                                           calibrate_by_fuzzy_linear_regression,
-                                           calibrate_by_divided_linear_regression_mean)
+from pvtools.calibration.calibrate_to_reference import (calibrate_by_linear_regression, calibrate_by_divided_linear_regression,
+                                                        calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression,
+                                                        calibrate_by_mlp_regression,
+                                                        calibrate_by_fuzzy_linear_regression,
+                                                        calibrate_by_divided_linear_regression_mean)
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
     plot_poa_reference_with_clearsky_periods)
@@ -16,7 +16,7 @@ from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_fo
                                      create_calibrated_dataframe, check_if_calibration_method_available,
                                      check_if_sunny_cloudy_periods_exists, create_dataframe_with_sensor_values_and_poa)
 from pvtools.postprocess.postprocess_data import postprocess_data, merge_sunny_and_cloudy_calibrated_dataframes
-from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods
+from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods, detect_clearsky_periods_v2
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
 from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
 from pvtools.preprocess.preprocess_data import delete_night_period
@@ -89,10 +89,12 @@ def execute_function(
     clearsky_cal_val.cloudy_periods = cloudy_periods
     clearsky_cal_val.poa = poa
 
-    model_data.df["if_sunny"] = clearsky_periods
+    model_data.df["if_sunny"] = model_data.df["time"].map(clearsky_periods)
 
     surface_tilt = clearsky_params.surface_tilt
 
+    #FIXME - funkcja determine_system_azimuth_and_tilt potrzebuje sensora referencyjnego (nie zawsze podany)
+    '''
     if surface_tilt != 0:
         clearsky_params.surface_tilt, clearsky_params.surface_azimuth = determine_system_azimuth_and_tilt(
             model_data=model_data,
@@ -100,6 +102,7 @@ def execute_function(
             clearsky_params=clearsky_params,
             sunny_mask=clearsky_periods
         )
+    '''
 
     calibration_directory = check_if_calibration_method_available(
         log_dir=model_dirs.log_dir,
@@ -314,9 +317,20 @@ def run_full_clearsky_data_pipeline(
         clearsky_cal_val: ClearSkyCalculatedValues,
 ) -> list[pd.DataFrame]:
 
+    '''
     clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
         poa=clearsky_cal_val.poa,
         df=model_data.df,
+        sensor_name_ref=model_data.sensor_name_ref,
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
+    )
+    '''
+
+    clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods_v2(
+        measured=model_data.df[model_data.sensor_name_ref],
+        clearsky=clearsky_cal_val.poa["poa_global"],  # cs["ghi"],
+        times=model_data.df["time"],
         sensor_name_ref=model_data.sensor_name_ref,
         save_dir=model_dirs.data_dir,
         filename=model_dirs.filename

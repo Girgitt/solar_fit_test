@@ -10,6 +10,7 @@ from pandas import DatetimeIndex
 from pvlib import irradiance
 from pvlib.location import Location
 from pvlib.clearsky import detect_clearsky, simplified_solis
+from pvlib_mod.clearsky_mod import detect_clearsky_mod
 
 from pvtools.config.params import ClearSkyParameters, ModelTimes, ModelDirectories
 from pvtools.preprocess.preprocess_data import sanitize_filename
@@ -116,8 +117,8 @@ def get_solar_data_for_location_and_time(
     airmass = pvlib.atmosphere.get_relative_airmass(apparent_zenith)
 
     apparent_elevation = solpos['apparent_elevation']
-    aod700 = 0 #0.1
-    precipitable_water = 0 #1.5 #FIXME This parameters shouldn't be hard-coded. Wait for response to download data!
+    aod700 = 0.1
+    precipitable_water = 1.5 #FIXME This parameters shouldn't be hard-coded. Wait for response to download data!
     pressure = pvlib.atmosphere.alt2pres(clearsky_params.altitude)
 
     #FIXME - variables should be input variables. Hard coded for testing
@@ -235,6 +236,46 @@ def detect_clearsky_periods(
         save_dataframe_to_csv(cloudy_periods_cutted_short, output_path_cloudy, index=True)
 
     return sunny_mask, cloudy_mask
+
+def detect_clearsky_periods_v2(
+        measured: pd.Series,
+        clearsky: pd.Series,
+        times: pd.Series,
+        sensor_name_ref: str = None,
+        save_dir: Optional[Path] = None,
+        filename: str = None,
+) -> [pd.Series, pd.Series]:
+
+    measured.index = times
+    clearsky.index = times
+
+    clear, comp, alpha = detect_clearsky_mod(
+        measured=measured,
+        clearsky=clearsky,
+        window_length=7,
+        mean_diff=200,
+        max_diff=300,
+        lower_line_length=3,
+        upper_line_length=20,
+        var_diff=0.01,
+        slope_dev=30,
+        max_iterations=20,
+        return_components=True
+    )
+
+    clear.name = 'if_sunny'
+    cloudy = ~clear
+
+    if save_dir is not None:
+        save_dir = Path(save_dir)
+        s_name = sanitize_filename(sensor_name_ref)
+        output_path_sunny = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods_all" + ".csv")
+        save_dataframe_to_csv(clear, output_path_sunny, index=True)
+
+        output_path_cloudy = save_dir / "calculated_data" / filename / (s_name + "_cloudy_periods_all" + ".csv")
+        save_dataframe_to_csv(cloudy, output_path_cloudy, index=True)
+
+    return clear, cloudy
 
 
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
