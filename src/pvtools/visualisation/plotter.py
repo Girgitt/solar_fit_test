@@ -222,3 +222,59 @@ def plot_poa_reference_with_clearsky_periods(
         fig.show()
 
     return fig
+
+
+def plot_sensors_calibrated_directly_to_poa(
+        result: pd.DataFrame,
+        title: str = "default plot",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(result.index, result["poa"], label="POA theoretical", linewidth=1.5)
+    ax.plot(result.index, result["sensor"], label="Sensor", alpha=0.5)
+    ax.plot(result.index, result["poa_pred"], label=title, linewidth=1.2)
+
+    # highlight clear-sky
+    clear_idx = result.index[result["clear_sky"]]
+    ax.scatter(clear_idx,
+               result.loc[clear_idx, "poa_pred"],
+               s=5,
+               color="green",
+               label="Clear-sky detected")
+
+    ax.set_title("Clear-Sky Detection (RANSAC + Residual)")
+    ax.set_ylabel("Irradiance W/m²")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+
+def plot_lowfreq_calibration(result) -> None:
+
+    plt.figure(figsize=(12,6))
+    plt.plot(result.index, result["poa"], label="POA theoretical", linewidth=1.6)
+    plt.plot(result.index, result["sensor_lowfreq"], label="Sensor low-frequency", linewidth=1.2)
+    plt.plot(result.index, result["poa_pred"], label="Predicted POA", linewidth=1.2)
+
+    clear_idx = result.index[result["clear_sky"]]
+    plt.scatter(clear_idx, result.loc[clear_idx, "sensor_lowfreq"],
+                s=6, color="green", label="Clear-sky detected")
+
+    plt.title("Low-Frequency Calibration Pipeline")
+    plt.xlabel("Time")
+    plt.ylabel("Irradiance (W/m²)")
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    plt.show()

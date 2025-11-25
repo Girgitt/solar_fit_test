@@ -2,15 +2,22 @@ import pandas as pd
 import logging
 
 from typing import TypeAlias, Literal
+from pathlib import Path
 
-from pvtools.calibration.calibrate_to_reference import (calibrate_by_linear_regression, calibrate_by_divided_linear_regression,
-                                                        calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression,
+from pvtools.calibration.calibrate_to_reference import (calibrate_by_linear_regression,
+                                                        calibrate_by_divided_linear_regression,
+                                                        calibrate_by_polynominal_regression,
+                                                        calibrate_by_decision_tree_regression,
                                                         calibrate_by_mlp_regression,
                                                         calibrate_by_fuzzy_linear_regression,
                                                         calibrate_by_divided_linear_regression_mean)
+from pvtools.calibration.calibrate_to_poa.gaussian_process import gaussian_process_pipeline
+from pvtools.calibration.calibrate_to_poa.ransac import ransac_pipeline
+from pvtools.calibration.calibrate_to_poa.clearsky_utils import lowfreq_calibration_pipeline
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
-    plot_poa_reference_with_clearsky_periods)
+                                           plot_poa_reference_with_clearsky_periods,
+                                           plot_sensors_calibrated_directly_to_poa, plot_lowfreq_calibration)
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
                                      load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
                                      create_calibrated_dataframe, check_if_calibration_method_available,
@@ -117,6 +124,13 @@ def execute_function(
         model_times=model_times,
         period_flag=period_flag,
         calibration_method=calibration_method
+    )
+
+    calibrate_directly_to_poa(
+        model_data=model_data,
+        clearsky_cal_val=clearsky_cal_val,
+        model_dirs=model_dirs,
+        model_times=model_times
     )
 
     df_calibrated = create_calibrated_dataframe(
@@ -228,6 +242,54 @@ def calibrate(
         )
     else:
         raise ValueError(f"Unsupported calibration method: {calibration_method}")
+
+
+def calibrate_directly_to_poa(
+        model_data: ModelData,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
+) -> None:
+
+    for sensor in model_data.sensor_names:
+        result, a, b = lowfreq_calibration_pipeline(
+            df=model_data.df,
+            poa=clearsky_cal_val.poa,
+            sensor_col=sensor,
+            poa_col="poa_global",
+            time_col="time",
+            sampling_sec=5
+        )
+
+        plot_lowfreq_calibration(result)
+
+        result_ransac = ransac_pipeline(
+            sensor=model_data.df[sensor],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            time=model_data.df["time"]
+        )
+
+        plot_sensors_calibrated_directly_to_poa(
+            result=result_ransac,
+            title="RANSAC calibration directly to POA",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"direct_calibration_to_poa_by_ransac_{sensor}",
+            show=False
+        )
+
+        result_gp = gaussian_process_pipeline(
+            sensor=model_data.df[sensor],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            time=model_data.df["time"]
+        )
+
+        plot_sensors_calibrated_directly_to_poa(
+            result=result_gp,
+            title="Gaussian Process Regression calibration directly to POA",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"direct_calibration_to_poa_by_gaussian{sensor}",
+            show=False
+        )
 
 
 def plot(
