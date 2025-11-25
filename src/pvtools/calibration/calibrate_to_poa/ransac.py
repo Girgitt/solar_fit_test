@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 
@@ -9,7 +10,7 @@ def ransac_pipeline(
         sensor: pd.Series,
         poa_global: pd.Series,
         time: pd.Series,
-):
+) -> pd.DataFrame:
 
     a, b, poa_pred, inliers = robust_calibration(sensor, poa_global)
 
@@ -48,7 +49,7 @@ def ransac_pipeline(
 def robust_calibration(
         sensor: pd.Series,
         poa: pd.Series
-):
+) -> tuple[float, float, np.ndarray, np.ndarray]:
 
     x = sensor.values.reshape(-1, 1).astype(float)
     y = poa.values.astype(float)

@@ -17,7 +17,7 @@ from pvtools.calibration.calibrate_to_poa.clearsky_utils import lowfreq_calibrat
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
                                            plot_poa_reference_with_clearsky_periods,
-                                           plot_sensors_calibrated_directly_to_poa, plot_lowfreq_calibration)
+                                           plot_sensors_calibrated_directly_to_poa)
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
                                      load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
                                      create_calibrated_dataframe, check_if_calibration_method_available,
@@ -251,43 +251,47 @@ def calibrate_directly_to_poa(
         model_times: ModelTimes,
 ) -> None:
 
-    for sensor in model_data.sensor_names:
-        result, a, b = lowfreq_calibration_pipeline(
-            df=model_data.df,
-            poa=clearsky_cal_val.poa,
-            sensor_col=sensor,
-            poa_col="poa_global",
-            time_col="time",
+    for sensor_name in model_data.sensor_names:
+        result_freq, a, b = lowfreq_calibration_pipeline(
+            sensor=model_data.df[sensor_name],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            time=model_data.df["time"],
             sampling_sec=5
         )
 
-        plot_lowfreq_calibration(result)
+        plot_sensors_calibrated_directly_to_poa(
+            result_df=result_freq,
+            title="Frequency calibration directly to POA",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"direct_calibration_to_poa_by_freq_{sensor_name}",
+            show=False
+        )
 
         result_ransac = ransac_pipeline(
-            sensor=model_data.df[sensor],
+            sensor=model_data.df[sensor_name],
             poa_global=clearsky_cal_val.poa["poa_global"],
             time=model_data.df["time"]
         )
 
         plot_sensors_calibrated_directly_to_poa(
-            result=result_ransac,
+            result_df=result_ransac,
             title="RANSAC calibration directly to POA",
             save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
-            filename=f"direct_calibration_to_poa_by_ransac_{sensor}",
+            filename=f"direct_calibration_to_poa_by_ransac_{sensor_name}",
             show=False
         )
 
         result_gp = gaussian_process_pipeline(
-            sensor=model_data.df[sensor],
+            sensor=model_data.df[sensor_name],
             poa_global=clearsky_cal_val.poa["poa_global"],
             time=model_data.df["time"]
         )
 
         plot_sensors_calibrated_directly_to_poa(
-            result=result_gp,
+            result_df=result_gp,
             title="Gaussian Process Regression calibration directly to POA",
             save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
-            filename=f"direct_calibration_to_poa_by_gaussian{sensor}",
+            filename=f"direct_calibration_to_poa_by_gaussian_{sensor_name}",
             show=False
         )
 

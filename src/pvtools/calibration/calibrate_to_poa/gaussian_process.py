@@ -1,6 +1,7 @@
 import torch
 import gpytorch
 import pandas as pd
+import numpy as np
 
 from pvtools.calibration.calibrate_to_poa.clearsky_utils import compute_residual_metrics, clearsky_detection
 
@@ -16,7 +17,7 @@ class ExactGPModel(gpytorch.models.ExactGP):
             gpytorch.kernels.RBFKernel()
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
@@ -26,10 +27,18 @@ def gaussian_process_pipeline(
         sensor: pd.Series,
         poa_global: pd.Series,
         time: pd.Series,
-):
+) -> pd.DataFrame:
 
-    x, y = prepare_inputs(sensor, poa_global)
-    gp, y_pred, sigma = fit_gp_model(x, y)
+    x, y = prepare_inputs(
+        sensor=sensor,
+        poa=poa_global
+    )
+
+    gp, y_pred, sigma = fit_gp_model(
+        x=x,
+        y=y,
+        training_iter=10
+    )
 
     resid, resid_slope, resid_smooth = compute_residual_metrics(
         poa_global.values,
@@ -62,8 +71,8 @@ def gaussian_process_pipeline(
 def fit_gp_model(
         x: torch.Tensor,
         y: torch.Tensor,
-        training_iter: int = 200
-):
+        training_iter: int = 20
+) -> tuple[gpytorch.models.ExactGP, np.ndarray, np.ndarray]:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -103,7 +112,10 @@ def fit_gp_model(
     return model, y_pred, sigma
 
 
-def prepare_inputs(sensor: pd.Series, poa: pd.Series):
+def prepare_inputs(
+        sensor: pd.Series,
+        poa: pd.Series
+) -> tuple[torch.Tensor, torch.Tensor]:
 
     x = torch.tensor(sensor.values.astype(float)).float().reshape(-1, 1)
     y = torch.tensor(poa.values.astype(float)).float()

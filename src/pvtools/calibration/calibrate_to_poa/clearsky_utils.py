@@ -6,11 +6,10 @@ from scipy.signal import savgol_filter
 from sklearn.linear_model import LinearRegression
 
 
-
 def compute_residual_metrics(
-        poa,
-        poa_pred
-):
+        poa: pd.Series,
+        poa_pred: np.ndarray
+) -> tuple[pd.Series, np.ndarray, np.ndarray]:
 
     resid = np.abs(poa - poa_pred)
     resid_slope = np.abs(np.gradient(resid))
@@ -20,13 +19,13 @@ def compute_residual_metrics(
 
 
 def clearsky_detection(
-        resid,
-        resid_slope,
-        resid_smooth,
-        resid_thr=40,
-        slope_thr=8,
-        smooth_thr=30
-):
+        resid: pd.Series,
+        resid_slope: np.ndarray,
+        resid_smooth: np.ndarray,
+        resid_thr: int = 40,
+        slope_thr: int = 8,
+        smooth_thr: int = 30
+) -> pd.Series:
 
     clear = (
         (resid < resid_thr) &
@@ -40,21 +39,15 @@ def clearsky_detection(
 #--------------------------------- FREQUENCY METHOD ---------------------------------#
 
 def lowfreq_calibration_pipeline(
-        df: pd.DataFrame,
-        poa: pd.DataFrame,
-        sensor_col: str,
-        poa_col: str = "poa_global",
-        time_col: str = "time",
+        sensor: pd.Series,
+        poa_global: pd.Series,
+        time: pd.Series,
         sampling_sec: int = 5
 ) -> tuple[pd.DataFrame, float, float]:
 
-    sensor = df[sensor_col]
-    poa = poa[poa_col]
-    time = df[time_col]
-
     sensor.index = time
+    poa_global.index = time
 
-    # Step 1: Extract low-frequency trend
     sensor_lowfreq = extract_low_frequency(
         sensor=sensor,
         window_sec=300,
@@ -63,24 +56,21 @@ def lowfreq_calibration_pipeline(
     )
 
     #FIXME - instead of linear regression calibration later planned change for: 1. RANSAC 2. Gaussian Process
-    a, b, poa_pred_lowfreq = calibrate_lowfreq(sensor_lowfreq, poa)
+    a, b, poa_pred_lowfreq = calibrate_lowfreq(sensor_lowfreq, poa_global)
 
     a = float(a)
     b = 0.0
 
-    # Step 3: Predict POA from low-frequency trend
     poa_pred = predict_poa(sensor_lowfreq, a, b)
 
     poa_pred.index = time
 
-    # Step 4 (optional): detect clear-sky
-    clear, resid = detect_clear_sky(poa, poa_pred)
+    clear, resid = detect_clear_sky(poa_global, poa_pred)
 
-    # Return everything as a DataFrame
     result = pd.DataFrame({
-        "sensor_raw": sensor,
+        "sensor": sensor,
         "sensor_lowfreq": sensor_lowfreq,
-        "poa": poa,
+        "poa": poa_global,
         "poa_pred": poa_pred,
         "residual": resid,
         "clear_sky": clear
@@ -96,14 +86,11 @@ def extract_low_frequency(
         polyorder: int = 3
 ) -> pd.Series:
 
-    # Convert seconds → number of samples
     window_length = int(window_sec / sampling_sec)
 
-    # window length must be odd
     if window_length % 2 == 0:
         window_length += 1
 
-    # Apply low-frequency filter
     filtered = savgol_filter(sensor.values,
                              window_length=window_length,
                              polyorder=polyorder,
