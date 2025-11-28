@@ -229,17 +229,106 @@ def plot_sensors_calibrated_directly_to_poa(
         title: str = "default plot",
         save_dir: Optional[Path] = None,
         filename: str = "default_filename",
-        show: bool = False
+        show: bool = False,
 ) -> None:
 
     fig, ax = plt.subplots(figsize=(12,5))
 
-    ax.plot(result_df.index, result_df["poa"], label="poa global", linewidth=1.5)
+    ax.plot(result_df.index, result_df["poa_global"], label="poa global", linewidth=1.5)
     ax.plot(result_df.index, result_df["sensor"], label="sensor", alpha=0.5)
-    ax.plot(result_df.index, result_df["poa_pred"], label="poa pred", linewidth=1.2)
+    ax.plot(result_df.index, result_df["sensor_cal"], label="sensor calibrated", linewidth=1.2)
 
     # highlight clear-sky
-    clear_idx = result_df.index[result_df["clear_sky"]]
+    clear_idx = result_df.index[result_df["clearsky_mask"]]
+    ax.scatter(clear_idx,
+               result_df.loc[clear_idx, "sensor"],
+               s=5,
+               color="green",
+               label="Clear-sky detected")
+
+    ax.set_title(title)
+    ax.set_ylabel("Irradiance W/m²")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+
+def plot_frequency_histogram(
+        freqs,
+        fft_mag,
+        bins=100,
+        title: str = "Frequency Histogram of Irradiance Signal",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.figure(figsize=(12, 5))
+
+    fig.hist(freqs, weights=fft_mag, bins=bins, edgecolor='black')
+    fig.xlabel("Frequency (Hz)")
+    fig.ylabel("Magnitude (sum of FFT power)")
+    fig.title(title)
+    fig.grid()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+def plot_fft_spectrum(
+        freqs,
+        fft_mag,
+        max_freq=None,
+        title: str = "Frequency Spectrum (FFT)",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.figure(figsize=(12, 5))
+
+    if max_freq:
+        mask = freqs <= max_freq
+        fig.plot(freqs[mask], fft_mag[mask])
+    else:
+        fig.plot(freqs, fft_mag)
+
+    fig.xlabel("Frequency (Hz)")
+    fig.ylabel("Magnitude")
+    fig.title(title)
+    fig.grid()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+        
+
+def tmp_plot_check_masks(
+        result_df: pd.DataFrame,
+        title: str = "default plot",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(result_df.index, result_df["poa_global"], label="poa global", linewidth=1.5)
+    ax.plot(result_df.index, result_df["sensor"], label="sensor", alpha=0.5)
+
+    # highlight clear-sky
+    clear_idx = result_df.index[result_df["mask"]]
     ax.scatter(clear_idx,
                result_df.loc[clear_idx, "sensor"],
                s=5,

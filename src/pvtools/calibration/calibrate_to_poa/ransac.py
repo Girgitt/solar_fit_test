@@ -3,44 +3,31 @@ import numpy as np
 
 from sklearn.linear_model import RANSACRegressor, LinearRegression
 
-from pvtools.calibration.calibrate_to_poa.clearsky_utils import compute_residual_metrics, clearsky_detection
-
 
 def ransac_pipeline(
         sensor: pd.Series,
         poa_global: pd.Series,
-        time: pd.Series,
+        clearsky_mask: pd.Series,
+        time: pd.Series
 ) -> pd.DataFrame:
 
-    a, b, poa_pred, inliers = robust_calibration(sensor, poa_global)
-
-    resid, resid_slope, resid_smooth = compute_residual_metrics(poa_global, poa_pred)
-    clear = clearsky_detection(
-        resid=resid,
-        resid_slope=resid_slope,
-        resid_smooth=resid_smooth,
-        resid_thr=40,
-        slope_thr=8,
-        smooth_thr=30
+    a, b, sensor_cal = robust_calibration(
+        sensor=sensor,
+        poa_global=poa_global,
+        clearsky_mask=clearsky_mask
     )
 
     index = time
 
     sensor.index = index
-    poa_pred = pd.Series(poa_pred, index=index)
-    resid_slope = pd.Series(resid_slope, index=index)
-    resid_smooth = pd.Series(resid_smooth, index=index)
-    inliers = pd.Series(inliers, index=index)
+    sensor_cal = pd.Series(sensor_cal, index=index)
+    clearsky_mask = pd.Series(clearsky_mask, index=index)
 
     result = pd.DataFrame({
         "sensor": sensor,
-        "poa": poa_global,
-        "poa_pred": poa_pred,
-        "residual": resid,
-        "residual_slope": resid_slope,
-        "residual_smooth": resid_smooth,
-        "ransac_inlier": inliers,
-        "clear_sky": clear
+        "poa_global": poa_global,
+        "sensor_cal": sensor_cal,
+        "clearsky_mask": clearsky_mask
     })
 
     return result.set_index(time)
@@ -48,24 +35,34 @@ def ransac_pipeline(
 
 def robust_calibration(
         sensor: pd.Series,
-        poa: pd.Series
-) -> tuple[float, float, np.ndarray, np.ndarray]:
+        poa_global: pd.Series,
+        clearsky_mask: pd.Series
+) -> tuple[float, float, np.ndarray]: #np.ndarray -> datatype of model.inlier_mask_
 
-    x = sensor.values.reshape(-1, 1).astype(float)
-    y = poa.values.astype(float)
+    sensor_clearsky = sensor[clearsky_mask]
+    poa_global_clearsky = poa_global[clearsky_mask]
 
-    base_model = LinearRegression()
+    x = sensor.values.astype(float).reshape(-1, 1)
+    y = poa_global.values.astype(float)
+
+    x_clearsky = sensor_clearsky.values.astype(float).reshape(-1, 1)
+    y_clearsky = poa_global_clearsky.values.astype(float)
+
+    base_model = LinearRegression(fit_intercept=False)
     model = RANSACRegressor(
         base_model,
-        min_samples=0.4,        # require 40% inliers
+        min_samples=0.7,        # require 40% inliers
         residual_threshold=20,  # 20 W/m2 tolerance
         max_trials=200
     )
 
-    model.fit(x, y)
+    model.fit(x_clearsky, y_clearsky)
+
+    #model.estimator_.intercept_ = 0.0
+
     y_pred = model.predict(x)
 
     a = model.estimator_.coef_[0]
     b = model.estimator_.intercept_
 
-    return a, b, y_pred, model.inlier_mask_
+    return a, b, y_pred # model.inlier_mask_

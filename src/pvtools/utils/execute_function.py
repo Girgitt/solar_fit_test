@@ -13,11 +13,14 @@ from pvtools.calibration.calibrate_to_reference import (calibrate_by_linear_regr
                                                         calibrate_by_divided_linear_regression_mean)
 from pvtools.calibration.calibrate_to_poa.gaussian_process import gaussian_process_pipeline
 from pvtools.calibration.calibrate_to_poa.ransac import ransac_pipeline
-from pvtools.calibration.calibrate_to_poa.clearsky_utils import lowfreq_calibration_pipeline
+from pvtools.calibration.calibrate_to_poa.clearsky_utils import (clearsky_detection_by_frequency_method,
+                                                                 frequency_analysis, low_frequency_mask,
+                                                                 two_medians_mask)
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
                                            plot_poa_reference_with_clearsky_periods,
-                                           plot_sensors_calibrated_directly_to_poa)
+                                           plot_sensors_calibrated_directly_to_poa,
+                                           plot_clear_sky, plot_poa_components, tmp_plot_check_masks)
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
                                      load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
                                      create_calibrated_dataframe, check_if_calibration_method_available,
@@ -27,7 +30,6 @@ from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods, de
 from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
 from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
 from pvtools.preprocess.preprocess_data import delete_night_period
-from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
 
 log = logging.getLogger("calibrate")
 
@@ -252,46 +254,110 @@ def calibrate_directly_to_poa(
 ) -> None:
 
     for sensor_name in model_data.sensor_names:
-        result_freq, a, b = lowfreq_calibration_pipeline(
+        frequency_mask = low_frequency_mask(
             sensor=model_data.df[sensor_name],
-            poa_global=clearsky_cal_val.poa["poa_global"],
+            sampling_sec=60,
+            low_freq_max=0.002,
+            window_sec=14400, # 4hrs
+            thershold=0.80
+        )
+
+        frequency_mask.index = model_data.df["time"]
+
+        two_medians_mask_ = two_medians_mask(
+            sensor=model_data.df[sensor_name],
             time=model_data.df["time"],
-            sampling_sec=5
+            short_window="30min",
+            long_window="4h",
+            rel_threshold=0.05,
+            min_run_length=10
         )
 
-        plot_sensors_calibrated_directly_to_poa(
-            result_df=result_freq,
-            title="Frequency calibration directly to POA",
+        df_freq_mask = pd.DataFrame({
+            "sensor": model_data.df[sensor_name],
+            "poa_global": clearsky_cal_val.poa["poa_global"],
+            "mask": frequency_mask
+        })
+
+        df_two_medians_mask = pd.DataFrame({
+            "sensor": model_data.df[sensor_name],
+            "poa_global": clearsky_cal_val.poa["poa_global"],
+            "mask": two_medians_mask_
+        })
+
+        tmp_plot_check_masks(
+            result_df=df_freq_mask,
+            title="Check frequency mask",
             save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
-            filename=f"direct_calibration_to_poa_by_freq_{sensor_name}",
+            filename=f"mask_freq_{sensor_name}",
             show=False
         )
 
-        result_ransac = ransac_pipeline(
+        tmp_plot_check_masks(
+            result_df=df_two_medians_mask,
+            title="Check two medians mask",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"mask_two_medians_{sensor_name}",
+            show=False
+        )
+
+        ransac_freq_mask = ransac_pipeline(
             sensor=model_data.df[sensor_name],
             poa_global=clearsky_cal_val.poa["poa_global"],
+            clearsky_mask=frequency_mask,
+            time=model_data.df["time"]
+        )
+
+        ransac_two_medians_mask = ransac_pipeline(
+            sensor=model_data.df[sensor_name],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            clearsky_mask=two_medians_mask_,
             time=model_data.df["time"]
         )
 
         plot_sensors_calibrated_directly_to_poa(
-            result_df=result_ransac,
-            title="RANSAC calibration directly to POA",
+            result_df=ransac_freq_mask,
+            title="RANSAC calibration directly to POA with frequency mask",
             save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
-            filename=f"direct_calibration_to_poa_by_ransac_{sensor_name}",
+            filename=f"direct_calibration_to_poa_by_ransac_freq_mask_{sensor_name}",
             show=False
         )
 
-        result_gp = gaussian_process_pipeline(
+        plot_sensors_calibrated_directly_to_poa(
+            result_df=ransac_two_medians_mask,
+            title="Frequency calibration directly to POA with two medians mask",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"direct_calibration_to_poa_by_ransac_two_medians_mask_{sensor_name}",
+            show=False
+        )
+        
+        gp_freq_mask = gaussian_process_pipeline(
             sensor=model_data.df[sensor_name],
             poa_global=clearsky_cal_val.poa["poa_global"],
+            clearsky_mask=frequency_mask,
+            time=model_data.df["time"]
+        )
+
+        gp_two_medians_mask = gaussian_process_pipeline(
+            sensor=model_data.df[sensor_name],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            clearsky_mask=two_medians_mask_,
             time=model_data.df["time"]
         )
 
         plot_sensors_calibrated_directly_to_poa(
-            result_df=result_gp,
-            title="Gaussian Process Regression calibration directly to POA",
+            result_df=gp_freq_mask,
+            title="Gaussian Process Regression calibration directly to POA with frequency mask",
             save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
-            filename=f"direct_calibration_to_poa_by_gaussian_{sensor_name}",
+            filename=f"direct_calibration_to_poa_by_gaussian_freq_mask_{sensor_name}",
+            show=False
+        )
+
+        plot_sensors_calibrated_directly_to_poa(
+            result_df=gp_two_medians_mask,
+            title="Gaussian Process Regression calibration directly to POA with two medians mask",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"direct_calibration_to_poa_by_gaussian_two_medians_mask_{sensor_name}",
             show=False
         )
 

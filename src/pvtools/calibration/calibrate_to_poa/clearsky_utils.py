@@ -2,43 +2,16 @@ import numpy as np
 import pandas as pd
 
 from scipy.ndimage import gaussian_filter1d
-from scipy.signal import savgol_filter
+from scipy.signal import savgol_filter, ShortTimeFFT
+from scipy.signal.windows import gaussian
 from sklearn.linear_model import LinearRegression
 
-
-def compute_residual_metrics(
-        poa: pd.Series,
-        poa_pred: np.ndarray
-) -> tuple[pd.Series, np.ndarray, np.ndarray]:
-
-    resid = np.abs(poa - poa_pred)
-    resid_slope = np.abs(np.gradient(resid))
-    resid_smooth = gaussian_filter1d(resid, sigma=10)
-
-    return resid, resid_slope, resid_smooth
+from pvtools.visualisation.plotter import plot_frequency_histogram, plot_fft_spectrum
 
 
-def clearsky_detection(
-        resid: pd.Series,
-        resid_slope: np.ndarray,
-        resid_smooth: np.ndarray,
-        resid_thr: int = 40,
-        slope_thr: int = 8,
-        smooth_thr: int = 30
-) -> pd.Series:
+#--------------------------------- Savitzky-Golay Filter ---------------------------------#
 
-    clear = (
-        (resid < resid_thr) &
-        (resid_slope < slope_thr) &
-        (resid_smooth < smooth_thr)
-    )
-
-    return clear
-
-
-#--------------------------------- FREQUENCY METHOD ---------------------------------#
-
-def lowfreq_calibration_pipeline(
+def clearsky_detection_by_frequency_method(
         sensor: pd.Series,
         poa_global: pd.Series,
         time: pd.Series,
@@ -55,7 +28,6 @@ def lowfreq_calibration_pipeline(
         polyorder=3
     )
 
-    #FIXME - instead of linear regression calibration later planned change for: 1. RANSAC 2. Gaussian Process
     a, b, poa_pred_lowfreq = calibrate_lowfreq(sensor_lowfreq, poa_global)
 
     a = float(a)
@@ -91,10 +63,12 @@ def extract_low_frequency(
     if window_length % 2 == 0:
         window_length += 1
 
-    filtered = savgol_filter(sensor.values,
-                             window_length=window_length,
-                             polyorder=polyorder,
-                             mode='interp')
+    filtered = savgol_filter(
+        x=sensor.values,
+        window_length=window_length,
+        polyorder=polyorder,
+        mode='interp'
+    )
 
     return pd.Series(filtered, index=sensor.index)
 
@@ -134,6 +108,172 @@ def detect_clear_sky(
     resid = np.abs(poa - poa_pred)
 
     return resid < threshold, resid
+
+
+#--------------------------------- FREQUENCY ANALYSIS ---------------------------------#
+
+def prepare_signal(sensor: pd.Series):
+
+    if not isinstance(sensor.index, pd.DatetimeIndex):
+        raise ValueError("Sensor series must have DatetimeIndex")
+
+    # compute sampling period
+    deltas = sensor.index.to_series().diff().dropna().dt.total_seconds()
+    dt = deltas.median()           # typical sampling interval
+    fs = 1.0 / dt                  # sampling frequency (Hz)
+
+    signal = sensor.values.astype(float)
+
+    return signal, fs
+
+def compute_fft(
+        signal: np.ndarray,
+        fs: float
+):
+
+    N = len(signal)
+
+    fft_raw = np.fft.rfft(signal)
+    fft_mag = np.abs(fft_raw) / N
+
+    freqs = np.fft.rfftfreq(N, d=1.0/fs)
+
+    return freqs, fft_mag
+
+def frequency_analysis(
+        sensor: pd.Series,
+        time: pd.Series,
+        max_freq=None
+):
+
+    sensor.index = time
+
+    signal, fs = prepare_signal(sensor)
+    freqs, fft_mag = compute_fft(signal, fs)
+
+    print(f"Sampling frequency: {fs:.4f} Hz")
+    print(f"Sampling interval: {1/fs:.3f} seconds")
+    print(f"Number of samples: {len(signal)}")
+
+    plot_fft_spectrum(
+        freqs,
+        fft_mag,
+        max_freq=max_freq
+    )
+
+    plot_frequency_histogram(
+        freqs=freqs,
+        fft_mag=fft_mag,
+        bins=100,
+        title="Frequency Histogram of Irradiance Signal",
+        save_dir=x,
+        filename=y,
+        show=False
+    )
+
+    return freqs, fft_mag
+
+
+def low_frequency_mask(
+        sensor: pd.Series,
+        sampling_sec: float = 60.0,
+        low_freq_max: float = 0.002,
+        window_sec: float = 3600,
+        thershold: float = 0.8
+) -> pd.Series:
+
+    x = sensor.values.astype(float)
+    n_samples = len(x)
+
+    fs = 1.0 / sampling_sec
+    win_len = int(window_sec / sampling_sec)
+    if win_len < 8:
+        win_len = 8
+    if win_len % 2 == 0:
+        win_len += 1
+
+    g_std = 0.4 * win_len
+    window = gaussian(win_len, std=g_std, sym=True)
+
+    sft = ShortTimeFFT(
+        win=window,
+        hop=1,  # 1-sample hop → full resolution
+        fs=fs,
+        fft_mode='onesided'
+    )
+
+    sx = sft.stft(x)
+    mag = np.abs(sx)
+
+    f = sft.f
+    t = sft.t(n=n_samples)
+
+    low_band = f <= low_freq_max
+
+    low_energy = mag[low_band, :].sum(axis=0)
+    total_energy = mag.sum(axis=0)
+
+    ratio = low_energy / (total_energy + 1e-12)
+
+    local_mask = ratio > thershold
+
+    T = sft.T
+
+    sample_idx = np.round(t / T).astype(int)
+    sample_idx = np.clip(sample_idx, 0, n_samples - 1)
+
+    bool_mask = pd.Series(False, index=sample_idx)
+    bool_mask.iloc[sample_idx] = local_mask[sample_idx]
+    bool_mask = bool_mask[~bool_mask.index.duplicated(keep='first')]
+
+    bool_mask.index = sensor.index
+
+    return bool_mask
+
+
+#--------------------------------- TWO MEDIANS METHOD ---------------------------------#
+
+def two_medians_mask(
+        sensor: pd.Series,
+        time: pd.Series,
+        short_window: str = "30min",
+        long_window: str = "4h",
+        rel_threshold: float = 0.05,
+        min_run_length: int = 5
+) -> pd.Series:
+
+    sensor.index = time
+
+    if not isinstance(sensor.index, pd.DatetimeIndex):
+        raise TypeError("sensor.index must be a DatetimeIndex")
+
+    med_short = sensor.rolling(short_window, center=True, min_periods=1).median()
+    med_long = sensor.rolling(long_window, center=True, min_periods=1).median()
+
+    eps = 1e-9
+    rel_diff = np.abs(med_short - med_long) / (np.abs(med_long) + eps)
+
+    raw_mask = rel_diff < rel_threshold
+
+    mask = raw_mask.copy()
+    values = mask.values
+
+    start = None
+    for i in range(len(values)):
+        if values[i] and start is None:
+            start = i
+        if (not values[i] or i == len(values) - 1) and start is not None:
+            end = i if not values[i] else i + 1
+            run_length = end - start
+            if run_length < min_run_length:
+                values[start:end] = False
+            start = None
+
+    mask = pd.Series(values, index=sensor.index)
+
+    return mask
+
+
 
 
 

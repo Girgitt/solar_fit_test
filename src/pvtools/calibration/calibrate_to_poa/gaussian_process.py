@@ -3,8 +3,6 @@ import gpytorch
 import pandas as pd
 import numpy as np
 
-from pvtools.calibration.calibrate_to_poa.clearsky_utils import compute_residual_metrics, clearsky_detection
-
 
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood):
@@ -26,51 +24,49 @@ class ExactGPModel(gpytorch.models.ExactGP):
 def gaussian_process_pipeline(
         sensor: pd.Series,
         poa_global: pd.Series,
-        time: pd.Series,
+        clearsky_mask: pd.Series,
+        time: pd.Series
 ) -> pd.DataFrame:
+
+    sensor_clearsky = sensor[clearsky_mask]
+    poa_global_clearsky = poa_global[clearsky_mask]
 
     x, y = prepare_inputs(
         sensor=sensor,
-        poa=poa_global
+        poa=poa_global,
+    )
+
+    x_cs, y_cs = prepare_inputs(
+        sensor=sensor_clearsky,
+        poa=poa_global_clearsky,
     )
 
     gp, y_pred, sigma = fit_gp_model(
         x=x,
         y=y,
+        x_cs=x_cs,
+        y_cs=y_cs,
         training_iter=10
     )
 
-    resid, resid_slope, resid_smooth = compute_residual_metrics(
-        poa_global.values,
-        y_pred
-    )
-
-    clear = clearsky_detection(
-        resid=resid,
-        resid_slope=resid_slope,
-        resid_smooth=resid_smooth,
-        resid_thr=40,
-        slope_thr=6,
-        smooth_thr=60
-    )
+    y_pred = pd.Series(y_pred, index=sensor.index)
 
     result = pd.DataFrame({
-        "time": time,
-        "sensor": sensor.values,
-        "poa": poa_global.values,
-        "poa_pred": y_pred,
-        "gp_sigma": sigma,
-        "residual": resid,
-        "residual_slope": resid_slope,
-        "clear_sky": clear
+        "sensor": sensor,
+        "poa_global": poa_global,
+        "sensor_cal": y_pred,
+        "clearsky_mask": clearsky_mask,
+        "gp_sigma": sigma
     })
 
-    return result.set_index("time")
+    return result.set_index(time)
 
 
 def fit_gp_model(
         x: torch.Tensor,
         y: torch.Tensor,
+        x_cs: torch.Tensor,
+        y_cs: torch.Tensor,
         training_iter: int = 20
 ) -> tuple[gpytorch.models.ExactGP, np.ndarray, np.ndarray]:
 
@@ -79,8 +75,11 @@ def fit_gp_model(
     x = x.to(device)
     y = y.to(device)
 
+    x_cs = x_cs.to(device)
+    y_cs = y_cs.to(device)
+
     likelihood = gpytorch.likelihoods.GaussianLikelihood().to(device)
-    model = ExactGPModel(x, y, likelihood).to(device)
+    model = ExactGPModel(x_cs, y_cs, likelihood).to(device)
 
     model.train()
     likelihood.train()
@@ -93,8 +92,8 @@ def fit_gp_model(
 
     for i in range(training_iter):
         optimizer.zero_grad()
-        output = model(x)
-        loss = -mll(output, y)
+        output = model(x_cs)
+        loss = -mll(output, y_cs)
         loss.backward()
         optimizer.step()
 
