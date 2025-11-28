@@ -274,6 +274,142 @@ def two_medians_mask(
     return mask
 
 
+#--------------------------------- DERIVATIVE METHOD ---------------------------------#
+
+def derivative_df(
+        sensor: pd.Series,
+        poa_global: pd.Series,
+        time: pd.Series,
+        window_length: int = 30,
+        polyorder: int = 1,
+        delta: float = 1.0
+) -> pd.DataFrame:
+
+    x = sensor.values.astype(float)
+    y = poa_global.values.astype(float)
+
+    x_smooth = savgol_filter(
+        x=x,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=0,
+        delta=delta
+    )
+
+    x_d_dt = savgol_filter(
+        x=x,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=1,
+        delta=delta
+    )
+
+    y_smooth = savgol_filter(
+        x=y,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=0,
+        delta=delta
+    )
+
+    y_d_dt = savgol_filter(
+        x=y,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=1,
+        delta=delta
+    )
+
+    x_smooth = pd.Series(x_smooth, index=time)
+    x_d_dt = pd.Series(x_d_dt, index=time)
+
+    y_smooth = pd.Series(y_smooth, index=time)
+    y_d_dt = pd.Series(y_d_dt, index=time)
+
+    df = pd.DataFrame({
+        "sensor": sensor,
+        "sensor_smooth": x_smooth,
+        "sensor_d_dt": x_d_dt,
+        "poa_global": poa_global,
+        "poa_global_smooth": y_smooth,
+        "poa_global_d_dt": y_d_dt,
+    })
+
+    return df
+
+def relative_derivative_mask(
+        sensor: pd.Series,
+        poa_global: pd.Series,
+        time: pd.Series,
+        window_length: int = 30,
+        polyorder: int = 1,
+        delta: float = 1.0
+) -> pd.DataFrame:
+
+    x = sensor.values.astype(float)
+    y = poa_global.values.astype(float)
+    
+    x_clip = np.clip(x, 1.0, None)
+    y_clip = np.clip(y, 1.0, None)
+
+    log_x = np.log(x_clip)
+    log_y = np.log(y_clip)
+
+    log_sensor_smooth = savgol_filter(
+        x=log_x,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=0,
+        delta=delta
+    )
+    log_poa_global_smooth = savgol_filter(
+        x=log_y,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=0,
+        delta=delta
+    )
+
+    log_sensor_d_dt = savgol_filter(
+        x=log_x,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=1,
+        delta=delta
+    )
+
+    log_poa_global_d_dt = savgol_filter(
+        x=log_y,
+        window_length=window_length,
+        polyorder=polyorder,
+        deriv=1,
+        delta=delta
+    )
+
+    tau = 0.001 # need to be adjusted
+
+    shape_diff = np.abs(log_sensor_d_dt - log_poa_global_d_dt)
+    shape_mask = (shape_diff < tau)
+
+    log_sensor_smooth = pd.Series(log_sensor_smooth, index=time)
+    log_poa_global_smooth = pd.Series(log_poa_global_smooth, index=time)
+    log_sensor_d_dt = pd.Series(log_sensor_d_dt, index=time)
+    log_poa_global_d_dt = pd.Series(log_poa_global_d_dt, index=time)
+    shape_mask = pd.Series(shape_mask, index=time)
+
+    df = pd.DataFrame({
+        "sensor": sensor,
+        "sensor_smooth": log_sensor_smooth,
+        "sensor_d_dt": log_sensor_d_dt,
+        "poa_global": poa_global,
+        "poa_global_smooth": log_poa_global_smooth,
+        "poa_global_d_dt": log_poa_global_d_dt,
+        "mask": shape_mask
+    })
+
+    return df
+
+
 
 
 

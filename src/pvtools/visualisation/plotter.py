@@ -347,3 +347,59 @@ def tmp_plot_check_masks(
 
     if show:
         fig.show()
+
+
+def tmp_plot_smoothed_vemls(
+        result_df: pd.DataFrame,
+        title: str = "default plot",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(result_df.index, result_df["sensor"], label="sensor", linewidth=1.5)
+    ax.plot(result_df.index, result_df["sensor_smooth"], label="sensor smooth", linewidth=1.5)
+    ax.plot(result_df.index, result_df["poa_global"], label="poa global", linewidth=1.5)
+    ax.plot(result_df.index, result_df["poa_global_smooth"], label="poa global smooth", linewidth=1.5)
+
+
+    ax.set_title(title)
+    ax.set_ylabel("Irradiance W/m²")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+def tmp_plot_smoothed_derivs_vemls(
+        result_df: pd.DataFrame,
+        title: str = "default plot",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(result_df.index, result_df["sensor_d_dt"], label="sensor deriv", linewidth=1.5)
+    ax.plot(result_df.index, result_df["poa_global_d_dt"], label="poa global deriv", linewidth=1.5)
+
+    ax.set_title(title)
+    ax.set_ylabel("-")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()

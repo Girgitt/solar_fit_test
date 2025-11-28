@@ -15,12 +15,14 @@ from pvtools.calibration.calibrate_to_poa.gaussian_process import gaussian_proce
 from pvtools.calibration.calibrate_to_poa.ransac import ransac_pipeline
 from pvtools.calibration.calibrate_to_poa.clearsky_utils import (clearsky_detection_by_frequency_method,
                                                                  frequency_analysis, low_frequency_mask,
-                                                                 two_medians_mask)
+                                                                 two_medians_mask, derivative_df,
+                                                                 relative_derivative_mask)
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
                                            plot_poa_reference_with_clearsky_periods,
                                            plot_sensors_calibrated_directly_to_poa,
-                                           plot_clear_sky, plot_poa_components, tmp_plot_check_masks)
+                                           plot_clear_sky, plot_poa_components,
+                                           tmp_plot_check_masks, tmp_plot_smoothed_vemls, tmp_plot_smoothed_derivs_vemls)
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
                                      load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
                                      create_calibrated_dataframe, check_if_calibration_method_available,
@@ -273,11 +275,78 @@ def calibrate_directly_to_poa(
             min_run_length=10
         )
 
+        # ---------------------------------------------------------------------------------------------
+
+        derivative_df_ = derivative_df(
+            sensor=model_data.df[sensor_name],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            time=model_data.df["time"],
+            window_length=240,
+            polyorder=1,
+            delta=1.0
+        )
+
+        tmp_plot_smoothed_vemls(
+            result_df=derivative_df_,
+            title="Check smoothness",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"smoothness_{sensor_name}",
+            show=False
+        )
+
+
+        tmp_plot_smoothed_derivs_vemls(
+            result_df=derivative_df_,
+            title="Check derivative",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"derivative_{sensor_name}",
+            show=False
+        )
+
+        # ---------------------------------------------------------------------------------------------
+
+        relative_derivative_mask_ = relative_derivative_mask(
+            sensor=model_data.df[sensor_name],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            time=model_data.df["time"],
+            window_length=240,
+            polyorder=1,
+            delta=1.0
+        )
+
+        tmp_plot_smoothed_vemls(
+            result_df=relative_derivative_mask_,
+            title="Check relative smoothness",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"smoothness_relative_{sensor_name}",
+            show=False
+        )
+
+        tmp_plot_smoothed_derivs_vemls(
+            result_df=relative_derivative_mask_,
+            title="Check relative derivative",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"derivative_relivative_{sensor_name}",
+            show=False
+        )
+
+        tmp_plot_check_masks(
+            result_df=relative_derivative_mask_,
+            title="Check derivative relative mask",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"mask_derivative_relative_{sensor_name}",
+            show=False
+        )
+
+        # ---------------------------------------------------------------------------------------------
+
         df_freq_mask = pd.DataFrame({
             "sensor": model_data.df[sensor_name],
             "poa_global": clearsky_cal_val.poa["poa_global"],
             "mask": frequency_mask
         })
+
+
 
         df_two_medians_mask = pd.DataFrame({
             "sensor": model_data.df[sensor_name],
