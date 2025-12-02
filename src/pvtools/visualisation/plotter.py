@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
 from typing import List, Tuple, Optional
@@ -393,6 +394,91 @@ def tmp_plot_smoothed_derivs_vemls(
 
     ax.set_title(title)
     ax.set_ylabel("-")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+def tmp_plot_evenelope(
+        evenelope: np.ndarray,
+        sensor_smooth: pd.Series,
+        title: str = "Upper Envelope of VEML Sensor",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(sensor_smooth.index, sensor_smooth.values, label="sensor smooth", linewidth=1.5)
+    ax.plot(sensor_smooth.index, evenelope, label="upper evenelope", linewidth=1.5)
+
+    ax.set_title(title)
+    ax.set_ylabel("Irradiance [W/m²]")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+
+def tmp_plot_evenelope_scaled(
+        evenelope: np.ndarray,
+        sensor: pd.Series,
+        poa_global: pd.Series,
+        title: str = "Upper Envelope of VEML Sensor scaled",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(sensor.index, sensor.values, label="sensor smooth scaled", linewidth=1.5)
+    ax.plot(sensor.index, evenelope, label="upper evenelope scaled", linewidth=1.5)
+    ax.plot(sensor.index, poa_global.values, label="poa global", linewidth=1.5)
+
+    ax.set_title(title)
+    ax.set_ylabel("Irradiance [W/m²]")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+
+def tmp_plot_scaled_sensor_vs_reference(
+        sensor: pd.Series,
+        reference: pd.Series,
+        title: str = "Sensor scaled vs reference",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(sensor.index, sensor.values, label="sensor scaled", linewidth=1.5, alpha=0.8)
+    ax.plot(sensor.index, reference.values, label="reference", linewidth=1.5)
+
+    ax.set_title(title)
+    ax.set_ylabel("Irradiance [W/m²]")
     ax.set_xlabel("Time")
     ax.legend()
     ax.grid()

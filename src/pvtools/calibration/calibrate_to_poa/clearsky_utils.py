@@ -2,9 +2,10 @@ import numpy as np
 import pandas as pd
 
 from scipy.ndimage import gaussian_filter1d
-from scipy.signal import savgol_filter, ShortTimeFFT
+from scipy.signal import savgol_filter, ShortTimeFFT, find_peaks
 from scipy.signal.windows import gaussian
 from sklearn.linear_model import LinearRegression
+from scipy.interpolate import UnivariateSpline
 
 from pvtools.visualisation.plotter import plot_frequency_histogram, plot_fft_spectrum
 
@@ -408,6 +409,124 @@ def relative_derivative_mask(
     })
 
     return df
+
+
+#--------------------------------- DETERMINE THE SIGNAL AMPLIFICATION SCALE ---------------------------------#
+
+def determine_signal_amplification_scale(
+        sensor: pd.Series,
+        poa_global: pd.Series,
+        time: pd.Series,
+        smooth_window: int = 30,
+        polyorder: int = 2,
+        minimum_disatnce_between_peaks: int = 10,
+        smoothing_factor: int = 1e3,
+) -> [np.ndarray, pd.Series]:
+
+    x = sensor.values.astype(float)
+    y = poa_global.values.astype(float)
+
+    x_smooth = savgol_filter(
+        x=x,
+        window_length=smooth_window,
+        polyorder=polyorder
+    )
+
+    x_smooth_series = pd.Series(x_smooth, index=time)
+
+    peaks, _ = find_peaks(
+        x=x_smooth,
+        distance=minimum_disatnce_between_peaks
+    )
+
+    #peaks = pd.Series(peaks)
+
+    thershold = np.percentile(x_smooth[peaks], 80)
+    good_peaks = peaks[x_smooth[peaks] >= thershold]
+
+    night_periods = detect_night_periods(
+        series=x_smooth_series,
+        eps=0.01,
+        min_period_len=50
+    )
+
+    for start, end in night_periods:
+        good_peaks = np.append(good_peaks, start)
+        good_peaks = np.append(good_peaks, end)
+
+    good_peaks = np.append(good_peaks, 0)
+    good_peaks = np.append(good_peaks, len(x_smooth) - 1)
+
+    good_peaks.sort()
+    good_peaks = np.unique(good_peaks)
+
+    spline = UnivariateSpline(
+        x=good_peaks,
+        y=x_smooth[good_peaks],
+        k=polyorder,
+        s=smoothing_factor
+    )
+
+    y = np.arange(len(x))
+    envelope = spline(y)
+
+    for start, end in night_periods:
+        envelope[start:end] = 0.0
+
+    envelope[envelope < 0.0] = 0.0
+
+    return envelope, x_smooth_series
+
+
+def detect_night_periods(
+        series: pd.Series,
+        eps: float = 0.1,
+        min_period_len: int = 50
+) -> list:
+
+    periods = []
+    zero_mask = series.abs() < eps
+    n = len(series)
+
+    i = 0
+    while i < n:
+        if zero_mask[i]:
+            start = i
+            while i < n and zero_mask[i]:
+                i += 1
+            end = i - 1
+
+            if (end - start) > min_period_len:
+                periods.append((start, end))
+        i += 1
+
+    return periods
+
+
+def compute_scale_factor(
+        envelope: pd.Series,
+        poa_global: pd.Series,
+        poa_min: float = 50.0,
+        env_min: float = 5.0,
+        use_median: bool = True,
+) -> float:
+
+    envelope, poa_global = envelope.align(poa_global, join="inner")
+
+    mask = (poa_global > poa_min) & (envelope > env_min)
+
+    x = envelope[mask].astype(float).values
+    y = poa_global[mask].astype(float).values
+
+    if x.size == 0:
+        raise ValueError("No valid samples for scale estimation")
+
+    if use_median:
+        k = np.median(y / x)
+    else:
+        k = float(np.dot(x, y) / np.dot(x, x))
+
+    return k
 
 
 

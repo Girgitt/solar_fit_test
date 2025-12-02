@@ -16,13 +16,18 @@ from pvtools.calibration.calibrate_to_poa.ransac import ransac_pipeline
 from pvtools.calibration.calibrate_to_poa.clearsky_utils import (clearsky_detection_by_frequency_method,
                                                                  frequency_analysis, low_frequency_mask,
                                                                  two_medians_mask, derivative_df,
-                                                                 relative_derivative_mask)
+                                                                 relative_derivative_mask,
+                                                                 determine_signal_amplification_scale,
+                                                                 compute_scale_factor)
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
                                            plot_poa_reference_with_clearsky_periods,
                                            plot_sensors_calibrated_directly_to_poa,
                                            plot_clear_sky, plot_poa_components,
-                                           tmp_plot_check_masks, tmp_plot_smoothed_vemls, tmp_plot_smoothed_derivs_vemls)
+                                           tmp_plot_check_masks, tmp_plot_smoothed_vemls,
+                                           tmp_plot_smoothed_derivs_vemls, tmp_plot_evenelope,
+                                           tmp_plot_evenelope_scaled,
+                                           tmp_plot_scaled_sensor_vs_reference)
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
                                      load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
                                      create_calibrated_dataframe, check_if_calibration_method_available,
@@ -335,6 +340,56 @@ def calibrate_directly_to_poa(
             title="Check derivative relative mask",
             save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
             filename=f"mask_derivative_relative_{sensor_name}",
+            show=False
+        )
+
+        # ---------------------------------------------------------------------------------------------
+
+        evenelope, sensor_smooth = determine_signal_amplification_scale(
+            sensor=model_data.df[sensor_name],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            time=model_data.df["time"],
+            smooth_window=30,
+            polyorder=3,
+            minimum_disatnce_between_peaks=10,
+            smoothing_factor=2000
+        )
+
+        tmp_plot_evenelope(
+            sensor_smooth=sensor_smooth,
+            evenelope=evenelope,
+            title="Upper evenelope",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"evenelope_{sensor_name}",
+            show=False
+        )
+
+        evenelope = pd.Series(evenelope, index=model_data.df["time"])
+
+        factor = compute_scale_factor(
+            envelope=evenelope,
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            poa_min=20.0,
+            env_min=2.0,
+            use_median=False,
+        )
+
+        tmp_plot_evenelope_scaled(
+            evenelope=factor * evenelope,
+            sensor=factor * model_data.df[sensor_name],
+            poa_global=clearsky_cal_val.poa["poa_global"],
+            title="Upper evenelope scaled",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"evenelope_scaled_{sensor_name}",
+            show=False
+        )
+
+        tmp_plot_scaled_sensor_vs_reference(
+            sensor=factor * model_data.df[sensor_name],
+            reference=model_data.df["irr_dav_1_VALUE"], # or MAX_VALUE - this is temporary hardcoded
+            title="Scaled sensor vs reference",
+            save_dir=Path(model_dirs.plot_dir / model_dirs.filename),
+            filename=f"evenelope_scaled_vs_reference{sensor_name}",
             show=False
         )
 
