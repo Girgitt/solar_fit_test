@@ -175,13 +175,15 @@ def frequency_analysis(
     return freqs, fft_mag
 
 
-def low_frequency_mask(
+def frequency_mask(
         sensor: pd.Series,
+        poa_global: pd.Series,
+        time: pd.Series,
         sampling_sec: float = 60.0,
         low_freq_max: float = 0.002,
         window_sec: float = 3600,
         thershold: float = 0.8
-) -> pd.Series:
+) -> pd.DataFrame:
 
     x = sensor.values.astype(float)
     n_samples = len(x)
@@ -223,25 +225,33 @@ def low_frequency_mask(
     sample_idx = np.round(t / T).astype(int)
     sample_idx = np.clip(sample_idx, 0, n_samples - 1)
 
-    bool_mask = pd.Series(False, index=sample_idx)
-    bool_mask.iloc[sample_idx] = local_mask[sample_idx]
-    bool_mask = bool_mask[~bool_mask.index.duplicated(keep='first')]
+    mask = pd.Series(False, index=sample_idx)
+    mask.iloc[sample_idx] = local_mask[sample_idx]
+    mask = mask[~mask.index.duplicated(keep='first')]
 
-    bool_mask.index = sensor.index
+    poa_global.index = time.index
 
-    return bool_mask
+    df_mask = pd.DataFrame({
+        "time": time,
+        "sensor": sensor,
+        "poa_global": poa_global,
+        "mask": mask
+    })
+
+    return df_mask
 
 
 #--------------------------------- TWO MEDIANS METHOD ---------------------------------#
 
 def two_medians_mask(
         sensor: pd.Series,
+        poa_global: pd.Series,
         time: pd.Series,
         short_window: str = "30min",
         long_window: str = "4h",
         rel_threshold: float = 0.05,
         min_run_length: int = 5
-) -> pd.Series:
+) -> pd.DataFrame:
 
     sensor.index = time
 
@@ -270,14 +280,23 @@ def two_medians_mask(
                 values[start:end] = False
             start = None
 
-    mask = pd.Series(values, index=sensor.index)
+    mask = pd.Series(values, index=poa_global.index)
+    sensor.index = poa_global.index
 
-    return mask
+
+    df_mask = pd.DataFrame({
+        "time": time,
+        "sensor": sensor,
+        "poa_global": poa_global,
+        "mask": mask
+    })
+
+    return df_mask
 
 
 #--------------------------------- DERIVATIVE METHOD ---------------------------------#
 
-def derivative_df(
+def create_derivative_df(
         sensor: pd.Series,
         poa_global: pd.Series,
         time: pd.Series,
@@ -321,13 +340,14 @@ def derivative_df(
         delta=delta
     )
 
-    x_smooth = pd.Series(x_smooth, index=time)
-    x_d_dt = pd.Series(x_d_dt, index=time)
+    x_smooth = pd.Series(x_smooth, index=time.index)
+    x_d_dt = pd.Series(x_d_dt, index=time.index)
 
-    y_smooth = pd.Series(y_smooth, index=time)
-    y_d_dt = pd.Series(y_d_dt, index=time)
+    y_smooth = pd.Series(y_smooth, index=time.index)
+    y_d_dt = pd.Series(y_d_dt, index=time.index)
 
     df = pd.DataFrame({
+        "time": time,
         "sensor": sensor,
         "sensor_smooth": x_smooth,
         "sensor_d_dt": x_d_dt,
@@ -338,7 +358,7 @@ def derivative_df(
 
     return df
 
-def relative_derivative_mask(
+def create_relative_derivative_mask_df(
         sensor: pd.Series,
         poa_global: pd.Series,
         time: pd.Series,
@@ -392,13 +412,14 @@ def relative_derivative_mask(
     shape_diff = np.abs(log_sensor_d_dt - log_poa_global_d_dt)
     shape_mask = (shape_diff < tau)
 
-    log_sensor_smooth = pd.Series(log_sensor_smooth, index=time)
-    log_poa_global_smooth = pd.Series(log_poa_global_smooth, index=time)
-    log_sensor_d_dt = pd.Series(log_sensor_d_dt, index=time)
-    log_poa_global_d_dt = pd.Series(log_poa_global_d_dt, index=time)
-    shape_mask = pd.Series(shape_mask, index=time)
+    log_sensor_smooth = pd.Series(log_sensor_smooth, index=time.index)
+    log_poa_global_smooth = pd.Series(log_poa_global_smooth, index=time.index)
+    log_sensor_d_dt = pd.Series(log_sensor_d_dt, index=time.index)
+    log_poa_global_d_dt = pd.Series(log_poa_global_d_dt, index=time.index)
+    shape_mask = pd.Series(shape_mask, index=time.index)
 
     df = pd.DataFrame({
+        "time": time,
         "sensor": sensor,
         "sensor_smooth": log_sensor_smooth,
         "sensor_d_dt": log_sensor_d_dt,
@@ -503,13 +524,15 @@ def detect_night_periods(
     return periods
 
 
-def compute_scale_factor(
+def compute_gain_factor(
         envelope: pd.Series,
         poa_global: pd.Series,
         poa_min: float = 50.0,
         env_min: float = 5.0,
         use_median: bool = True,
 ) -> float:
+
+    poa_global.index = envelope.index
 
     envelope, poa_global = envelope.align(poa_global, join="inner")
 

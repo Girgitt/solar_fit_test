@@ -5,6 +5,8 @@ from pathlib import Path
 from datetime import time
 from typing import TypedDict
 
+from pandas import Timedelta
+
 
 @dataclass
 class ModelData:
@@ -27,7 +29,7 @@ class ModelDirectories:
 class ModelTimes:
     start_time: pd.Timestamp
     end_time: pd.Timestamp
-    frequency: str
+    frequency: Timedelta
     divided_linear_regression_interval: str
     start_daytime_cut: time
     end_daytime_cut: time

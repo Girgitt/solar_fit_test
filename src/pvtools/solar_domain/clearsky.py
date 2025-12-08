@@ -89,30 +89,6 @@ def get_solar_data_for_location_and_time(
         method='pyephem', #'nrel_numba'
     )
 
-    '''
-    apparent_zenith = solpos['apparent_zenith']
-    airmass = pvlib.atmosphere.get_relative_airmass(apparent_zenith)
-    pressure = pvlib.atmosphere.alt2pres(clearsky_params.altitude)
-    airmass = pvlib.atmosphere.get_absolute_airmass(airmass, pressure)
-    linke_turbidity = pvlib.clearsky.lookup_linke_turbidity(times, clearsky_params.warsaw_lat, clearsky_params.warsaw_lon)
-
-    cs = tus.get_clearsky(
-        times=times,
-        model='ineichen',
-        solar_position=solpos,
-        linke_turbidity=linke_turbidity - 3, #linke_turbidity, #0.75
-        #airmass=airmass
-    )
-    
-    cs = tus.get_clearsky(
-        times=times,
-        model='simplified_solis',
-        solar_position=solpos,
-        # linke_turbidity=linke_turbidity - 3, #linke_turbidity, #0.75
-        # airmass=airmass
-    )
-    '''
-
     apparent_zenith = solpos['apparent_zenith']
     airmass = pvlib.atmosphere.get_relative_airmass(apparent_zenith)
 

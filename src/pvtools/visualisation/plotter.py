@@ -489,3 +489,57 @@ def tmp_plot_scaled_sensor_vs_reference(
 
     if show:
         fig.show()
+
+
+def plot_universal(
+        result_df: pd.DataFrame,
+        data_series_names: list[str],
+        dict_series_description: dict[str, str],
+        mask: str = None,
+        title: str = "Default plot",
+        ylabel: str = "Irradiance W/m²",
+        xlabel: str = "Time",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    for data in data_series_names:
+        ax.plot(
+            result_df["time"],
+            result_df[data],
+            label=dict_series_description[data],
+            linewidth=1.5,
+            zorder=1
+        )
+
+    # highlight clear-sky
+    if mask is not None:
+        clear_idx = result_df.index[result_df[mask]]
+        ax.scatter(
+            result_df.loc[clear_idx, "time"],
+            result_df.loc[clear_idx, "sensor"],
+            s=5,
+            color="red",
+            label="Clear-sky detected",
+            zorder=2
+        )
+
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=10
+    )
+    ax.grid(True)
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()

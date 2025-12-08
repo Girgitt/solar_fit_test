@@ -17,20 +17,16 @@ def ransac_pipeline(
         clearsky_mask=clearsky_mask
     )
 
-    index = time
-
-    sensor.index = index
-    sensor_cal = pd.Series(sensor_cal, index=index)
-    clearsky_mask = pd.Series(clearsky_mask, index=index)
+    sensor_cal = pd.Series(sensor_cal)
 
     result = pd.DataFrame({
         "sensor": sensor,
         "poa_global": poa_global,
         "sensor_cal": sensor_cal,
-        "clearsky_mask": clearsky_mask
+        "mask": clearsky_mask
     })
 
-    return result.set_index(time)
+    return result
 
 
 def robust_calibration(

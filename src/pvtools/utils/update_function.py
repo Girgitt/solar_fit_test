@@ -99,20 +99,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
 
     clearsky_cal_val.poa = poa
 
-    #FIXME - does it have any sense?
-    '''
-    df_limited = limit_sensor_ref_irradiance_to_clear_sky_model(
-        df=model_data.df,
-        clearsky_df=clearsky_cal_val.poa,
-        sensor_name_ref=model_data.sensor_name_ref,
-        poa_global_name='poa_global',
-        save_dir=model_dirs.data_dir,
-        filename=model_dirs.filename
-    )
-    
-    model_data.df = df_limited
-    '''
-
+    # For now second version of detect_clearsky_periods is used.
     '''
     clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
         poa=poa,
@@ -132,7 +119,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
         filename=model_dirs.filename
     )
 
-
+    # This part ic commented to shorten computation time. Feel free to use!
     '''
     if clearsky_params.surface_tilt != 0:
         clearsky_params.surface_tilt, clearsky_params.surface_azimuth = determine_system_azimuth_and_tilt(

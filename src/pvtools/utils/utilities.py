@@ -247,7 +247,6 @@ def initialize_dirs_for_base_dir(project_dir):
     log_dir = Path(os.path.join(project_dir, "logs"))
     plot_dir = Path(os.path.join(project_dir, "plots"))
     data_dir = Path(os.path.join(project_dir, "data"))
-    output_dir = Path()
 
     log_dir.mkdir(parents=True, exist_ok=True)
     plot_dir.mkdir(parents=True, exist_ok=True)
@@ -269,8 +268,6 @@ def create_calibrated_dataframe(
         model_directories: ModelDirectories,
         calibration_directory: Path,
 ) -> pd.DataFrame:
-
-    df = model_parameters.df.copy()
 
     df = load_and_merge_calibrated_data_from_each_sensor(
         df=model_parameters.df,
@@ -306,11 +303,6 @@ def create_dataframe_with_sensor_values_and_poa(
     df_tmp_org = df_postprocess["time"].copy()
     df_tmp_postprocess_calibrated = df_postprocess["time"].copy()
     df_tmp_calibrated = df_calibrated["time"].copy()
-
-
-    df_org_sensor_data_with_poa_global = df_postprocess["time"].copy()
-    df_postprocess_calibrated_sensor_data_with_poa_global = df_postprocess["time"].copy()
-    df_calibrated_sensor_data_with_poa_global = df_calibrated["time"].copy()
 
     for col in sensor_names:
         df_tmp_org = pd.merge(df_tmp_org, df_org[["time", col]], on="time", how="left")

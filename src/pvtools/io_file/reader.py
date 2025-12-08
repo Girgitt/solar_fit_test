@@ -5,7 +5,7 @@ from typing import Dict, Any, List, TypeAlias, Literal, Optional
 from pathlib import Path
 
 from pvtools.config.params import DatatypeMLPRegressionParameters, DatatypeCoefficientsForDividedLinearRegression
-from pvtools.calibration.validate_decision_tree import _validate_tree_structure
+from pvtools.calibration.calibrate_to_reference.validate_tree import _validate_tree_structure
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
