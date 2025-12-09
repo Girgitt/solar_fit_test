@@ -1,14 +1,17 @@
-import numpy as np
 import pandas as pd
 import json
+import csv
+import logging
 
 from pathlib import Path
 from matplotlib.figure import Figure
-from typing import List, Tuple, Optional, Any
+from typing import Optional, Any
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 
 required_metric_fields = ["mse", "mae", "rmse", "r2", "mape", "max_error", "bias"]
+
+log = logging.getLogger(__name__)
 
 
 def save_metrics_to_json(
@@ -18,6 +21,7 @@ def save_metrics_to_json(
         filename_path: Path = None,
         scalers_list: list[dict] = None
 ) -> None:
+
     for attr in required_metric_fields:
         if not hasattr(metrics, attr):
             raise TypeError(f"metrics must have '{attr}' attribute")
@@ -81,6 +85,7 @@ def save_dataframe_to_csv(
         index: Optional[bool] = False,
         index_label: Optional[str] = None
 ) -> None:
+
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(
@@ -95,27 +100,43 @@ def save_figure(
         save_dir: Path=None,
         filename: str=None,
 ) -> None:
+
     if save_dir is not None:
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
         output_path = save_dir / filename
 
-    print(f"[DEBUG] Saving: {output_path}")
+    log.debug(f"Saving: {output_path}")
     try:
         fig.savefig(output_path, dpi=300)
-        print(f"[SUCCESS] Saved: {output_path}")
+        log.info(f"Success saved: {output_path}")
     except Exception as e:
-        print(f"[ERROR] Failed to save {output_path}: {e}")
+        log.error(f"Failed to save {output_path}: {e}")
 
 
 def save_predicted_data_figures(
-        figures: List[Tuple[str, str, Figure]],
+        figures: list[tuple[str, str, Figure]],
         save_dir: Path=None,
 ) -> None:
-    print(f"[INFO] Saving figures to: {save_dir} (type: {type(save_dir)})")
+
+    log.info(f"Saving figures to: {save_dir} (type: {type(save_dir)})")
 
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     for sensor_name, calibration_method, fig in figures:
         save_figure(fig, save_dir, f"{sensor_name}.png")
+
+
+def save_str_dict_to_csv(
+        dict_: dict[str, str],
+        output_path: Path
+) -> None:
+
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open(mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['key', 'value'])
+            for key, value in dict_.items():
+                writer.writerow([key, value])

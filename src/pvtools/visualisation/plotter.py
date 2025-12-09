@@ -2,11 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from typing import List, Tuple, Optional
+from typing import Optional
 from pathlib import Path
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from typing import Dict
 
 from pvtools.io_file.writer import save_figure
 
@@ -59,11 +58,11 @@ def plot_from_dataframe(
 
 
 def subplot_predicted_data(
-        data: Dict[str, pd.DataFrame],
+        data: dict[str, pd.DataFrame],
         y_true: str,
         y_pred: str,
         calibration_method: str,
-) -> List[Tuple[str, str, Figure]]:
+) -> list[tuple[str, str, Figure]]:
 
     figures = []
 

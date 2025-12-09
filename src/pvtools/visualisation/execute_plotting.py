@@ -1,17 +1,12 @@
 import pandas as pd
 
-from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
-from pvtools.visualisation.plotter import (plot_from_dataframe, plot_poa_vs_reference,
-                                           plot_poa_reference_with_clearsky_periods,
-                                           plot_sensors_calibrated_directly_to_poa,
-                                           plot_clear_sky, plot_poa_components,
-                                           tmp_plot_check_masks, tmp_plot_smoothed_vemls,
-                                           tmp_plot_smoothed_derivs_vemls, tmp_plot_evenelope,
-                                           tmp_plot_evenelope_scaled,
-                                           tmp_plot_scaled_sensor_vs_reference)
+from pathlib import Path
+
+from pvtools.config.params import ModelData, ModelDirectories, ClearSkyCalculatedValues
+from pvtools.visualisation.plotter import plot_from_dataframe, plot_poa_vs_reference, plot_universal
 
 
-def plot(
+def plot_calibrated_to_reference(
         dataframes: list[pd.DataFrame],
         model_data: ModelData,
         model_dirs: ModelDirectories,
@@ -91,3 +86,183 @@ def plot(
             save_dir=save_dir,
             show=True,
         )
+
+
+def plot_calibrated_to_poa(
+        df: pd.DataFrame,
+        dict_: dict[str, str],
+        model_dirs: ModelDirectories,
+        model_data: ModelData,
+        sensor_name: str
+) -> None:
+
+    direct_calibration_plotting_dir = Path(model_dirs.plot_dir / model_dirs.filename / "direct_calibration_to_poa")
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "sensor_smooth", "poa_global"],
+        dict_series_description=dict_,
+        mask=None,
+        title="Check smoothness in universal function",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"smoothness_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor_d_dt", "poa_global_d_dt"],
+        dict_series_description=dict_,
+        mask=None,
+        title="Check derivative in universal function",
+        ylabel="-",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"derivative_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "sensor_smooth", "poa_global"],
+        dict_series_description=dict_,
+        mask=None,
+        title="Check relative smoothness",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"smoothness_relative_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor_d_dt", "poa_global_d_dt"],
+        dict_series_description=dict_,
+        mask=None,
+        title="Check relative derivative",
+        ylabel="-",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"derivative_relative_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "poa_global"],
+        dict_series_description=dict_,
+        mask="derivative_mask",
+        title="Check relative derivative mask",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"mask_derivative_relative_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "evenelope"],
+        dict_series_description=dict_,
+        mask=None,
+        title="Upper envenelope",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"envenelope_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor_gain", "evenelope_gain", "poa_global"],
+        dict_series_description=dict_,
+        mask=None,
+        title="Upper envenelope scaled",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"envenelope_scaled_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=[f"{model_data.sensor_name_ref}", "sensor_gain"],
+        dict_series_description=dict_,
+        mask=None,
+        title="Upper envenelope scaled",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"envenelope_scaled_vs_reference_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "poa_global"],
+        dict_series_description=dict_,
+        mask="frequency_mask",
+        title="Frequency mask",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"mask_freq_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "poa_global"],
+        dict_series_description=dict_,
+        mask="two_medians_mask",
+        title="Two medinas mask",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"mask_two_medians_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "poa_global"],
+        dict_series_description=dict_,
+        mask="derivative_mask",
+        title="Derivative mask",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"mask_deriv_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "poa_global", "ransac_freq_mask_calibration"],
+        dict_series_description=dict_,
+        mask="frequency_mask",
+        title="RANSAC calibration directly to POA with frequency mask",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"direct_calibration_to_poa_by_ransac_freq_mask_{sensor_name}",
+        show=False
+    )
+
+    plot_universal(
+        result_df=df,
+        data_series_names=["sensor", "poa_global", "ransac_two_medians_mask_calibration"],
+        dict_series_description=dict_,
+        mask="two_medians_mask",
+        title="RANSAC calibration directly to POA with two medians mask",
+        ylabel="Irradiance W/m²",
+        xlabel="Time",
+        save_dir=direct_calibration_plotting_dir,
+        filename=f"direct_calibration_to_poa_by_ransac_two_medians_mask_{sensor_name}",
+        show=False
+    )

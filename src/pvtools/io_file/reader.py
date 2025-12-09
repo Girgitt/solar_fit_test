@@ -1,5 +1,6 @@
-import json
 import pandas as pd
+import json
+import csv
 
 from typing import Dict, Any, List, TypeAlias, Literal, Optional
 from pathlib import Path
@@ -194,3 +195,19 @@ def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeMLPRegressionPa
     }
 
     return params
+
+
+def load_str_dict_from_csv(load_path: Path = None) -> dict[str, str]:
+
+    load_path = Path(load_path)
+
+    if load_path.suffix == "":
+        load_path = load_path.with_suffix(".csv")
+    elif load_path.suffix.lower() != ".csv":
+        raise ValueError(f"Expected a .csv file, got '{load_path.suffix}' in path: {load_path}")
+
+    with load_path.open(mode='r', newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        result = {row['key']: row['value'] for row in reader}
+
+    return result

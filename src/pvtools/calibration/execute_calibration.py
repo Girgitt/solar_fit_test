@@ -1,4 +1,5 @@
 import pandas as pd
+import logging
 
 from pathlib import Path
 
@@ -10,19 +11,15 @@ from pvtools.calibration.calibrate_to_reference.calibrate_polynominal_regression
 from pvtools.calibration.calibrate_to_reference.calibrate_decision_tree import calibrate_by_decision_tree_regression
 from pvtools.calibration.calibrate_to_reference.calibrate_mlp import calibrate_by_mlp_regression
 from pvtools.calibration.calibrate_to_poa.ransac import ransac_pipeline
-from pvtools.calibration.calibrate_to_poa.clearsky_utils import (clearsky_detection_by_frequency_method,
-                                                                 frequency_analysis, frequency_mask,
+from pvtools.calibration.calibrate_to_poa.clearsky_utils import (frequency_mask,
                                                                  two_medians_mask, create_derivative_df,
                                                                  create_relative_derivative_mask_df,
                                                                  determine_signal_amplification_scale,
                                                                  compute_gain_factor)
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyCalculatedValues, ModelTimes
-from pvtools.visualisation.plotter import (plot_sensors_calibrated_directly_to_poa,
-                                           tmp_plot_check_masks, tmp_plot_smoothed_vemls,
-                                           tmp_plot_smoothed_derivs_vemls, tmp_plot_evenelope,
-                                           tmp_plot_evenelope_scaled,
-                                           tmp_plot_scaled_sensor_vs_reference,
-                                           plot_universal)
+from pvtools.io_file.writer import save_dataframe_to_csv, save_str_dict_to_csv
+
+log = logging.getLogger(__name__)
 
 
 def calibrate(
@@ -147,176 +144,24 @@ def calibrate_directly_to_poa(
             f"{model_data.sensor_name_ref}": "sensor reference",
         }
 
-        #FIXME - move all plots to the separate function. Pass subdirectory as an input parameter
-        # to declare it in one place!
+        log.debug(f"saving combined df for direct calibration to POA: {df_combined}")
+        log.debug(f"saving dictionary for combined df: {dict_series_description}")
 
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "sensor_smooth", "poa_global"],
-            dict_series_description=dict_series_description,
-            mask=None,
-            title="Check smoothness in universal function",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"smoothness_{sensor_name}",
-            show=False
+        output_dir = Path(model_dirs.data_dir / "calculated_data" / model_dirs.filename / "direct_calibration_to_poa")
+        file_stem = sensor_name
+
+        df_combined_dir = output_dir / f"{file_stem}_df.csv"
+        log.debug(f"DataFrame saving directory: {df_combined_dir}")
+        save_dataframe_to_csv(
+            df=df_combined,
+            output_path=df_combined_dir,
         )
 
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor_d_dt", "poa_global_d_dt"],
-            dict_series_description=dict_series_description,
-            mask=None,
-            title="Check derivative in universal function",
-            ylabel="-",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"derivative_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "sensor_smooth", "poa_global"],
-            dict_series_description=dict_series_description,
-            mask=None,
-            title="Check relative smoothness",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"smoothness_relative_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor_d_dt", "poa_global_d_dt"],
-            dict_series_description=dict_series_description,
-            mask=None,
-            title="Check relative derivative",
-            ylabel="-",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"derivative_relative_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "poa_global"],
-            dict_series_description=dict_series_description,
-            mask="derivative_mask",
-            title="Check relative derivative mask",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"mask_derivative_relative_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "evenelope"],
-            dict_series_description=dict_series_description,
-            mask=None,
-            title="Upper envenelope",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"envenelope_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor_gain", "evenelope_gain", "poa_global"],
-            dict_series_description=dict_series_description,
-            mask=None,
-            title="Upper envenelope scaled",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"envenelope_scaled_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=[f"{model_data.sensor_name_ref}", "sensor_gain"],
-            dict_series_description=dict_series_description,
-            mask=None,
-            title="Upper envenelope scaled",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"envenelope_scaled_vs_reference_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "poa_global"],
-            dict_series_description=dict_series_description,
-            mask="frequency_mask",
-            title="Frequency mask",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"mask_freq_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "poa_global"],
-            dict_series_description=dict_series_description,
-            mask="two_medians_mask",
-            title="Two medinas mask",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"mask_two_medians_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "poa_global"],
-            dict_series_description=dict_series_description,
-            mask="derivative_mask",
-            title="Derivative mask",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"mask_deriv_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "poa_global", "ransac_freq_mask_calibration"],
-            dict_series_description=dict_series_description,
-            mask="frequency_mask",
-            title="RANSAC calibration directly to POA with frequency mask",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"direct_calibration_to_poa_by_ransac_freq_mask_{sensor_name}",
-            show=False
-        )
-
-        plot_universal(
-            result_df=df_combined,
-            data_series_names=["sensor", "poa_global", "ransac_two_medians_mask_calibration"],
-            dict_series_description=dict_series_description,
-            mask="two_medians_mask",
-            title="RANSAC calibration directly to POA with two medians mask",
-            ylabel="Irradiance W/m²",
-            xlabel="Time",
-            save_dir=Path(model_dirs.plot_dir / model_dirs.filename / "test_universal_plot"),
-            filename=f"direct_calibration_to_poa_by_ransac_two_medians_mask_{sensor_name}",
-            show=False
+        dict_series_description_dir = output_dir / f"{file_stem}_dict.csv"
+        log.debug(f"Dictionary saving directory: {dict_series_description_dir}")
+        save_str_dict_to_csv(
+            dict_=dict_series_description,
+            output_path=dict_series_description_dir,
         )
 
 

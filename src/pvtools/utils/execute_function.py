@@ -5,7 +5,7 @@ from typing import TypeAlias, Literal
 from pathlib import Path
 from pvtools.calibration.execute_calibration import calibrate, calibrate_directly_to_poa
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
-from pvtools.visualisation.execute_plotting import plot
+from pvtools.visualisation.execute_plotting import plot_calibrated_to_reference, plot_calibrated_to_poa
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
                                      load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
                                      create_calibrated_dataframe, check_if_calibration_method_available,
@@ -16,6 +16,7 @@ from pvtools.solar_domain.determine_orientation import determine_system_azimuth_
 from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
 from pvtools.preprocess.preprocess_data import delete_night_period
 from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components, plot_poa_reference_with_clearsky_periods
+from pvtools.io_file.reader import load_dataframe_from_csv, load_str_dict_from_csv
 
 log = logging.getLogger("calibrate")
 
@@ -159,13 +160,31 @@ def execute_function(
         df_org_sensor_data_with_poa_global
     ]
 
-    plot(
+    plot_calibrated_to_reference(
         dataframes=list_of_dataframes,
         model_data=model_data,
         model_dirs=model_dirs,
         clearsky_cal_val=clearsky_cal_val,
         calibration_method=calibration_method
     )
+
+    load_path = Path(model_dirs.data_dir / "calculated_data" / model_dirs.filename / "direct_calibration_to_poa")
+
+    for sensor_name in model_data.sensor_names:
+        df_direct_calibration_to_poa = load_dataframe_from_csv(Path(load_path / f"{sensor_name}_df"))
+        dict_direct_calibration_to_poa = load_str_dict_from_csv(Path(load_path / f"{sensor_name}_dict"))
+
+        df_direct_calibration_to_poa["time"] = pd.to_datetime(df_direct_calibration_to_poa["time"])
+
+        plot_calibrated_to_poa(
+            df=df_direct_calibration_to_poa,
+            dict_=dict_direct_calibration_to_poa,
+            model_dirs=model_dirs,
+            model_data=model_data,
+            sensor_name=sensor_name,
+        )
+
+
 
 def run_full_clearsky_data_pipeline(
         model_data: ModelData,
