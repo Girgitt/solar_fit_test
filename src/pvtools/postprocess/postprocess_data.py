@@ -44,6 +44,7 @@ def merge_sunny_and_cloudy_calibrated_dataframes(
         df_sunny: pd.DataFrame,
         df_cloudy: pd.DataFrame
 ) -> pd.DataFrame:
+
     df_combined = pd.concat([df_sunny, df_cloudy])
 
     df_combined = df_combined.sort_values('time').drop_duplicates('time')

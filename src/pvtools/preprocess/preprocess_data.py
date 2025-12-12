@@ -16,6 +16,18 @@ def preprocess_data(
         save_dir: Path = None,
         filename: str = None,
 ) -> tuple[pd.DataFrame, pd.Timedelta]:
+    """
+    Calls sanitize filename function on all column names. It removes special characters and remove all character
+    before ``@`` to make column names more readable and usable.
+
+    Provides proper time datatype and timezone.
+
+    Downsamples data to frequency, specified as input praameter of the program.
+
+    Deletes night period, specified as input praameter of the program.
+
+    Save filtered data to csv file.
+    """
 
     df = df.copy()
 

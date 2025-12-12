@@ -12,6 +12,9 @@ from pvtools.preprocess.preprocess_data import sanitize_filename
 
 
 def argument_parsing(parser: ArgumentParser) -> Namespace:
+    """
+    Argument parsing function.
+    """
     parser.add_argument("--action",
                         choices=["update", "execute"],
                         required=True,
@@ -146,6 +149,10 @@ def argument_parsing(parser: ArgumentParser) -> Namespace:
 
 
 def print_available_data_columns(data_columns: list[str]) -> None:
+    """
+    Print all available data columns possibly to choose as basic sensors and reference.
+    """
+
     print("Available data columns:")
     for i, col in enumerate(data_columns):
         print(f"{i}: {col}")
@@ -157,6 +164,13 @@ def select_available_data_columns_to_process(
         sensors_chosen: list[int],
         sensor_ref_chosen: Optional[int]
 ) -> Tuple[list[str], Optional[str], pd.DataFrame]:
+    """
+    Select which columns are basic sensors and reference. Select by index, starting from 0.
+
+    NOTE:
+        * Sensors list cannot be empty.
+        * Sensor reference can be None or just one. Program do not accept multiple references.
+    """
 
     n = len(data_columns)
 
@@ -193,6 +207,10 @@ def load_filtered_and_calculated_data_needed_for_execute_function_periods_detect
         model_directories: ModelDirectories,
         sensor_name_ref: str
 ) -> list[pd.DataFrame]:
+    """
+    Loads filtered and calculated data needed for execute function. Periods (sunny/cloudy) detected.
+    """
+
     df = load_dataframe_from_csv(
         Path(model_directories.data_dir / "filtered" / f"{model_directories.filename}.csv"))
 
@@ -227,6 +245,9 @@ def load_filtered_and_calculated_data_needed_for_execute_function_no_periods_det
         data_dir: Path,
         filename: str,
 ) -> pd.DataFrame:
+    """
+    Loads filtered and calculated data needed for execute function. No periods (sunny/cloudy) detected.
+    """
 
     return load_dataframe_from_csv(Path(data_dir / "filtered" / f"{filename}.csv"))
 
@@ -243,6 +264,13 @@ def check_if_sunny_cloudy_periods_exists(data_dir: Path) -> bool:
 
 
 def initialize_dirs_for_base_dir(project_dir):
+    """
+    Creates three basic project structure directories:
+
+    * ``logs`` - keeps all calculated metrics and parameters. (.json and .csv files)
+    * ``plots`` - keeps all generated graphs (.png files)
+    * ``data`` - keeps data. Filtered, calibrated, generated. Saved dataframes (.csv files)
+    """
 
     log_dir = Path(os.path.join(project_dir, "logs"))
     plot_dir = Path(os.path.join(project_dir, "plots"))
@@ -256,6 +284,9 @@ def initialize_dirs_for_base_dir(project_dir):
 
 
 def initialize_dirs_for_loading_dependencies(calibration_metrics_path):
+    """
+    Initialize loading metrics directory.
+    """
 
     log_dir_dependencies = Path(calibration_metrics_path).resolve()
     log_dir_dependencies.mkdir(parents=True, exist_ok=True)
@@ -268,6 +299,11 @@ def create_calibrated_dataframe(
         model_directories: ModelDirectories,
         calibration_directory: Path,
 ) -> pd.DataFrame:
+    """
+    Combines calibrated Series data for each sensor to one DataFrame. Call function to load .csv files from specified
+    (inside function) path and save combined DataFrame to .csv file
+    """
+    #FIXME - function not used!!!
 
     df = load_and_merge_calibrated_data_from_each_sensor(
         df=model_parameters.df,
@@ -295,6 +331,11 @@ def create_dataframe_with_sensor_values_and_poa(
         data_dir: Path,
         filename: str,
 ) -> list[pd.DataFrame]:
+    """
+    Creates DataFrame with sensor and POA values.
+
+    Save combined DataFrame to .csv file.
+    """
 
     df_org = load_dataframe_from_csv(Path(data_dir / "filtered" / f"{filename}.csv"))
     df_org.columns = [sanitize_filename(name) for name in df_org.columns]
@@ -371,6 +412,20 @@ def check_if_calibration_method_available(
         filename: str,
         calibration_method: str
 ) -> Path:
+    """
+    Checks if calibration method is available. Possible choices are:
+
+    * ``linear`` - linear regression
+    * ``fuzzy`` - fuzzy linear regression
+    * ``divided`` - divided linear regression
+    * ``divided_mean`` - divided linear regression using mean values
+    * ``poly`` - polynomial regression
+    * ``decision_tree`` - decision tree regression
+    * ``mlp`` - MLP regression
+
+    Warning:
+        Unsupported calibration method cause with ValueError!
+    """
 
     method_dirs = {
         "linear": "linear_regression",

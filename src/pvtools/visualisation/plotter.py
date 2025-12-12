@@ -12,11 +12,11 @@ from pvtools.io_file.writer import save_figure
 
 def plot_from_dataframe(
     df: pd.DataFrame,
-    save_dir: Path=None,
-    filename: str=None,
+    save_dir: Path = None,
+    filename: str = None,
     sensor_names: list[str] = None,
-    sensor_name_ref: str=None,
-    show: bool=True,
+    sensor_name_ref: str = None,
+    show: bool = True,
     title: str = "Plot"
 ) -> tuple[Figure, Axes]:
 

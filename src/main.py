@@ -7,13 +7,12 @@
 # ACTION: UPDATE (fit and save model) or EXECUTE (load and predict)
 # ----------------------------------------------------------------------------
 
-'''
-python ../src/main.py --action=update --model_id=test_update_1 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./test_update_1
-python ../src/main.py --action=execute --model_id=test_execute_1 --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./test_execute_1 --calibration_metrics_dir ../test_update_1/logs/25-09-04_08
 
-python ../../src/main.py --action=update --model_id=test --csv=../../data/org/25-08-25__25-09-01.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 3 --start_time_minute 0 --end_time_hour 20 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./
-python ../../src/main.py --action=execute --model_id=test --csv=../../data/org/25-08-25__25-09-01.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 3 --start_time_minute 0 --end_time_hour 20 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./ --calibration_metrics_dir ../update/logs/25-08-25_25-09-01
-'''
+#python ../src/main.py --action=update --model_id=test_update_1 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./test_update_1
+#python ../src/main.py --action=execute --model_id=test_execute_1 --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./test_execute_1 --calibration_metrics_dir ../test_update_1/logs/25-09-04_08
+
+#python ../../src/main.py --action=update --model_id=test --csv=../../data/org/25-08-25__25-09-01.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 3 --start_time_minute 0 --end_time_hour 20 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./
+#python ../../src/main.py --action=execute --model_id=test --csv=../../data/org/25-08-25__25-09-01.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 3 --start_time_minute 0 --end_time_hour 20 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./ --calibration_metrics_dir ../update/logs/25-08-25_25-09-01
 
 import os
 import logging
@@ -34,6 +33,9 @@ from pvtools.preprocess.preprocess_data import preprocess_data
 
 
 def get_logging_format():
+    """
+    Defines logging format for the whole project.
+    """
     return '%(asctime)s : %(levelname)s [%(processName)s-%(threadName)s %(name)s.%(funcName)s:%(lineno)d] %(message)s'
 
 
@@ -49,6 +51,19 @@ root_logger.addHandler(stream_handler)
 
 
 def main():
+    """
+    Initialize directories, classes, preprocess data.
+
+    Call one of two main behavior 'update' or 'execute'.
+
+    ``update`` - detecting clear sky, calculates calibration metrics for all calibration methods,
+    calculates Plane-Of-Array (POA), saves data to the files
+
+    ``execute`` - load saved metrics, use them to calculate calibrated data, plot and save data
+
+    Returns:
+    None
+    """
 
     parser = argparse.ArgumentParser()
     args = argument_parsing(parser)

@@ -18,6 +18,25 @@ def clearsky_detection_by_frequency_method(
         time: pd.Series,
         sampling_sec: int = 5
 ) -> tuple[pd.DataFrame, float, float]:
+    """
+    Detect clear-sky periods using a frequency-based method.
+
+    This function runs the full clear-sky detection pipeline and fits
+    a linear regression model between sensor data and POA reference.
+
+    Args:
+        sensor (pd.Series): Sensor irradiance measurements
+        poa_global (pd.Series): Plane-of-array global irradiance reference
+        time (pd.Series): Time index corresponding to the measurements
+        sampling_sec (int, optional): Sampling interval in seconds.
+            Defaults to 5
+
+    Returns:
+        tuple:
+            - pd.DataFrame: Combined output DataFrame with detection results
+            - float: Linear regression slope parameter ``a``
+            - float: Linear regression intercept parameter ``b``
+    """
 
     sensor.index = time
     poa_global.index = time
@@ -58,6 +77,9 @@ def extract_low_frequency(
         sampling_sec: int = 5,
         polyorder: int = 3
 ) -> pd.Series:
+    """
+    Extracts low frequencies using Savitkzy-Golay filter (from scipy library).
+    """
 
     window_length = int(window_sec / sampling_sec)
 
@@ -78,6 +100,10 @@ def calibrate_lowfreq(
         sensor_lowfreq: pd.Series,
         poa: pd.Series
 ) -> [float, float, np.ndarray]:
+    """
+    Calculates the slope parameter ``a`` and intercept parameter ``b``
+    for the low frequency calibration method.
+    """
 
     x = sensor_lowfreq.values.reshape(-1, 1)
     y = poa.values
@@ -96,6 +122,9 @@ def predict_poa(
         a: float,
         b: float
 ) -> pd.Series:
+    """
+    Simple linear regression calculation for predicted ``a`` and ``b`` parameters.
+    """
 
     return a * sensor_lowfreq + b
 

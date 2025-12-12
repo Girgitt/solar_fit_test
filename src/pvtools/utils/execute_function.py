@@ -31,6 +31,28 @@ def execute_function(
         clearsky_cal_val: ClearSkyCalculatedValues,
         calibration_method: str = "linear"
 ) -> None:
+    """
+    For time of data from sensors first calculate corresponding POA values. Delete defined in input parameters night
+    period (during night values are 0 W/m2, useless data).
+
+    There are two main behaviours of the function depending on the presence of reference sensor. Using defined input
+    parameter for calibration metrics directory program follows the steps:
+
+    * Sensor reference passed:
+
+        * Periods in metrics directory found. Calibrate determined clear sky with clear sky metrics and cloudy sky
+         with cloudy sky metrics.
+        * Periods in metrics directory NOT found. Calibrate all data with all-data metrics (not separate metrics for
+         sunny and cloudy periods).
+
+    * Sensor reference not passed:
+
+        * Determine clear sky based on POA and basic sensor data. Used only when no reference passed (less accurate).
+    """
+
+    #FIXME - the priority needs to be checked! Probably there is a bug with order!
+    # In docstring it is a target behaviour.
+    # load_filtered_and_calculated_data_needed_for_execute_function_periods_detected - NOT USED!!!
 
     poa, cs = clear_sky(
         clearsky_params=clearsky_params,

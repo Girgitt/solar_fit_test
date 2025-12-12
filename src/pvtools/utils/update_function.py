@@ -23,6 +23,23 @@ def update_function(
         clearsky_params: ClearSkyParameters,
         clearsky_cal_val: ClearSkyCalculatedValues,
 ) -> None:
+    """
+    Plot raw solar irradiance measurements from sensors and sensor reference.
+
+    Based on POA irradiance and measurements from sensor reference calls function to detect clear sky periods.
+    Later it is used to calibrate basic sensors using stable clear sky periods and filter cloudy, fast changing periods.
+
+    Calculate calibration models:
+
+    * linear regression
+    * linear fuzzy regression
+    * divided linear regression
+    * polynomial regression
+    * decision tree regression
+    * MLP regression (Multi Layer Perceptron)
+
+    Save metrics to the .json files.
+    """
 
     df = model_data.df
 
