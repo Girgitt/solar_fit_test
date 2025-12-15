@@ -29,14 +29,7 @@ def update_function(
     Based on POA irradiance and measurements from sensor reference calls function to detect clear sky periods.
     Later it is used to calibrate basic sensors using stable clear sky periods and filter cloudy, fast changing periods.
 
-    Calculate calibration models:
-
-    * linear regression
-    * linear fuzzy regression
-    * divided linear regression
-    * polynomial regression
-    * decision tree regression
-    * MLP regression (Multi Layer Perceptron)
+    Calculate calibration models.
 
     Save metrics to the .json files.
     """
@@ -95,6 +88,12 @@ def process_solar_data_with_clearsky_detection_and_masking(
         clearsky_params: ClearSkyParameters,
         clearsky_cal_val: ClearSkyCalculatedValues,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Calculates Plane-Of-Array (POA) values, then deleting night period.
+
+    Detects clear sky periods based on sensor reference and POA values. Having clear sky boolean mask, call functions
+    that applies it for the DataFrames, saves it and call plotting function.
+    """
 
     poa, cs = clear_sky(
         clearsky_params=clearsky_params,
@@ -128,7 +127,7 @@ def process_solar_data_with_clearsky_detection_and_masking(
     '''
 
     clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods_v2(
-        measured=model_data.df[model_data.sensor_name_ref],
+        measured_ref=model_data.df[model_data.sensor_name_ref],
         clearsky=poa["poa_global"], #cs["ghi"],
         times=model_data.df["time"],
         sensor_name_ref=model_data.sensor_name_ref,
@@ -179,6 +178,15 @@ def calculate_regression(
         model_times: ModelTimes,
         period: Period_type
 ) -> None:
+    """
+    General function to call all of the following calibration methods:
+
+    * ``linear regression``
+    * ``divided linear regression``
+    * ``polynominal regression``
+    * ``decision tree regression``
+    * ``multi layer perceptron``
+    """
 
     linear_regression(
         df=df,

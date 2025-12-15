@@ -22,15 +22,6 @@ from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 from pvtools.io_file.writer import save_metrics_to_json, save_true_and_predicted_data_to_csv
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
-'''
-MAE does not indicate whether the model overestimates or underestimates values
-MSE is particularly sensitive to large errors
-RMSE same units as the predicted values
-R2 correlation between two datasets
-MAPE especially useful when you want to assess the accuracy of predictions in percentage
-Bias shows whether the model regularly over- or under-predicts
-'''
-
 log = logging.getLogger("calculate_calibration_parameters")
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy', 'all']
@@ -45,6 +36,14 @@ def linear_regression(
         model_data: ModelData,
         model_dirs: ModelDirectories,
 ) -> None:
+    """
+    Calculates Linear Regression coefficients.
+
+    Saves coefficients ``a``, ``b`` and :class:`Sensor Calibration Metrics
+    <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+    Saves predicted and true values of the test dataset to .csv file.
+    """
 
     df = df.copy()
 
@@ -97,6 +96,14 @@ def divided_linear_regression(
         model_dirs: ModelDirectories,
         model_times: ModelTimes,
 ) -> None:
+    """
+        Calculates Divided Linear Regression coefficients.
+
+        Saves coefficients ``a``, ``b``, ``hour`` and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+    """
 
     df = df.copy()
 
@@ -193,6 +200,14 @@ def polynominal_regression(
         model_data: ModelData,
         model_dirs: ModelDirectories,
 ) -> None:
+    """
+        Calculates Polynominal Regression coefficients.
+
+        Depending on degree of the model, saves coefficients ``a``, ``b`` etc.. and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+    """
 
     df = df.copy()
 
@@ -251,6 +266,14 @@ def decision_tree_regression(
         model_data: ModelData,
         model_dirs: ModelDirectories,
 ) -> None:
+    """
+        Calculates Decision Tree Regression coefficients.
+
+        Saves tree rules coefficients and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+    """
 
     df = df.copy()
 
@@ -300,6 +323,14 @@ def mlp_regression(
         model_data: ModelData,
         model_dirs: ModelDirectories,
 ) -> None:
+    """
+        Calculates Multi Layer Perceptron coefficients.
+
+        Saves weights and biases for every layer and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+        """
 
     df = df.copy()
 

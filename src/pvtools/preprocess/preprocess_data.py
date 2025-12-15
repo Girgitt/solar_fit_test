@@ -67,6 +67,9 @@ def preprocess_data(
 
 
 def ensure_dataframe_contains_valid_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cheks datatype, remove missing values.
+    """
     df = df.copy()
 
     if not isinstance(df, pd.DataFrame):
@@ -82,6 +85,14 @@ def ensure_datetime_contains_timezone(
         tz_name: str = 'Europe/Warsaw',
         save_dir: Path = None,
 ) -> pd.DataFrame:
+    """
+    Cheks if input time datatype is correct and (if necessary) cconverts to specified output type.
+
+    Note:
+        Output time datatype is Timestamp.
+
+        ISO 8601 Extended Format (specifically ``YYYY-MM-DD HH:MM:SS+ZZ:ZZ``)
+    """
 
     df = df.copy()
 
@@ -119,6 +130,14 @@ def delete_night_period(
         start: time = time(3,0), # 3:00 GMT -> 5:00 UTC+2
         end: time = time(18,0), # 18:00 GMT -> 20:00 UTC+2
 ) -> pd.DataFrame:
+    """
+    Cuts all rows within specified time range and deletes night period.
+
+    Note:
+        ``start`` and ``end`` times refer to the day period!
+
+        This function cuts time between ``end`` and ``start``!
+    """
 
     df_time_only = df['time'].dt.tz_convert(None).dt.time
 
@@ -132,6 +151,16 @@ def check_if_target_frequency_is_lower_than_measurements(
         df: pd.DataFrame,
         target_timedelta: str = '1min'
 ) -> tuple[pd.Timedelta, bool]:
+    """
+    Determines the frequency of data occurence in the DataFrame.
+
+    There are two cases of the function:
+
+    * target frequency is lower than measured data frequency - gives an information to use that data is already less
+      frequent than target frequency, return ``False``.
+
+    * target frequency is greater than measured data frequency - returns ``True``.
+    """
 
     if len(df.index) >= 2:
         measured_timedelta = df['time'][1] - df['time'][0] # all data has same timedelta
@@ -156,6 +185,9 @@ def average_measurements(
         df: pd.DataFrame,
         target_timedelta: pd.Timedelta = '1min',
 ) -> pd.DataFrame:
+    """
+    Downsamples data to target frequency.
+    """
 
     df.set_index('time', inplace=True)
     df_resampled = df.resample(target_timedelta).mean()
@@ -165,6 +197,13 @@ def average_measurements(
 
 
 def sanitize_filename(name: str) -> str:
+    """
+    Removes all characters after ``@``.
+
+    Replace special characters with underscore ``_``.
+
+    Replace multiple underscores ``___`` with single underscore ``_``.
+    """
 
     name = name.split("@")[-1]
     name = re.sub(r'[^a-zA-Z0-9_\-]', '_', name)

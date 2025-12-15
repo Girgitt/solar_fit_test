@@ -19,6 +19,9 @@ def plot_from_dataframe(
     show: bool = True,
     title: str = "Plot"
 ) -> tuple[Figure, Axes]:
+    """
+    Plot raw sensor data and optionally, if sensor reference is provided it's values on the same graph.
+    """
 
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
@@ -97,6 +100,10 @@ def plot_clear_sky(
     save_dir: Optional[Path] = None,
     show: bool = True,
 ) -> Figure:
+    """
+    Plots clear sky irradiance DHI, GHI, DHI [W/m²]
+    """
+
     fig, ax = plt.subplots(figsize=(10, 4))
     cs.plot(ax=ax)
     ax.set_ylabel("Irradiance (W/m²)")
@@ -121,6 +128,15 @@ def plot_poa_components(
     save_dir: Optional[Path] = None,
     show: bool = True,
 ) -> Figure:
+    """
+    Plots Plane-Of-Array irradiance in [W/m²]:
+
+    * ``poa global``
+    * ``poa direct``
+    * ``poa diffuse``
+    * ``poa ground diffuse``
+    """
+
     fig, ax = plt.subplots(figsize=(10, 4))
     poa[['poa_global', 'poa_direct', 'poa_diffuse', 'poa_ground_diffuse']].plot(ax=ax)
     ax.set_ylabel("Irradiance (W/m²)")
@@ -146,6 +162,9 @@ def plot_poa_vs_reference(
         save_dir: Optional[Path] = None,
         show: bool = True,
 ) -> Figure:
+    """
+    Plots Plane-Of-Array and reference sensor irradiance in [W/m²].
+    """
 
     if len(poa_global) == len(sensor_reference):
         sensor_copy = sensor_reference.copy()
@@ -183,6 +202,9 @@ def plot_poa_reference_with_clearsky_periods(
         save_dir: Optional[Path] = None,
         show: bool = True
 ) -> Figure:
+    """
+    Plots Plane-Of-Array and reference sensor irradiance with marked detected sunny periods [W/m²].
+    """
 
     poa_global = poa_global.copy()
     sensor_reference = sensor_reference.copy()
@@ -231,6 +253,9 @@ def plot_sensors_calibrated_directly_to_poa(
         filename: str = "default_filename",
         show: bool = False,
 ) -> None:
+    """
+    Plots Plane-Of-Array, reference sensor and basic sensors directly calibrated to POA irradiance [W/m²].
+    """
 
     fig, ax = plt.subplots(figsize=(12,5))
 
@@ -269,6 +294,9 @@ def plot_frequency_histogram(
         filename: str = "default_filename",
         show: bool = False,
 ) -> None:
+    """
+    Plots frequency histrogram.
+    """
 
     fig, ax = plt.figure(figsize=(12, 5))
 
@@ -312,183 +340,6 @@ def plot_fft_spectrum(
 
     if show:
         fig.show()
-        
-
-def tmp_plot_check_masks(
-        result_df: pd.DataFrame,
-        title: str = "default plot",
-        save_dir: Optional[Path] = None,
-        filename: str = "default_filename",
-        show: bool = False,
-) -> None:
-
-    fig, ax = plt.subplots(figsize=(12,5))
-
-    ax.plot(result_df.index, result_df["poa_global"], label="poa global", linewidth=1.5)
-    ax.plot(result_df.index, result_df["sensor"], label="sensor", alpha=0.5)
-
-    # highlight clear-sky
-    clear_idx = result_df.index[result_df["mask"]]
-    ax.scatter(clear_idx,
-               result_df.loc[clear_idx, "sensor"],
-               s=5,
-               color="green",
-               label="Clear-sky detected")
-
-    ax.set_title(title)
-    ax.set_ylabel("Irradiance W/m²")
-    ax.set_xlabel("Time")
-    ax.legend()
-    ax.grid()
-    plt.tight_layout()
-
-    if save_dir is not None:
-        save_figure(fig, save_dir, f"{filename}.png")
-
-    if show:
-        fig.show()
-
-
-def tmp_plot_smoothed_vemls(
-        result_df: pd.DataFrame,
-        title: str = "default plot",
-        save_dir: Optional[Path] = None,
-        filename: str = "default_filename",
-        show: bool = False,
-) -> None:
-
-    fig, ax = plt.subplots(figsize=(12,5))
-
-    ax.plot(result_df.index, result_df["sensor"], label="sensor", linewidth=1.5)
-    ax.plot(result_df.index, result_df["sensor_smooth"], label="sensor smooth", linewidth=1.5)
-    ax.plot(result_df.index, result_df["poa_global"], label="poa global", linewidth=1.5)
-    ax.plot(result_df.index, result_df["poa_global_smooth"], label="poa global smooth", linewidth=1.5)
-
-
-    ax.set_title(title)
-    ax.set_ylabel("Irradiance W/m²")
-    ax.set_xlabel("Time")
-    ax.legend()
-    ax.grid()
-    plt.tight_layout()
-
-    if save_dir is not None:
-        save_figure(fig, save_dir, f"{filename}.png")
-
-    if show:
-        fig.show()
-
-def tmp_plot_smoothed_derivs_vemls(
-        result_df: pd.DataFrame,
-        title: str = "default plot",
-        save_dir: Optional[Path] = None,
-        filename: str = "default_filename",
-        show: bool = False,
-) -> None:
-
-    fig, ax = plt.subplots(figsize=(12,5))
-
-    ax.plot(result_df.index, result_df["sensor_d_dt"], label="sensor deriv", linewidth=1.5)
-    ax.plot(result_df.index, result_df["poa_global_d_dt"], label="poa global deriv", linewidth=1.5)
-
-    ax.set_title(title)
-    ax.set_ylabel("-")
-    ax.set_xlabel("Time")
-    ax.legend()
-    ax.grid()
-    plt.tight_layout()
-
-    if save_dir is not None:
-        save_figure(fig, save_dir, f"{filename}.png")
-
-    if show:
-        fig.show()
-
-def tmp_plot_evenelope(
-        evenelope: np.ndarray,
-        sensor_smooth: pd.Series,
-        title: str = "Upper Envelope of VEML Sensor",
-        save_dir: Optional[Path] = None,
-        filename: str = "default_filename",
-        show: bool = False,
-) -> None:
-
-    fig, ax = plt.subplots(figsize=(12,5))
-
-    ax.plot(sensor_smooth.index, sensor_smooth.values, label="sensor smooth", linewidth=1.5)
-    ax.plot(sensor_smooth.index, evenelope, label="upper evenelope", linewidth=1.5)
-
-    ax.set_title(title)
-    ax.set_ylabel("Irradiance [W/m²]")
-    ax.set_xlabel("Time")
-    ax.legend()
-    ax.grid()
-    plt.tight_layout()
-
-    if save_dir is not None:
-        save_figure(fig, save_dir, f"{filename}.png")
-
-    if show:
-        fig.show()
-
-
-def tmp_plot_evenelope_scaled(
-        evenelope: np.ndarray,
-        sensor: pd.Series,
-        poa_global: pd.Series,
-        title: str = "Upper Envelope of VEML Sensor scaled",
-        save_dir: Optional[Path] = None,
-        filename: str = "default_filename",
-        show: bool = False,
-) -> None:
-
-    fig, ax = plt.subplots(figsize=(12,5))
-
-    ax.plot(sensor.index, sensor.values, label="sensor smooth scaled", linewidth=1.5)
-    ax.plot(sensor.index, evenelope, label="upper evenelope scaled", linewidth=1.5)
-    ax.plot(sensor.index, poa_global.values, label="poa global", linewidth=1.5)
-
-    ax.set_title(title)
-    ax.set_ylabel("Irradiance [W/m²]")
-    ax.set_xlabel("Time")
-    ax.legend()
-    ax.grid()
-    plt.tight_layout()
-
-    if save_dir is not None:
-        save_figure(fig, save_dir, f"{filename}.png")
-
-    if show:
-        fig.show()
-
-
-def tmp_plot_scaled_sensor_vs_reference(
-        sensor: pd.Series,
-        reference: pd.Series,
-        title: str = "Sensor scaled vs reference",
-        save_dir: Optional[Path] = None,
-        filename: str = "default_filename",
-        show: bool = False,
-) -> None:
-
-    fig, ax = plt.subplots(figsize=(12,5))
-
-    ax.plot(sensor.index, sensor.values, label="sensor scaled", linewidth=1.5, alpha=0.8)
-    ax.plot(sensor.index, reference.values, label="reference", linewidth=1.5)
-
-    ax.set_title(title)
-    ax.set_ylabel("Irradiance [W/m²]")
-    ax.set_xlabel("Time")
-    ax.legend()
-    ax.grid()
-    plt.tight_layout()
-
-    if save_dir is not None:
-        save_figure(fig, save_dir, f"{filename}.png")
-
-    if show:
-        fig.show()
-
 
 def plot_universal(
         result_df: pd.DataFrame,
@@ -502,6 +353,12 @@ def plot_universal(
         filename: str = "default_filename",
         show: bool = False,
 ) -> None:
+    """
+    Universal plot for multiple combination data.
+
+    Note:
+        FutureFix - this function should replace all others plotting functions!
+    """
 
     fig, ax = plt.subplots(figsize=(12,5))
 

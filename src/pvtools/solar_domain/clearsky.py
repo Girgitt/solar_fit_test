@@ -22,6 +22,34 @@ def clear_sky(
         model_dirs: ModelDirectories,
         model_times: ModelTimes,
 ) -> list[pd.DataFrame]:
+    """
+    Using external library ``pvlib`` calculates DataFrame of Plane-Of-Array (POA) and DataFrame of clear sky.
+
+    Returns: **poa**, **cs**
+
+        * **poa** (DataFrame) - contains following columns:
+
+            * ``time`` : Timestamps
+            * ``poa_global`` : Total in-plane irradiance [Wm⁻²]
+            * ``poa_direct`` : Total in-plane beam irradiance [Wm⁻²]
+            * ``poa_diffuse`` : Total in-plane diffuse irradiance [Wm⁻²]
+            * ``poa_sky_diffuse`` : In-plane diffuse irradiance from sky [Wm⁻²]
+            * ``poa_ground_diffuse`` : In-plane diffuse irradiance from ground [Wm⁻²]
+
+
+        * **cs** (DataFrame) - contains following columns:
+
+            * ``dni`` : Direct Normal Irradiance [Wm⁻²]
+            * ``dhi`` : Diffuse Horizontal Irradiance [Wm⁻²]
+            * ``ghi`` : Global Horizontal Irradiance [Wm⁻²]
+
+    There is math forumla to describe dependencies of ``cs`` values:
+
+    GHI = DNI × cos(θ) + DHI
+
+    where:
+        θ is the solar zenith angle
+    """
 
     filename = model_dirs.filename
     save_dir = model_dirs.data_dir
@@ -66,6 +94,15 @@ def get_solar_data_for_location_and_time(
         clearsky_params: ClearSkyParameters,
         model_times: ModelTimes
 ) -> tuple[Location, DatetimeIndex, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+
+    Args:
+        clearsky_params:
+        model_times:
+
+    Returns:
+
+    """
 
     tus = Location(
         latitude=clearsky_params.warsaw_lat,
@@ -214,7 +251,7 @@ def detect_clearsky_periods(
     return sunny_mask, cloudy_mask
 
 def detect_clearsky_periods_v2(
-        measured: pd.Series,
+        measured_ref: pd.Series,
         clearsky: pd.Series,
         times: pd.Series,
         sensor_name_ref: str = None,
@@ -222,11 +259,11 @@ def detect_clearsky_periods_v2(
         filename: str = None,
 ) -> [pd.Series, pd.Series]:
 
-    measured.index = times
+    measured_ref.index = times
     clearsky.index = times
 
     clear, comp, alpha = detect_clearsky_mod(
-        measured=measured,
+        measured=measured_ref,
         clearsky=clearsky,
         window_length=7,
         mean_diff=200,

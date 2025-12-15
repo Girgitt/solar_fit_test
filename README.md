@@ -59,6 +59,31 @@ pip install -e .
 python -c "import solar_fit_test; print('OK')"
 ```
 
+--------------------------------------------------------------------
+
+To generate SPHINX documentation of the project open command line and move to ``solar_fit_test/docs``
+then execute following commands:
+* ``make clean``
+* ``make html``
+
+Then navigate to ``solar_fit_test/docs/build/html/index.html`` and open the documentation.
+
+--------------------------------------------------------------------
+
+To generate dependency graph (by using pydeps library) open command line and move to the project folder
+``solar_fit_test`` then execute the command:
+
+general:
+
+``pydeps <filename> -o <output_name> -T <output_type>``
+
+example:
+
+``pydeps src/pvtools --only main pvtools --max-module-depth 2 --max-bacon 2 --cluster --rmprefix pvtools. --rankdir LR -o graph.svg``
+
+Check ``--help`` for other options.
+
+
 ## ⚙️ Configuration options
 
 There are several input parameters to properly set all calibration pipeline. Below is list of configuration parameters:

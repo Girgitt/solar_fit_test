@@ -51,7 +51,7 @@ def execute_function(
     """
 
     #FIXME - the priority needs to be checked! Probably there is a bug with order!
-    # In docstring it is a target behaviour.
+    # In docstring is the target behaviour.
     # load_filtered_and_calculated_data_needed_for_execute_function_periods_detected - NOT USED!!!
 
     poa, cs = clear_sky(
@@ -213,7 +213,6 @@ def run_full_clearsky_data_pipeline(
         model_dirs: ModelDirectories,
         clearsky_cal_val: ClearSkyCalculatedValues,
 ) -> list[pd.DataFrame]:
-
     '''
     clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
         poa=clearsky_cal_val.poa,
@@ -225,7 +224,7 @@ def run_full_clearsky_data_pipeline(
     '''
 
     clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods_v2(
-        measured=model_data.df[model_data.sensor_name_ref],
+        measured_ref=model_data.df[model_data.sensor_name_ref],
         clearsky=clearsky_cal_val.poa["poa_global"],  # cs["ghi"],
         times=model_data.df["time"],
         sensor_name_ref=model_data.sensor_name_ref,
