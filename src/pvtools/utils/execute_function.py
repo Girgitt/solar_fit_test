@@ -3,7 +3,7 @@ import logging
 
 from typing import TypeAlias, Literal
 from pathlib import Path
-from pvtools.calibration.execute_calibration import calibrate, calibrate_directly_to_poa
+from pvtools.calibration.execute_calibration import calibrate_to_reference, calibrate_directly_to_poa
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.visualisation.execute_plotting import plot_calibrated_to_reference, plot_calibrated_to_poa
 from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
@@ -128,7 +128,7 @@ def execute_function(
         calibration_method=calibration_method
     )
 
-    calibrate(
+    calibrate_to_reference(
         clearsky_cal_val=clearsky_cal_val,
         model_data=model_data,
         model_dirs=model_dirs,

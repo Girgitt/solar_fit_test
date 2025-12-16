@@ -21,6 +21,22 @@ def calibrate_by_decision_tree_regression(
         model_dirs: ModelDirectories,
         period_flag: bool = True  # if True - periods detected, else not
 ) -> None:
+    """
+    Calibrate Decision Tree Regression model.
+
+    Loads metrics from .json files. Search for ``sunny`` and ``cloudy`` files containing metrics for that periods.
+    If not found raise an Error.
+
+    Based on input boolean parameter ``period_flag`` - calculates calibrated values:
+
+    * if ``True`` calculation is made on both periods
+    * if ``False`` calculation is made on only sunny period
+
+    Saves calibrated sensor data to .csv file.
+
+    Warning:
+          To consider - in ``False`` case it should be calibrated by metrics taken from all period - not just sunny!
+    """
 
     df = model_data.df
     sensor_names = model_data.sensor_names

@@ -13,6 +13,15 @@ def plot_calibrated_to_reference(
         clearsky_cal_val: ClearSkyCalculatedValues,
         calibration_method: str,
 ) -> None:
+    """
+    Plot multiple graphs with data, basic sensors calibrated by reference to POA.
+
+    Graphs include:
+
+    * Original data from basic sensors and reference sensor
+    * Calibrated data from basic sensors and reference sensor
+    * Reference sensor and POA
+    """
 
     sensor_names = model_data.sensor_names
     sensor_name_ref = model_data.sensor_name_ref
@@ -95,6 +104,19 @@ def plot_calibrated_to_poa(
         model_data: ModelData,
         sensor_name: str
 ) -> None:
+    """
+    Plot multiple graphs with data, directly calibrated basic sensors to POA.
+
+    Graphs include:
+
+    * Smoothness
+    * Derivatives
+    * Relative Derivatives
+    * Derivative mask
+    * Frequency mask
+    * Two medinas mask
+    * RANSAC calibration
+    """
 
     direct_calibration_plotting_dir = Path(model_dirs.plot_dir / model_dirs.filename / "direct_calibration_to_poa")
 
@@ -103,7 +125,7 @@ def plot_calibrated_to_poa(
         data_series_names=["sensor", "sensor_smooth", "poa_global"],
         dict_series_description=dict_,
         mask=None,
-        title="Check smoothness in universal function",
+        title="Check smoothness",
         ylabel="Irradiance W/m²",
         xlabel="Time",
         save_dir=direct_calibration_plotting_dir,
@@ -116,7 +138,7 @@ def plot_calibrated_to_poa(
         data_series_names=["sensor_d_dt", "poa_global_d_dt"],
         dict_series_description=dict_,
         mask=None,
-        title="Check derivative in universal function",
+        title="Check derivatives",
         ylabel="-",
         xlabel="Time",
         save_dir=direct_calibration_plotting_dir,

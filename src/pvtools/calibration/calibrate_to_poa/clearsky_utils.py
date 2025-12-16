@@ -213,6 +213,10 @@ def frequency_mask(
         window_sec: float = 3600,
         thershold: float = 0.8
 ) -> pd.DataFrame:
+    """
+    Using Short Time Fast Fourier Transform function gets occured frequencies from the input data. Then filter
+    low-frequencies representing the real trend and filter fast changing data. Returns the boolean clear sky mask.
+    """
 
     x = sensor.values.astype(float)
     n_samples = len(x)
@@ -281,6 +285,11 @@ def two_medians_mask(
         rel_threshold: float = 0.05,
         min_run_length: int = 5
 ) -> pd.DataFrame:
+    """
+    Having two windows - short and long (defalut to 30mins and 4hrs) moving from the begging of the data till the end.
+    Comparing the median data function detects clear sky periods. If the values are similar -> clear sky,
+    if not -> cloudy sky. Returns boolean clear sky mask.
+    """
 
     sensor.index = time
 
@@ -333,6 +342,19 @@ def create_derivative_df(
         polyorder: int = 1,
         delta: float = 1.0
 ) -> pd.DataFrame:
+    """
+    Creates DataFrame containing smoothed data of basic sensor and derivatives of basic sensor and POA.
+
+    DataFrame contains:
+
+    * ``time``
+    * ``sensor``
+    * ``sensor smooth``
+    * ``sensor derivative``
+    * ``poa global``
+    * ``poa global smooth``
+    * ``poa global derivative``
+    """
 
     x = sensor.values.astype(float)
     y = poa_global.values.astype(float)
@@ -395,6 +417,58 @@ def create_relative_derivative_mask_df(
         polyorder: int = 1,
         delta: float = 1.0
 ) -> pd.DataFrame:
+    """
+    Creates DataFrame containing smoothed data of basic sensor and relative derivatives of basic sensor and POA.
+
+    Compute a shape-consistency mask based on logarithmic temporal derivatives.
+
+    This function compares the *relative temporal dynamics* of a measured sensor
+    signal and a reference POA irradiance signal. The comparison is performed
+    using first-order temporal derivatives of the logarithms of both signals,
+    which correspond to relative (scale-invariant) rates of change.
+
+    The method identifies time periods where both signals evolve with similar
+    temporal shape, independent of their absolute magnitudes.
+
+    Steps performed:
+
+    1. Clip both input signals to a strictly positive lower bound to ensure
+       numerical stability of the logarithmic transform.
+    2. Apply a logarithmic transformation to both signals.
+    3. Estimate first temporal derivatives of the log-signals using a
+       Savitzky–Golay filter.
+    4. Compute the absolute difference between the logarithmic derivatives.
+    5. Generate a boolean mask where the derivative difference is below a
+       user-defined tolerance.
+
+    The logarithmic derivative has the physical interpretation:
+
+    .. math::
+
+            \\frac{d}{dt} \\log(x(t)) = \\frac{1}{x(t)} \\frac{dx(t)}{dt}
+
+    and therefore represents the relative rate of change of the signal rather
+    than its absolute slope.
+
+    DataFrame contains:
+
+    * ``time``
+    * ``sensor``
+    * ``sensor smooth``
+    * ``sensor relative derivative``
+    * ``poa global``
+    * ``poa global smooth``
+    * ``poa global relative derivative``
+    * ``mask``
+
+    Note:
+        * The comparison is scale-invariant and insensitive to multiplicative
+          calibration errors.
+        * This method is particularly useful for clear-sky detection, trend
+          consistency checks, and sensor calibration pipelines.
+        * Savitzky–Golay filtering provides simultaneous smoothing and derivative
+          estimation, reducing sensitivity to high-frequency noise.
+    """
 
     x = sensor.values.astype(float)
     y = poa_global.values.astype(float)
@@ -463,7 +537,7 @@ def create_relative_derivative_mask_df(
 
 #--------------------------------- DETERMINE THE SIGNAL AMPLIFICATION SCALE ---------------------------------#
 
-def determine_signal_amplification_scale(
+def determine_envelope_of_signal_peaks(
         sensor: pd.Series,
         poa_global: pd.Series,
         time: pd.Series,
@@ -472,6 +546,16 @@ def determine_signal_amplification_scale(
         minimum_disatnce_between_peaks: int = 10,
         smoothing_factor: int = 1e3,
 ) -> [np.ndarray, pd.Series]:
+    """
+    Determines the envelope of the signal peaks of the basic, raw sensor data. Function follows the steps:
+
+    1. Smooth the data with Savitkzy-Golay filter
+    2. Find peaks of the smoothed data
+    3. Takes the 80th percentile of the peaks
+    4. Calculate the spline through given peaks
+    5. Assign 0.0 value to the night period
+    6. Return the envelope of the signal peaks
+    """
 
     x = sensor.values.astype(float)
     y = poa_global.values.astype(float)
@@ -533,6 +617,9 @@ def detect_night_periods(
         eps: float = 0.1,
         min_period_len: int = 50
 ) -> list:
+    """
+    Return the periods when irradiance measurements are below input ``eps`` value (default to 0.1)
+    """
 
     periods = []
     zero_mask = series.abs() < eps
@@ -560,6 +647,10 @@ def compute_gain_factor(
         env_min: float = 5.0,
         use_median: bool = True,
 ) -> float:
+    """
+    Computes the amplification factor by given envelope and poa global values. Returns the ``k`` gain factor,
+    which represents the value basic, raw sensor data need to be multiplied to get the sensor reference values.
+    """
 
     poa_global.index = envelope.index
 

@@ -22,6 +22,22 @@ def calibrate_by_linear_regression(
         model_dirs: ModelDirectories,
         period_flag: bool = True # if True - periods detected, else not
 ) -> None:
+    """
+    Calibrate Linear Regression model.
+
+    Loads metrics from .json files. Search for ``sunny`` and ``cloudy`` files containing metrics for that periods.
+    If not found raise an Error.
+
+    Based on input boolean parameter ``period_flag`` - calculates calibrated values:
+
+    * if ``True`` calculation is made on both periods
+    * if ``False`` calculation is made on only sunny period
+
+    Saves calibrated sensor data to .csv file.
+
+    Warning:
+          To consider - in ``False`` case it should be calibrated by metrics taken from all period - not just sunny!
+    """
 
     df = model_data.df
     sensor_names = model_data.sensor_names
@@ -110,6 +126,19 @@ def calibrate_by_fuzzy_linear_regression(
         clearsky_cal_val: ClearSkyCalculatedValues,
         period_flag: bool = True  # if True - periods detected, else not
 ) -> None:
+    """
+    Calibrate Fuzzy Linear Regression model.
+
+    Loads metrics from .json files. Search for ``sunny`` and ``cloudy`` files containing metrics for that periods.
+    If not found raise an Error.
+
+    Based on input boolean parameter ``period_flag`` - calculates calibrated values:
+
+    * if ``True`` calculation is made on both periods
+    * if ``False`` raise an Error - cannot fuzzy with no second period!
+
+    Saves calibrated sensor data to .csv file.
+    """
 
     df = model_data.df
     sensor_names = model_data.sensor_names
@@ -192,6 +221,13 @@ def linear_regression_use_calibration_values(
         params_sunny: dict,
         params_cloudy: dict | None = None
 ) -> pd.Series:
+    """
+    Do a calculation of Linear Regression using calibration values.
+
+    .. math::
+
+            y = a * x + b
+    """
 
     if params_cloudy is not None:
         if_sunny_col = "if_sunny"
@@ -235,6 +271,25 @@ def fuzzy_regression_use_calibration_values(
     t1: float = 0.70,
     smooth_window: int = 5
 ) -> pd.Series:
+    """
+    Applies fuzzy linear regression blending between sunny and cloudy calibration models.
+
+    Uses a soft weight vector based on clearness index or a boolean mask to combine
+    two linear models:
+
+    .. math::
+
+        \\hat{y} = w \\cdot (a_s x + b_s) + (1 - w) \\cdot (a_c x + b_c)
+
+    where:
+
+    - :math:`x` is the sensor measurement,
+    - :math:`(a_s, b_s)` are sunny calibration parameters,
+    - :math:`(a_c, b_c)` are cloudy calibration parameters,
+    - :math:`w \\in [0,1]` is a smooth blending weight based on sky conditions.
+
+    Parameters are chosen based on :math:`k_t`, :math:`k_{t_{col}}`, or a boolean mask like ``if_sunny``
+    """
 
     if params_cloudy is not None:
         if_sunny_col = "if_sunny"
@@ -262,12 +317,12 @@ def fuzzy_regression_use_calibration_values(
     if kt is not None:
         if len(kt) != len(df):
             raise ValueError("kt length must match df length.")
-        w = _fuzzy_weight_from_kt(kt, t0=t0, t1=t1, smooth_window=smooth_window)
+        w = fuzzy_weight_from_kt(kt, t0=t0, t1=t1, smooth_window=smooth_window)
 
     elif kt_col is not None:
         if kt_col not in df.columns:
             raise KeyError(f"Missing clearness index column: {kt_col}")
-        w = _fuzzy_weight_from_kt(
+        w = fuzzy_weight_from_kt(
             df[kt_col].to_numpy(),
             t0=t0, t1=t1, smooth_window=smooth_window
         )
@@ -277,7 +332,7 @@ def fuzzy_regression_use_calibration_values(
             raise KeyError("Missing 'if_sunny' column required for mask-based weights.")
         # convert boolean mask to {0,1} and softly smooth to get fuzzy edges
         mask = df["if_sunny"].astype(bool).fillna(False).to_numpy().astype(float)
-        w = _moving_average_1d(mask, smooth_window)
+        w = moving_average_1d(mask, smooth_window)
         w = np.clip(w, 0.0, 1.0)  # already in [0,1]; no ramp needed
 
     else:
@@ -290,8 +345,22 @@ def fuzzy_regression_use_calibration_values(
     return y_hat
 
 
-def _moving_average_1d(x: np.ndarray, window: int) -> np.ndarray:
-    """Centered moving average; preserves length; interpolates NaNs."""
+def moving_average_1d(x: np.ndarray, window: int) -> np.ndarray:
+    """
+    Computes a centered 1D moving average with NaN interpolation.
+
+    Smooths input values using a symmetric box filter of given window size.
+    Missing values (NaNs) are linearly interpolated before smoothing.
+
+    For a window size :math:`w`, the smoothed output at index :math:`i` is:
+
+    .. math::
+
+        y_i = \\frac{1}{w} \\sum_{j = i - w/2}^{i + w/2} x_j
+
+    where the sum respects array boundaries using convolution mode `"same"`.
+    """
+
     if window is None or window <= 1:
         return np.asarray(x, dtype=float)
     x = np.asarray(x, dtype=float)
@@ -303,19 +372,33 @@ def _moving_average_1d(x: np.ndarray, window: int) -> np.ndarray:
     return np.convolve(x, kernel, mode="same")
 
 
-def _fuzzy_weight_from_kt(
+def fuzzy_weight_from_kt(
     k_t: np.ndarray,
     t0: float = 0.50,
     t1: float = 0.70,
     smooth_window: int = 5
 ) -> np.ndarray:
     """
-    Sunny membership in [0,1] from k_t with a smoothed linear ramp:
-      k_t <= t0 -> 0 (cloudy),  k_t >= t1 -> 1 (sunny)
+    Converts clearness index :math:`k_t` into a fuzzy weight using a linear ramp.
+
+    Smooths the input clearness index and maps it into a [0,1] range:
+
+    - :math:`k_t \\leq t_0` → fully cloudy (weight = 0),
+    - :math:`k_t \\geq t_1` → fully sunny (weight = 1),
+    - Linear interpolation in between.
+
+    The weight is defined as:
+
+    .. math::
+
+        w = \\text{clip}\\left(\\frac{k_t - t_0}{t_1 - t_0},\\ 0,\\ 1\\right)
+
+    and smoothed using a moving average window.
     """
+
     k_t = np.asarray(k_t, dtype=float).flatten()
     k_t = np.clip(k_t, 0.0, 1.0)
-    k_t_s = _moving_average_1d(k_t, smooth_window)
+    k_t_s = moving_average_1d(k_t, smooth_window)
     eps = 1e-12
     w = (k_t_s - t0) / max(t1 - t0, eps)
     return np.clip(w, 0.0, 1.0)

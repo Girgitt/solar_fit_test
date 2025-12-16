@@ -14,7 +14,7 @@ from pvtools.calibration.calibrate_to_poa.ransac import ransac_pipeline
 from pvtools.calibration.calibrate_to_poa.clearsky_utils import (frequency_mask,
                                                                  two_medians_mask, create_derivative_df,
                                                                  create_relative_derivative_mask_df,
-                                                                 determine_signal_amplification_scale,
+                                                                 determine_envelope_of_signal_peaks,
                                                                  compute_gain_factor)
 from pvtools.config.params import ModelData, ModelDirectories, ClearSkyCalculatedValues, ModelTimes
 from pvtools.io_file.writer import save_dataframe_to_csv, save_str_dict_to_csv
@@ -22,7 +22,7 @@ from pvtools.io_file.writer import save_dataframe_to_csv, save_str_dict_to_csv
 log = logging.getLogger(__name__)
 
 
-def calibrate(
+def calibrate_to_reference(
         clearsky_cal_val: ClearSkyCalculatedValues,
         model_data: ModelData,
         model_dirs: ModelDirectories,
@@ -30,6 +30,18 @@ def calibrate(
         period_flag: bool,
         calibration_method: str
 ) -> None:
+    """
+    General function to call calibration method specified in input parameters. It applies only to calibration to
+    reference sensor. Below is a full acceptable calibration methods list:
+
+    * ``linear regression``
+    * ``fuzzy linear regression``
+    * ``divided linear regression``
+    * ``mean divided linear regression``
+    * ``polynomial regression``
+    * ``decision tree regression``
+    * ``multi layer perceptron``
+    """
 
     if calibration_method == "linear":
         calibrate_by_linear_regression(
@@ -90,6 +102,12 @@ def calibrate_directly_to_poa(
         clearsky_cal_val: ClearSkyCalculatedValues,
         model_dirs: ModelDirectories
 ) -> None:
+    """
+    General function to call calibration method directly from basic, raw sensor to POA. Function follows the steps:
+
+    1. First approach - compute masks and use them to get sensor calibrates values
+    2. Second approach - compute envelope and amplification factor
+    """
 
     for sensor_name in model_data.sensor_names:
 
@@ -170,6 +188,16 @@ def compute_mask_method(
         clearsky_cal_val: ClearSkyCalculatedValues,
         sensor_name: str
 ) -> pd.DataFrame:
+    """
+    Calls different approaches to compute clear sky period. Then use all masks to compute calibration parameters of
+    RANSAC Linear Regression.
+
+    Below is the list of used methods:
+
+    * ``frequency mask``
+    * ``two medainas mask``
+    * ``relative derivative mask``
+    """
 
     df_frequency_mask = frequency_mask(
         sensor=model_data.df[sensor_name],
@@ -212,22 +240,19 @@ def compute_mask_method(
     ransac_freq_mask = ransac_pipeline(
         sensor=df_frequency_mask["sensor"],
         poa_global=df_frequency_mask["poa_global"],
-        clearsky_mask=df_frequency_mask["mask"],
-        time=df_frequency_mask["time"]
+        clearsky_mask=df_frequency_mask["mask"]
     )
 
     ransac_two_medians_mask = ransac_pipeline(
         sensor=df_two_medians_mask["sensor"],
         poa_global=df_two_medians_mask["poa_global"],
-        clearsky_mask=df_two_medians_mask["mask"],
-        time=df_two_medians_mask["time"]
+        clearsky_mask=df_two_medians_mask["mask"]
     )
 
     ransac_relative_derivative_mask = ransac_pipeline(
         sensor=df_relative_derivative_mask["sensor"],
         poa_global=df_relative_derivative_mask["poa_global"],
-        clearsky_mask=df_relative_derivative_mask["mask"],
-        time=df_relative_derivative_mask["time"]
+        clearsky_mask=df_relative_derivative_mask["mask"]
     )
 
     return_dfs_v2 = pd.DataFrame({
@@ -253,8 +278,12 @@ def compute_amplifying_signal_envelope_method(
         clearsky_cal_val: ClearSkyCalculatedValues,
         sensor_name: str
 ) -> tuple[pd.Series, float]:
+    """
+    First determines envelope of the basic, raw sensor data. Then based on calculated envelope and POA global computes
+    gain factor. Return envelope and gain factor.
+    """
 
-    evenelope, sensor_smooth = determine_signal_amplification_scale(
+    evenelope, sensor_smooth = determine_envelope_of_signal_peaks(
         sensor=model_data.df[sensor_name],
         poa_global=clearsky_cal_val.poa["poa_global"],
         time=model_data.df["time"],

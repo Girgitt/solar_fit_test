@@ -20,6 +20,22 @@ def calibrate_by_polynominal_regression(
         model_dirs: ModelDirectories,
         period_flag: bool = False  # if True - periods detected, else not
 ) -> None:
+    """
+    Calibrate Polynominal Regression model.
+
+    Loads metrics from .json files. Search for ``sunny`` and ``cloudy`` files containing metrics for that periods.
+    If not found raise an Error.
+
+    Based on input boolean parameter ``period_flag`` - calculates calibrated values:
+
+    * if ``True`` calculation is made on both periods
+    * if ``False`` calculation is made on only sunny period
+
+    Saves calibrated sensor data to .csv file.
+
+    Warning:
+          To consider - in ``False`` case it should be calibrated by metrics taken from all period - not just sunny!
+    """
 
     df = model_data.df
     sensor_names = model_data.sensor_names
@@ -109,6 +125,23 @@ def polynominal_regression_use_calibration_values(
         params_sunny: dict,
         params_cloudy: dict | None = None,
 ) -> pd.Series:
+    """
+    Do a calculation of Polynominal Regression using calibration values.
+
+    .. math::
+
+        y = a_n x^n + a_{n-1} x^{n-1} + \\dots + a_2 x^2 + a_1 x + a_0
+
+    where:
+
+    * :math:`x` is the raw sensor value,
+    * :math:`y` is the calibrated output,
+    * :math:`a_0, a_1, \\dots, a_n` are the polynomial calibration coefficients,
+    * :math:`n` is the degree of the polynomial.
+
+    This formulation generalizes linear calibration (n = 1) and supports higher-order
+    models when sensor behavior is nonlinear.
+    """
 
     if params_cloudy is not None:
         if_sunny_col = "if_sunny"

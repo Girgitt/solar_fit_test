@@ -23,6 +23,22 @@ def calibrate_by_divided_linear_regression(
         model_dirs: ModelDirectories,
         period_flag: bool = True  # if True - periods detected, else not
 ) -> None:
+    """
+    Calibrate Divided Linear Regression model.
+
+    Loads metrics from .json files. Search for ``sunny``, ``cloudy`` and ``all`` files containing metrics for that
+    periods. If not found raise an Error.
+
+    Based on input boolean parameter ``period_flag`` - calculates calibrated values:
+
+    * if ``True`` calculation is made on both periods
+    * if ``False`` calculation is made on sunny periods and all periods
+
+    Saves calibrated sensor data to .csv file.
+
+    Warning:
+          To consider is it properly proceeded!!
+    """
 
     df = model_data.df
     sensor_names = model_data.sensor_names
@@ -110,6 +126,23 @@ def calibrate_by_divided_linear_regression_mean(
         model_times: ModelTimes,
         period_flag: bool = True  # if True - periods detected, else not
 ) -> None:
+    """
+    Calibrate Mean Divided Linear Regression model.
+
+    Loads metrics from .json files. Search for ``sunny``, ``cloudy`` and ``all`` files containing metrics for that
+    periods. If not found raise an Error.
+
+    Based on input boolean parameter ``period_flag`` - calculates calibrated values:
+
+    * if ``True`` calculation is made on both periods
+    * if ``False`` calculation is made on sunny and all periods
+
+    Saves calibrated sensor data to .csv file.
+
+    Warning:
+          To consider is it properly proceeded!!
+    """
+
 
     df = model_data.df
     sensor_names = model_data.sensor_names
@@ -204,6 +237,14 @@ def divided_linear_regression_use_calibration_values(
         params_sunny:  list[DatatypeCoefficientsForDividedLinearRegression],
         params_cloudy: list[DatatypeCoefficientsForDividedLinearRegression] | None = None
 ) -> pd.Series:
+    """
+    Do a calculation of Divided Linear Regression using calibration values. Same calculation as for Linear Regression,
+    but divided for equal, specified periods.
+
+    .. math::
+
+            y = a * x + b
+    """
 
     if params_cloudy is not None:
         if_sunny_col = "if_sunny"
@@ -284,6 +325,14 @@ def divided_linear_regression_use_calibration_values_mean(
         sensor_name: str,
         params_sunny:  list[DatatypeCoefficientsForDividedLinearRegression],
 ) -> pd.Series:
+    """
+    Do a calculation of Divided Linear Regression using calibration values. Same calculation as for Linear Regression,
+    but divided for equal, specified periods. Using mean values.
+
+    .. math::
+
+            y = a * x + b
+    """
 
     #df["if_sunny"] = True
 
@@ -346,6 +395,19 @@ def select_calibration_parameters(
         df_time: pd.Series,
         frequency: str
 ) -> list[DatatypeCoefficientsForDividedLinearRegression]:
+    """
+    Note:
+        There are two types of periods. Let's call them:
+
+        * ``irradiance periods`` - determines if there is ``sunny``, ``cloudy`` or ``all`` period. Describing whether
+          it is a full sunlight metrics or not
+        * ``time periods`` - specified time interval
+
+    1. Search for ``sunny`` metrics for all time periods
+    2. Search for ``all`` metrics for all time periods
+    3. If some time periods are missing in ``all`` metrics function will fill data with ``sunny`` metrics.
+    4. If there are not enough ``sunny`` and ``all`` metrics - missing some time intervals, program raise an Error.
+    """
 
     log.info("Checking coverage for sunny parameters...")
 
@@ -402,7 +464,14 @@ def date_range_only_hh_mm(
         start: datetime.time,
         end: datetime.time,
         freq: str
-):
+) -> list[datetime.time]:
+    """
+    Generates a list of time values between two times at a given frequency.
+
+    The function creates a time-only range (HH:MM) by stepping from `start`
+    to `end` using a pandas-compatible frequency string (e.g. "5min", "15min").
+    The date component is fixed internally and not relevant to the output.
+    """
 
     delta = pd.to_timedelta(freq)
 
@@ -414,6 +483,7 @@ def date_range_only_hh_mm(
     while cur < stop:
         times.append(cur.time())
         cur += delta
+
     return times
 
 
@@ -422,6 +492,9 @@ def check_if_params_contains_data_for_all_time_intervals(
         df_time: pd.Series,
         frequency: str
 ) -> bool:
+    """
+    Checks whether given coefficients contain data from all time intervals or not.
+    """
 
     df_time = pd.to_datetime(df_time).dt.tz_localize(None).dt.tz_localize("Europe/Warsaw").dt.tz_convert("UTC")
 

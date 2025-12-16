@@ -87,34 +87,37 @@ Check ``--help`` for other options.
 ## ⚙️ Configuration options
 
 There are several input parameters to properly set all calibration pipeline. Below is list of configuration parameters:
-* __--action__: Specify whether to 'update' (train/save) or 'execute' (load/apply) the model.
-* __--model_id__: Model identifier used for saving/loading coefficients.
-* __--csv__: Path to CSV file with input data.
-* __--calibration__: Defines which calibration method use to calibrate sensors.
-* __--sensors__: List of sensors to calibrate. Number of specified column, counting from 0, skipping time column. 
+* ``--action``: Specify whether to 'update' (train/save) or 'execute' (load/apply) the model.
+* ``--model_id``: Model identifier used for saving/loading coefficients.
+* ``--csv``: Path to CSV file with input data.
+* ``--calibration``: Defines which calibration method use to calibrate sensors.
+* ``--sensors``: List of sensors to calibrate. Number of specified column, counting from 0, skipping time column. 
 Accept multiple numbers separated by space.
-* __--reference__: Number of specified column, counting from 0, skipping time column. Accept single number.
-* __--project_dir__: Force specific data directory to store logs, plots etc. Default: current working directory.
-* __--calibration_metrics_dir__: Directory which contains all metrics needed for calibration.
-* __--start_time_hour__: Start time (hour) for filter only day time period (GMT).
-* __--start_time_minute__: Start time (minute) for filter only day time period.
-* __--end_time_hour__: Start time (hour) for filter only day time period (GMT).
-* __--end_time_minute__: Start time (minute) for filter only day time period.
-* __--latitude__: Decimal latitude coordinates of measurement station (default Warsaw).
-* __--longtitude__: Decimal longtitude coordinates of measurement station (default Warsaw).
-* __--timezone__: Time zone of measurement station (default Europe/Warsaw). Check 'pytz.all_timezones' for all
+* ``--reference``: Number of specified column, counting from 0, skipping time column. Accept single number.
+* ``--project_dir``: Force specific data directory to store logs, plots etc. Default: current working directory.
+* ``--calibration_metrics_dir``: Directory which contains all metrics needed for calibration.
+* ``--start_time_hour``: Start time (hour) for filter only day time period (GMT).
+* ``--start_time_minute``: Start time (minute) for filter only day time period.
+* ``--end_time_hour``: Start time (hour) for filter only day time period (GMT).
+* ``--end_time_minute``: Start time (minute) for filter only day time period.
+* ``--latitude``: Decimal latitude coordinates of measurement station (default Warsaw).
+* ``--longtitude``: Decimal longtitude coordinates of measurement station (default Warsaw).
+* ``--timezone``: Time zone of measurement station (default Europe/Warsaw). Check 'pytz.all_timezones' for all
 available options.
-* __--altitude__: Altitude of measurement station in meters.
-* __--name__: Name for measurement station.
-* __--frequency__: Target timestamps for filterenig dataset. Available formats: 'xs' 'xmin' 'xh' 'xms' 
+* ``--altitude``: Altitude of measurement station in meters.
+* ``--name``: Name for measurement station.
+* ``--frequency``: Target timestamps for filterenig dataset. Available formats: 'xs' 'xmin' 'xh' 'xms' 
 where x is a number.
-* __--albedo__: Ratio of reflected solar irradiance to global horizontal irradiance (unitless).
-* __--surface_tilt__: Surface tilt of the sensor in degrees (default 0, horizontal).
-* __--surface_azimuth__: Surface azimuth of the sensor in degrees (default 180, south).
-* __--divided_linear_regression_intervals__: Time interval for one block in divided linear regression.
+* ``--albedo``: Ratio of reflected solar irradiance to global horizontal irradiance (unitless).
+* ``--surface_tilt``: Surface tilt of the sensor in degrees (default 0, horizontal).
+* ``--surface_azimuth``: Surface azimuth of the sensor in degrees (default 180, south).
+* ``--divided_linear_regression_intervals``: Time interval for one block in divided linear regression.
 For all possibilities refer to: https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases.
 
 ## 📚 Documentation
+
+![General overview of the project](diagrams/project_block_scheme_v3.svg "Project overview")
+
 
 ## 🖥️ Usage
 

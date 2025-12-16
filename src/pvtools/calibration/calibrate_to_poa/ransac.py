@@ -8,8 +8,17 @@ def ransac_pipeline(
         sensor: pd.Series,
         poa_global: pd.Series,
         clearsky_mask: pd.Series,
-        time: pd.Series
 ) -> pd.DataFrame:
+    """
+    General function to run a calibration RANSAC method pipeline on sensor data.
+
+    Return DataFrame contains columns:
+
+    * ``sensor``
+    * ``poa global``
+    * ``sensor calibrated``
+    * ``given mask``
+    """
 
     a, b, sensor_cal = robust_calibration(
         sensor=sensor,
@@ -34,6 +43,11 @@ def robust_calibration(
         poa_global: pd.Series,
         clearsky_mask: pd.Series
 ) -> tuple[float, float, np.ndarray]: #np.ndarray -> datatype of model.inlier_mask_
+    """
+    Calibrate data using RANSAC method.
+
+    Returns ``a`` and ``b`` parameters of Linear Regression and the ndarray ``y pred`` as predicted values.
+    """
 
     sensor_clearsky = sensor[clearsky_mask]
     poa_global_clearsky = poa_global[clearsky_mask]

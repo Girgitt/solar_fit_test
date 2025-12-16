@@ -82,7 +82,10 @@ def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) 
     return all_data
 
 
-def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
+def linear_regression_load_parameters(calibration_method_dir: Path) -> dict[str, float]:
+    """
+    Loads Linear Regression coefficients from .json file and returns dictionary of name and its value.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -104,6 +107,10 @@ def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str,
 def divided_linear_regression_load_parameters(
         calibration_method_dir: Path
 ) -> List[DatatypeCoefficientsForDividedLinearRegression]:
+    """
+    Loads Divided Linear Regression coefficients from .json file and returns list of
+    DatatypeCoefficientsForDividedLinearRegression.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -123,7 +130,10 @@ def divided_linear_regression_load_parameters(
     return params
 
 
-def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
+def polynominal_regression_load_parameters(calibration_method_dir: Path) -> dict[str, float]:
+    """
+    Loads Polynominal Regression coefficients from .json file and returns dictionary of name and its value.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -142,7 +152,10 @@ def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict
     return params
 
 
-def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, Any]:
+def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> dict[str, Any]:
+    """
+    Loads Decision Tree Regression coefficients from .json file and returns dictionary of name and its value (Any).
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -163,6 +176,9 @@ def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Di
 
 
 def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeMLPRegressionParameters:
+    """
+    Loads Multi Layer Perceptron coefficients from .json file and returns the DatatypeMLPRegressionParameters.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
