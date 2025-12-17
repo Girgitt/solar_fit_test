@@ -1,0 +1,423 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.calibration.execute_calibration &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.calibration.execute_calibration</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.calibration.execute_calibration</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.calibrate_to_reference.calibrate_linear_regression</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">calibrate_by_linear_regression</span><span class="p">,</span>
+                                                                                    <span class="n">calibrate_by_fuzzy_linear_regression</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.calibrate_to_reference.calibrate_divided_regression</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">calibrate_by_divided_linear_regression</span><span class="p">,</span>
+                                                                                     <span class="n">calibrate_by_divided_linear_regression_mean</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.calibrate_to_reference.calibrate_polynominal_regression</span><span class="w"> </span><span class="kn">import</span> <span class="n">calibrate_by_polynominal_regression</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.calibrate_to_reference.calibrate_decision_tree</span><span class="w"> </span><span class="kn">import</span> <span class="n">calibrate_by_decision_tree_regression</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.calibrate_to_reference.calibrate_mlp</span><span class="w"> </span><span class="kn">import</span> <span class="n">calibrate_by_mlp_regression</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.calibrate_to_poa.ransac</span><span class="w"> </span><span class="kn">import</span> <span class="n">ransac_pipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.calibrate_to_poa.clearsky_utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">frequency_mask</span><span class="p">,</span>
+                                                                 <span class="n">two_medians_mask</span><span class="p">,</span> <span class="n">create_derivative_df</span><span class="p">,</span>
+                                                                 <span class="n">create_relative_derivative_mask_df</span><span class="p">,</span>
+                                                                 <span class="n">determine_envelope_of_signal_peaks</span><span class="p">,</span>
+                                                                 <span class="n">compute_gain_factor</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.config.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelData</span><span class="p">,</span> <span class="n">ModelDirectories</span><span class="p">,</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span> <span class="n">ModelTimes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.io_file.writer</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_dataframe_to_csv</span><span class="p">,</span> <span class="n">save_str_dict_to_csv</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="calibrate_to_reference">
+<a class="viewcode-back" href="../../../api.html#pvtools.calibration.execute_calibration.calibrate_to_reference">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_to_reference</span><span class="p">(</span>
+        <span class="n">clearsky_cal_val</span><span class="p">:</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span>
+        <span class="n">model_data</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="p">:</span> <span class="n">ModelDirectories</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="p">:</span> <span class="n">ModelTimes</span><span class="p">,</span>
+        <span class="n">period_flag</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    General function to call calibration method specified in input parameters. It applies only to calibration to</span>
+<span class="sd">    reference sensor. Below is a full acceptable calibration methods list:</span>
+
+<span class="sd">    * ``linear regression``</span>
+<span class="sd">    * ``fuzzy linear regression``</span>
+<span class="sd">    * ``divided linear regression``</span>
+<span class="sd">    * ``mean divided linear regression``</span>
+<span class="sd">    * ``polynomial regression``</span>
+<span class="sd">    * ``decision tree regression``</span>
+<span class="sd">    * ``multi layer perceptron``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s2">&quot;linear&quot;</span><span class="p">:</span>
+        <span class="n">calibrate_by_linear_regression</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s2">&quot;fuzzy&quot;</span><span class="p">:</span>
+        <span class="n">calibrate_by_fuzzy_linear_regression</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">clearsky_cal_val</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="p">,</span>
+            <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s2">&quot;divided&quot;</span><span class="p">:</span>
+        <span class="n">calibrate_by_divided_linear_regression</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s2">&quot;divided_mean&quot;</span><span class="p">:</span>
+        <span class="n">calibrate_by_divided_linear_regression_mean</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">model_times</span><span class="o">=</span><span class="n">model_times</span><span class="p">,</span>
+            <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s2">&quot;poly&quot;</span><span class="p">:</span>
+        <span class="n">calibrate_by_polynominal_regression</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s2">&quot;decision_tree&quot;</span><span class="p">:</span>
+        <span class="n">calibrate_by_decision_tree_regression</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span>
+        <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">calibration_method</span> <span class="o">==</span> <span class="s2">&quot;mlp&quot;</span><span class="p">:</span>
+        <span class="n">calibrate_by_mlp_regression</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported calibration method: </span><span class="si">{</span><span class="n">calibration_method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calibrate_directly_to_poa">
+<a class="viewcode-back" href="../../../api.html#pvtools.calibration.execute_calibration.calibrate_directly_to_poa">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_directly_to_poa</span><span class="p">(</span>
+        <span class="n">model_data</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">clearsky_cal_val</span><span class="p">:</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="p">:</span> <span class="n">ModelDirectories</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    General function to call calibration method directly from basic, raw sensor to POA. Function follows the steps:</span>
+
+<span class="sd">    1. First approach - compute masks and use them to get sensor calibrates values</span>
+<span class="sd">    2. Second approach - compute envelope and amplification factor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">sensor_name</span> <span class="ow">in</span> <span class="n">model_data</span><span class="o">.</span><span class="n">sensor_names</span><span class="p">:</span>
+
+        <span class="n">df_combined</span> <span class="o">=</span> <span class="n">compute_mask_method</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">clearsky_cal_val</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="p">,</span>
+            <span class="n">sensor_name</span><span class="o">=</span><span class="n">sensor_name</span>
+        <span class="p">)</span>
+
+        <span class="n">evenelope</span><span class="p">,</span> <span class="n">gain_factor</span> <span class="o">=</span> <span class="n">compute_amplifying_signal_envelope_method</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">clearsky_cal_val</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="p">,</span>
+            <span class="n">sensor_name</span><span class="o">=</span><span class="n">sensor_name</span>
+        <span class="p">)</span>
+
+        <span class="n">sensor_gain</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">df_combined</span><span class="p">[</span><span class="s2">&quot;sensor&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">gain_factor</span><span class="p">,</span>
+            <span class="n">index</span><span class="o">=</span><span class="n">df_combined</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sensor_gain&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">evenelope_gain</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">evenelope</span> <span class="o">*</span> <span class="n">gain_factor</span><span class="p">,</span>
+            <span class="n">index</span><span class="o">=</span><span class="n">evenelope</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;evenelope_gain&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">sensor_ref</span> <span class="o">=</span> <span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span><span class="p">]</span>
+        <span class="n">sensor_ref</span> <span class="o">=</span> <span class="n">sensor_ref</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">df_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">df_combined</span><span class="p">,</span> <span class="n">sensor_gain</span><span class="p">,</span> <span class="n">evenelope</span><span class="p">,</span> <span class="n">evenelope_gain</span><span class="p">,</span> <span class="n">sensor_ref</span><span class="p">],</span>
+            <span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+
+        <span class="n">dict_series_description</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="s2">&quot;time&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="s2">&quot;sensor&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sensor_smooth&quot;</span><span class="p">:</span> <span class="s2">&quot;sensor smooth&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sensor_d_dt&quot;</span><span class="p">:</span> <span class="s2">&quot;sensor derivative&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;poa_global&quot;</span><span class="p">:</span> <span class="s2">&quot;poa global&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;poa_global_d_dt&quot;</span><span class="p">:</span> <span class="s2">&quot;poa global derivative&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;frequency_mask&quot;</span><span class="p">:</span> <span class="s2">&quot;frequency mask&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;two_medians_mask&quot;</span><span class="p">:</span> <span class="s2">&quot;two medainas mask&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;derivative_mask&quot;</span><span class="p">:</span> <span class="s2">&quot;derivative mask&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ransac_freq_mask_calibration&quot;</span><span class="p">:</span> <span class="s2">&quot;RANSAC frequency mask calibration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ransac_two_medians_mask_calibration&quot;</span><span class="p">:</span> <span class="s2">&quot;RANSAC two medainas mask calibration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ransac_derivative_mask_calibration&quot;</span><span class="p">:</span> <span class="s2">&quot;RANSAC derivative mask calibration&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sensor_gain&quot;</span><span class="p">:</span> <span class="s2">&quot;sensor scaled by evenelope factor&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;evenelope&quot;</span><span class="p">:</span> <span class="s2">&quot;evenelope&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;evenelope_gain&quot;</span><span class="p">:</span> <span class="s2">&quot;evenelope scaled&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">:</span> <span class="s2">&quot;sensor reference&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;saving combined df for direct calibration to POA: </span><span class="si">{</span><span class="n">df_combined</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;saving dictionary for combined df: </span><span class="si">{</span><span class="n">dict_series_description</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span> <span class="o">/</span> <span class="s2">&quot;direct_calibration_to_poa&quot;</span><span class="p">)</span>
+        <span class="n">file_stem</span> <span class="o">=</span> <span class="n">sensor_name</span>
+
+        <span class="n">df_combined_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">file_stem</span><span class="si">}</span><span class="s2">_df.csv&quot;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;DataFrame saving directory: </span><span class="si">{</span><span class="n">df_combined_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">=</span><span class="n">df_combined</span><span class="p">,</span>
+            <span class="n">output_path</span><span class="o">=</span><span class="n">df_combined_dir</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">dict_series_description_dir</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">file_stem</span><span class="si">}</span><span class="s2">_dict.csv&quot;</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dictionary saving directory: </span><span class="si">{</span><span class="n">dict_series_description_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">save_str_dict_to_csv</span><span class="p">(</span>
+            <span class="n">dict_</span><span class="o">=</span><span class="n">dict_series_description</span><span class="p">,</span>
+            <span class="n">output_path</span><span class="o">=</span><span class="n">dict_series_description_dir</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_mask_method">
+<a class="viewcode-back" href="../../../api.html#pvtools.calibration.execute_calibration.compute_mask_method">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_mask_method</span><span class="p">(</span>
+        <span class="n">model_data</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">clearsky_cal_val</span><span class="p">:</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span>
+        <span class="n">sensor_name</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calls different approaches to compute clear sky period. Then use all masks to compute calibration parameters of</span>
+<span class="sd">    RANSAC Linear Regression.</span>
+
+<span class="sd">    Below is the list of used methods:</span>
+
+<span class="sd">    * ``frequency mask``</span>
+<span class="sd">    * ``two medainas mask``</span>
+<span class="sd">    * ``relative derivative mask``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">df_frequency_mask</span> <span class="o">=</span> <span class="n">frequency_mask</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">time</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">],</span>
+        <span class="n">sampling_sec</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+        <span class="n">low_freq_max</span><span class="o">=</span><span class="mf">0.002</span><span class="p">,</span>
+        <span class="n">window_sec</span><span class="o">=</span><span class="mi">14400</span><span class="p">,</span>  <span class="c1"># 4hrs</span>
+        <span class="n">thershold</span><span class="o">=</span><span class="mf">0.80</span>
+    <span class="p">)</span>
+
+    <span class="n">df_two_medians_mask</span> <span class="o">=</span> <span class="n">two_medians_mask</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">time</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">],</span>
+        <span class="n">short_window</span><span class="o">=</span><span class="s2">&quot;30min&quot;</span><span class="p">,</span>
+        <span class="n">long_window</span><span class="o">=</span><span class="s2">&quot;4h&quot;</span><span class="p">,</span>
+        <span class="n">rel_threshold</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+        <span class="n">min_run_length</span><span class="o">=</span><span class="mi">10</span>
+    <span class="p">)</span>
+
+    <span class="n">df_derivative</span> <span class="o">=</span> <span class="n">create_derivative_df</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">time</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">],</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="mf">1.0</span>
+    <span class="p">)</span>
+
+    <span class="n">df_relative_derivative_mask</span> <span class="o">=</span> <span class="n">create_relative_derivative_mask_df</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">time</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">],</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="mf">1.0</span>
+    <span class="p">)</span>
+
+    <span class="n">ransac_freq_mask</span> <span class="o">=</span> <span class="n">ransac_pipeline</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">df_frequency_mask</span><span class="p">[</span><span class="s2">&quot;sensor&quot;</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">df_frequency_mask</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">clearsky_mask</span><span class="o">=</span><span class="n">df_frequency_mask</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">ransac_two_medians_mask</span> <span class="o">=</span> <span class="n">ransac_pipeline</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">df_two_medians_mask</span><span class="p">[</span><span class="s2">&quot;sensor&quot;</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">df_two_medians_mask</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">clearsky_mask</span><span class="o">=</span><span class="n">df_two_medians_mask</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">ransac_relative_derivative_mask</span> <span class="o">=</span> <span class="n">ransac_pipeline</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">df_relative_derivative_mask</span><span class="p">[</span><span class="s2">&quot;sensor&quot;</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">df_relative_derivative_mask</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">clearsky_mask</span><span class="o">=</span><span class="n">df_relative_derivative_mask</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">return_dfs_v2</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name</span><span class="p">],</span>
+        <span class="s2">&quot;poa_global&quot;</span><span class="p">:</span> <span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;frequency_mask&quot;</span><span class="p">:</span> <span class="n">df_frequency_mask</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;two_medians_mask&quot;</span><span class="p">:</span> <span class="n">df_two_medians_mask</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;sensor_smooth&quot;</span><span class="p">:</span> <span class="n">df_derivative</span><span class="p">[</span><span class="s2">&quot;sensor_smooth&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;sensor_d_dt&quot;</span><span class="p">:</span> <span class="n">df_derivative</span><span class="p">[</span><span class="s2">&quot;sensor_d_dt&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;poa_global_d_dt&quot;</span><span class="p">:</span> <span class="n">df_derivative</span><span class="p">[</span><span class="s2">&quot;poa_global_d_dt&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;derivative_mask&quot;</span><span class="p">:</span> <span class="n">df_relative_derivative_mask</span><span class="p">[</span><span class="s2">&quot;mask&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;ransac_freq_mask_calibration&quot;</span><span class="p">:</span> <span class="n">ransac_freq_mask</span><span class="p">[</span><span class="s2">&quot;sensor_cal&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;ransac_two_medians_mask_calibration&quot;</span><span class="p">:</span> <span class="n">ransac_two_medians_mask</span><span class="p">[</span><span class="s2">&quot;sensor_cal&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;ransac_derivative_mask_calibration&quot;</span><span class="p">:</span> <span class="n">ransac_relative_derivative_mask</span><span class="p">[</span><span class="s2">&quot;sensor_cal&quot;</span><span class="p">],</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">return_dfs_v2</span></div>
+
+
+
+<div class="viewcode-block" id="compute_amplifying_signal_envelope_method">
+<a class="viewcode-back" href="../../../api.html#pvtools.calibration.execute_calibration.compute_amplifying_signal_envelope_method">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_amplifying_signal_envelope_method</span><span class="p">(</span>
+        <span class="n">model_data</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">clearsky_cal_val</span><span class="p">:</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span>
+        <span class="n">sensor_name</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    First determines envelope of the basic, raw sensor data. Then based on calculated envelope and POA global computes</span>
+<span class="sd">    gain factor. Return envelope and gain factor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">evenelope</span><span class="p">,</span> <span class="n">sensor_smooth</span> <span class="o">=</span> <span class="n">determine_envelope_of_signal_peaks</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name</span><span class="p">],</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">time</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">],</span>
+        <span class="n">smooth_window</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">minimum_disatnce_between_peaks</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">smoothing_factor</span><span class="o">=</span><span class="mi">2000</span>
+    <span class="p">)</span>
+
+    <span class="n">evenelope</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+        <span class="n">data</span><span class="o">=</span><span class="n">evenelope</span><span class="p">,</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;evenelope&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">gain_factor</span> <span class="o">=</span> <span class="n">compute_gain_factor</span><span class="p">(</span>
+        <span class="n">envelope</span><span class="o">=</span><span class="n">evenelope</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>
+        <span class="n">poa_min</span><span class="o">=</span><span class="mf">20.0</span><span class="p">,</span>
+        <span class="n">env_min</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+        <span class="n">use_median</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">evenelope</span><span class="p">,</span> <span class="n">gain_factor</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

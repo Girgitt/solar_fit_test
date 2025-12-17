@@ -1,0 +1,424 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solar Fit Test Documentation &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Solar Fit" href="api.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Solar Fit Test Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="solar-fit-test-documentation">
+<h1>Solar Fit Test Documentation<a class="headerlink" href="#solar-fit-test-documentation" title="Link to this heading"></a></h1>
+<p>Simple polynomial fitting of sensor data to match solar irradiance values derived from a luxometer
+with reference measurements from a calibrated irradiance meter.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Solar Fit</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#pv-tools">PV tools</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#calibration">Calibration</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#execute-calibration">Execute Calibration</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.calibration.execute_calibration.calibrate_directly_to_poa"><code class="docutils literal notranslate"><span class="pre">calibrate_directly_to_poa()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.calibration.execute_calibration.calibrate_to_reference"><code class="docutils literal notranslate"><span class="pre">calibrate_to_reference()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.calibration.execute_calibration.compute_amplifying_signal_envelope_method"><code class="docutils literal notranslate"><span class="pre">compute_amplifying_signal_envelope_method()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.calibration.execute_calibration.compute_mask_method"><code class="docutils literal notranslate"><span class="pre">compute_mask_method()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#calibrate-to-poa">Calibrate to POA</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#clear-sky-utils">Clear Sky Utils</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.calibrate_lowfreq"><code class="docutils literal notranslate"><span class="pre">calibrate_lowfreq()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.clearsky_detection_by_frequency_method"><code class="docutils literal notranslate"><span class="pre">clearsky_detection_by_frequency_method()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.compute_fft"><code class="docutils literal notranslate"><span class="pre">compute_fft()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.compute_gain_factor"><code class="docutils literal notranslate"><span class="pre">compute_gain_factor()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.create_derivative_df"><code class="docutils literal notranslate"><span class="pre">create_derivative_df()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.create_relative_derivative_mask_df"><code class="docutils literal notranslate"><span class="pre">create_relative_derivative_mask_df()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.detect_clear_sky"><code class="docutils literal notranslate"><span class="pre">detect_clear_sky()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.detect_night_periods"><code class="docutils literal notranslate"><span class="pre">detect_night_periods()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.determine_envelope_of_signal_peaks"><code class="docutils literal notranslate"><span class="pre">determine_envelope_of_signal_peaks()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.extract_low_frequency"><code class="docutils literal notranslate"><span class="pre">extract_low_frequency()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.frequency_analysis"><code class="docutils literal notranslate"><span class="pre">frequency_analysis()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.frequency_mask"><code class="docutils literal notranslate"><span class="pre">frequency_mask()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.predict_poa"><code class="docutils literal notranslate"><span class="pre">predict_poa()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.prepare_signal"><code class="docutils literal notranslate"><span class="pre">prepare_signal()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.two_medians_mask"><code class="docutils literal notranslate"><span class="pre">two_medians_mask()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#module-pvtools.calibration.calibrate_to_poa.ransac">Ransac</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.ransac.ransac_pipeline"><code class="docutils literal notranslate"><span class="pre">ransac_pipeline()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_poa.ransac.robust_calibration"><code class="docutils literal notranslate"><span class="pre">robust_calibration()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#calibrate-to-reference">Calibrate To Reference</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#calibrate-decision-tree">Calibrate Decision Tree</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_decision_tree.calibrate_by_decision_tree_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_decision_tree_regression()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_decision_tree.decision_tree_regression_use_calibration_values"><code class="docutils literal notranslate"><span class="pre">decision_tree_regression_use_calibration_values()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#calibrate-divided-regression">Calibrate Divided Regression</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_divided_regression.calibrate_by_divided_linear_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_divided_linear_regression()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_divided_regression.calibrate_by_divided_linear_regression_mean"><code class="docutils literal notranslate"><span class="pre">calibrate_by_divided_linear_regression_mean()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_divided_regression.check_if_params_contains_data_for_all_time_intervals"><code class="docutils literal notranslate"><span class="pre">check_if_params_contains_data_for_all_time_intervals()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_divided_regression.date_range_only_hh_mm"><code class="docutils literal notranslate"><span class="pre">date_range_only_hh_mm()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_divided_regression.divided_linear_regression_use_calibration_values"><code class="docutils literal notranslate"><span class="pre">divided_linear_regression_use_calibration_values()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_divided_regression.divided_linear_regression_use_calibration_values_mean"><code class="docutils literal notranslate"><span class="pre">divided_linear_regression_use_calibration_values_mean()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_divided_regression.select_calibration_parameters"><code class="docutils literal notranslate"><span class="pre">select_calibration_parameters()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#calibrate-linear-regression">Calibrate Linear Regression</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_linear_regression.calibrate_by_fuzzy_linear_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_fuzzy_linear_regression()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_linear_regression.calibrate_by_linear_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_linear_regression()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_linear_regression.fuzzy_regression_use_calibration_values"><code class="docutils literal notranslate"><span class="pre">fuzzy_regression_use_calibration_values()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_linear_regression.fuzzy_weight_from_kt"><code class="docutils literal notranslate"><span class="pre">fuzzy_weight_from_kt()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_linear_regression.linear_regression_use_calibration_values"><code class="docutils literal notranslate"><span class="pre">linear_regression_use_calibration_values()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_linear_regression.moving_average_1d"><code class="docutils literal notranslate"><span class="pre">moving_average_1d()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#calibrate-mlp">Calibrate MLP</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_mlp.apply_activation"><code class="docutils literal notranslate"><span class="pre">apply_activation()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_mlp.calibrate_by_mlp_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_mlp_regression()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_mlp.forward_pass"><code class="docutils literal notranslate"><span class="pre">forward_pass()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_mlp.inv_out"><code class="docutils literal notranslate"><span class="pre">inv_out()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_mlp.mlp_use_calibration_values"><code class="docutils literal notranslate"><span class="pre">mlp_use_calibration_values()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_mlp.scale_in"><code class="docutils literal notranslate"><span class="pre">scale_in()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#calibrate-polynominal-regression">Calibrate Polynominal Regression</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_polynominal_regression.calibrate_by_polynominal_regression"><code class="docutils literal notranslate"><span class="pre">calibrate_by_polynominal_regression()</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibrate_polynominal_regression.polynominal_regression_use_calibration_values"><code class="docutils literal notranslate"><span class="pre">polynominal_regression_use_calibration_values()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#calibration-utils">Calibration Utils</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.calibration.calibrate_to_reference.calibration_utils.check_if_any_column_is_missing"><code class="docutils literal notranslate"><span class="pre">check_if_any_column_is_missing()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#validate-tree">Validate Tree</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#config">Config</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#module-pvtools.config.params">Params</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyCalculatedValues"><code class="docutils literal notranslate"><span class="pre">ClearSkyCalculatedValues</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyCalculatedValues.clearsky_periods"><code class="docutils literal notranslate"><span class="pre">ClearSkyCalculatedValues.clearsky_periods</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyCalculatedValues.cloudy_periods"><code class="docutils literal notranslate"><span class="pre">ClearSkyCalculatedValues.cloudy_periods</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyCalculatedValues.poa"><code class="docutils literal notranslate"><span class="pre">ClearSkyCalculatedValues.poa</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.albedo"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.albedo</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.altitude"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.altitude</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.name"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.name</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.surface_azimuth"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.surface_azimuth</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.surface_tilt"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.surface_tilt</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.tz"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.tz</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.warsaw_lat"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.warsaw_lat</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ClearSkyParameters.warsaw_lon"><code class="docutils literal notranslate"><span class="pre">ClearSkyParameters.warsaw_lon</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForDividedLinearRegression"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForDividedLinearRegression</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForDividedLinearRegression.a"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForDividedLinearRegression.a</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForDividedLinearRegression.b"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForDividedLinearRegression.b</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForDividedLinearRegression.hour"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForDividedLinearRegression.hour</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression.layer_1_biases"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression.layer_1_biases</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression.layer_1_weights"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression.layer_1_weights</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression.layer_2_biases"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression.layer_2_biases</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression.layer_2_weights"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression.layer_2_weights</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression.output_biases"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression.output_biases</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression.output_weights"><code class="docutils literal notranslate"><span class="pre">DatatypeCoefficientsForMLPRegression.output_weights</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeMLPRegressionParameters"><code class="docutils literal notranslate"><span class="pre">DatatypeMLPRegressionParameters</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeMLPRegressionParameters.coefficients"><code class="docutils literal notranslate"><span class="pre">DatatypeMLPRegressionParameters.coefficients</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeMLPRegressionParameters.scalers"><code class="docutils literal notranslate"><span class="pre">DatatypeMLPRegressionParameters.scalers</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeScalersForMLPRegression"><code class="docutils literal notranslate"><span class="pre">DatatypeScalersForMLPRegression</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeScalersForMLPRegression.activation"><code class="docutils literal notranslate"><span class="pre">DatatypeScalersForMLPRegression.activation</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeScalersForMLPRegression.x_scaler_mean"><code class="docutils literal notranslate"><span class="pre">DatatypeScalersForMLPRegression.x_scaler_mean</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeScalersForMLPRegression.x_scaler_scale"><code class="docutils literal notranslate"><span class="pre">DatatypeScalersForMLPRegression.x_scaler_scale</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeScalersForMLPRegression.y_scaler_mean"><code class="docutils literal notranslate"><span class="pre">DatatypeScalersForMLPRegression.y_scaler_mean</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.DatatypeScalersForMLPRegression.y_scaler_scale"><code class="docutils literal notranslate"><span class="pre">DatatypeScalersForMLPRegression.y_scaler_scale</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.ModelData"><code class="docutils literal notranslate"><span class="pre">ModelData</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelData.df"><code class="docutils literal notranslate"><span class="pre">ModelData.df</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelData.df_time"><code class="docutils literal notranslate"><span class="pre">ModelData.df_time</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelData.sensor_name_ref"><code class="docutils literal notranslate"><span class="pre">ModelData.sensor_name_ref</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelData.sensor_names"><code class="docutils literal notranslate"><span class="pre">ModelData.sensor_names</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.ModelDirectories"><code class="docutils literal notranslate"><span class="pre">ModelDirectories</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelDirectories.data_dir"><code class="docutils literal notranslate"><span class="pre">ModelDirectories.data_dir</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelDirectories.filename"><code class="docutils literal notranslate"><span class="pre">ModelDirectories.filename</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelDirectories.load_metrics_dir"><code class="docutils literal notranslate"><span class="pre">ModelDirectories.load_metrics_dir</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelDirectories.log_dir"><code class="docutils literal notranslate"><span class="pre">ModelDirectories.log_dir</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelDirectories.plot_dir"><code class="docutils literal notranslate"><span class="pre">ModelDirectories.plot_dir</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelDirectories.project_dir"><code class="docutils literal notranslate"><span class="pre">ModelDirectories.project_dir</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.params.ModelTimes"><code class="docutils literal notranslate"><span class="pre">ModelTimes</span></code></a><ul>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelTimes.divided_linear_regression_interval"><code class="docutils literal notranslate"><span class="pre">ModelTimes.divided_linear_regression_interval</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelTimes.end_daytime_cut"><code class="docutils literal notranslate"><span class="pre">ModelTimes.end_daytime_cut</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelTimes.end_time"><code class="docutils literal notranslate"><span class="pre">ModelTimes.end_time</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelTimes.frequency"><code class="docutils literal notranslate"><span class="pre">ModelTimes.frequency</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelTimes.start_daytime_cut"><code class="docutils literal notranslate"><span class="pre">ModelTimes.start_daytime_cut</span></code></a></li>
+<li class="toctree-l6"><a class="reference internal" href="api.html#pvtools.config.params.ModelTimes.start_time"><code class="docutils literal notranslate"><span class="pre">ModelTimes.start_time</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#sensor-calibration-metrics">Sensor Calibration Metrics</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics"><code class="docutils literal notranslate"><span class="pre">SensorCalibrationMetrics</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#io-file">IO file</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#module-pvtools.io_file.reader">Reader</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.decision_tree_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">decision_tree_regression_load_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.divided_linear_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">divided_linear_regression_load_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.linear_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">linear_regression_load_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.load_and_merge_calibrated_data_from_each_sensor"><code class="docutils literal notranslate"><span class="pre">load_and_merge_calibrated_data_from_each_sensor()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.load_dataframe_from_csv"><code class="docutils literal notranslate"><span class="pre">load_dataframe_from_csv()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.load_str_dict_from_csv"><code class="docutils literal notranslate"><span class="pre">load_str_dict_from_csv()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.load_true_and_predicted_data_for_all_methods"><code class="docutils literal notranslate"><span class="pre">load_true_and_predicted_data_for_all_methods()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.mlp_load_parameters"><code class="docutils literal notranslate"><span class="pre">mlp_load_parameters()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.reader.polynominal_regression_load_parameters"><code class="docutils literal notranslate"><span class="pre">polynominal_regression_load_parameters()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#module-pvtools.io_file.writer">Writer</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.writer.save_dataframe_to_csv"><code class="docutils literal notranslate"><span class="pre">save_dataframe_to_csv()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.writer.save_figure"><code class="docutils literal notranslate"><span class="pre">save_figure()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.writer.save_metrics_to_json"><code class="docutils literal notranslate"><span class="pre">save_metrics_to_json()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.writer.save_predicted_data_figures"><code class="docutils literal notranslate"><span class="pre">save_predicted_data_figures()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.writer.save_str_dict_to_csv"><code class="docutils literal notranslate"><span class="pre">save_str_dict_to_csv()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.io_file.writer.save_true_and_predicted_data_to_csv"><code class="docutils literal notranslate"><span class="pre">save_true_and_predicted_data_to_csv()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#modeling">Modeling</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#calculate-calibration-parameters">Calculate Calibration Parameters</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.modeling.calculate_calibration_parameters.decision_tree_regression"><code class="docutils literal notranslate"><span class="pre">decision_tree_regression()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.modeling.calculate_calibration_parameters.divided_linear_regression"><code class="docutils literal notranslate"><span class="pre">divided_linear_regression()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.modeling.calculate_calibration_parameters.export_tree_as_rules"><code class="docutils literal notranslate"><span class="pre">export_tree_as_rules()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.modeling.calculate_calibration_parameters.linear_regression"><code class="docutils literal notranslate"><span class="pre">linear_regression()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.modeling.calculate_calibration_parameters.mean_coefficients_by_time"><code class="docutils literal notranslate"><span class="pre">mean_coefficients_by_time()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.modeling.calculate_calibration_parameters.mlp_regression"><code class="docutils literal notranslate"><span class="pre">mlp_regression()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.modeling.calculate_calibration_parameters.polynominal_regression"><code class="docutils literal notranslate"><span class="pre">polynominal_regression()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#postprocess">Postprocess</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#postprocess-data">Postprocess Data</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.postprocess.postprocess_data.merge_sunny_and_cloudy_calibrated_dataframes"><code class="docutils literal notranslate"><span class="pre">merge_sunny_and_cloudy_calibrated_dataframes()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.postprocess.postprocess_data.postprocess_data"><code class="docutils literal notranslate"><span class="pre">postprocess_data()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#preprocess">Preprocess</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#preprocess-data">Preprocess Data</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.preprocess.preprocess_data.average_measurements"><code class="docutils literal notranslate"><span class="pre">average_measurements()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.preprocess.preprocess_data.check_if_target_frequency_is_lower_than_measurements"><code class="docutils literal notranslate"><span class="pre">check_if_target_frequency_is_lower_than_measurements()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.preprocess.preprocess_data.delete_night_period"><code class="docutils literal notranslate"><span class="pre">delete_night_period()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.preprocess.preprocess_data.ensure_dataframe_contains_valid_data"><code class="docutils literal notranslate"><span class="pre">ensure_dataframe_contains_valid_data()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.preprocess.preprocess_data.ensure_datetime_contains_timezone"><code class="docutils literal notranslate"><span class="pre">ensure_datetime_contains_timezone()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.preprocess.preprocess_data.preprocess_data"><code class="docutils literal notranslate"><span class="pre">preprocess_data()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.preprocess.preprocess_data.sanitize_filename"><code class="docutils literal notranslate"><span class="pre">sanitize_filename()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#solar-domain">Solar domain</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#module-pvtools.solar_domain.clearsky">Clear Sky</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.calculate_adaptive_best_mask"><code class="docutils literal notranslate"><span class="pre">calculate_adaptive_best_mask()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.calculate_my_own_mask"><code class="docutils literal notranslate"><span class="pre">calculate_my_own_mask()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.clear_sky"><code class="docutils literal notranslate"><span class="pre">clear_sky()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.delete_short_periods"><code class="docutils literal notranslate"><span class="pre">delete_short_periods()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.detect_clearsky_periods"><code class="docutils literal notranslate"><span class="pre">detect_clearsky_periods()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.detect_clearsky_periods_v2"><code class="docutils literal notranslate"><span class="pre">detect_clearsky_periods_v2()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.detect_sunny_cloudy_intervals"><code class="docutils literal notranslate"><span class="pre">detect_sunny_cloudy_intervals()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.clearsky.get_solar_data_for_location_and_time"><code class="docutils literal notranslate"><span class="pre">get_solar_data_for_location_and_time()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#determine-orientation">Determine Orientation</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.determine_orientation.by_day"><code class="docutils literal notranslate"><span class="pre">by_day()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.determine_orientation.determine_system_azimuth_and_tilt"><code class="docutils literal notranslate"><span class="pre">determine_system_azimuth_and_tilt()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.determine_orientation.infer_orientation_daily_peak"><code class="docutils literal notranslate"><span class="pre">infer_orientation_daily_peak()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#measurement-limitations">Measurement Limitations</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.measurement_limitations.limit_sensor_ref_irradiance_to_clear_sky_model"><code class="docutils literal notranslate"><span class="pre">limit_sensor_ref_irradiance_to_clear_sky_model()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.measurement_limitations.limit_sensors_irradiance_to_clear_sky_model"><code class="docutils literal notranslate"><span class="pre">limit_sensors_irradiance_to_clear_sky_model()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.solar_domain.measurement_limitations.remove_negative_measurements"><code class="docutils literal notranslate"><span class="pre">remove_negative_measurements()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#utils">Utils</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#apply-mask-for-dataframe">Apply Mask For DataFrame</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.apply_mask_for_dataframe.apply_mask_for_dataframe"><code class="docutils literal notranslate"><span class="pre">apply_mask_for_dataframe()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#execute-function">Execute Function</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.execute_function.execute_function"><code class="docutils literal notranslate"><span class="pre">execute_function()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.execute_function.run_full_clearsky_data_pipeline"><code class="docutils literal notranslate"><span class="pre">run_full_clearsky_data_pipeline()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#update-function">Update Function</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.update_function.calculate_regression"><code class="docutils literal notranslate"><span class="pre">calculate_regression()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.update_function.process_solar_data_with_clearsky_detection_and_masking"><code class="docutils literal notranslate"><span class="pre">process_solar_data_with_clearsky_detection_and_masking()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.update_function.update_function"><code class="docutils literal notranslate"><span class="pre">update_function()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#module-pvtools.utils.utilities">Utilities</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.argument_parsing"><code class="docutils literal notranslate"><span class="pre">argument_parsing()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.check_if_calibration_method_available"><code class="docutils literal notranslate"><span class="pre">check_if_calibration_method_available()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.check_if_sunny_cloudy_periods_exists"><code class="docutils literal notranslate"><span class="pre">check_if_sunny_cloudy_periods_exists()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.create_calibrated_dataframe"><code class="docutils literal notranslate"><span class="pre">create_calibrated_dataframe()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.create_dataframe_with_sensor_values_and_poa"><code class="docutils literal notranslate"><span class="pre">create_dataframe_with_sensor_values_and_poa()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.initialize_dirs_for_base_dir"><code class="docutils literal notranslate"><span class="pre">initialize_dirs_for_base_dir()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.initialize_dirs_for_loading_dependencies"><code class="docutils literal notranslate"><span class="pre">initialize_dirs_for_loading_dependencies()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected"><code class="docutils literal notranslate"><span class="pre">load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.load_filtered_and_calculated_data_needed_for_execute_function_periods_detected"><code class="docutils literal notranslate"><span class="pre">load_filtered_and_calculated_data_needed_for_execute_function_periods_detected()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.print_available_data_columns"><code class="docutils literal notranslate"><span class="pre">print_available_data_columns()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.utils.utilities.select_available_data_columns_to_process"><code class="docutils literal notranslate"><span class="pre">select_available_data_columns_to_process()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#visualization">Visualization</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#execute-plotting">Execute Plotting</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.execute_plotting.plot_calibrated_to_poa"><code class="docutils literal notranslate"><span class="pre">plot_calibrated_to_poa()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.execute_plotting.plot_calibrated_to_reference"><code class="docutils literal notranslate"><span class="pre">plot_calibrated_to_reference()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#module-pvtools.visualisation.plotter">Plotter</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_clear_sky"><code class="docutils literal notranslate"><span class="pre">plot_clear_sky()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_fft_spectrum"><code class="docutils literal notranslate"><span class="pre">plot_fft_spectrum()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_frequency_histogram"><code class="docutils literal notranslate"><span class="pre">plot_frequency_histogram()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_from_dataframe"><code class="docutils literal notranslate"><span class="pre">plot_from_dataframe()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_poa_components"><code class="docutils literal notranslate"><span class="pre">plot_poa_components()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_poa_reference_with_clearsky_periods"><code class="docutils literal notranslate"><span class="pre">plot_poa_reference_with_clearsky_periods()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_poa_vs_reference"><code class="docutils literal notranslate"><span class="pre">plot_poa_vs_reference()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_sensors_calibrated_directly_to_poa"><code class="docutils literal notranslate"><span class="pre">plot_sensors_calibrated_directly_to_poa()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.plot_universal"><code class="docutils literal notranslate"><span class="pre">plot_universal()</span></code></a></li>
+<li class="toctree-l5"><a class="reference internal" href="api.html#pvtools.visualisation.plotter.subplot_predicted_data"><code class="docutils literal notranslate"><span class="pre">subplot_predicted_data()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-main">Main</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#main.get_logging_format"><code class="docutils literal notranslate"><span class="pre">get_logging_format()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#main.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="api.html" class="btn btn-neutral float-right" title="Solar Fit" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

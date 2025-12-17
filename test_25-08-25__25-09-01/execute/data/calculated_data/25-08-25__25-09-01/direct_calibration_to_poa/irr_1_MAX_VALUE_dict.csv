@@ -1,0 +1,17 @@
+key,value
+time,time
+sensor,sensor
+sensor_smooth,sensor smooth
+sensor_d_dt,sensor derivative
+poa_global,poa global
+poa_global_d_dt,poa global derivative
+frequency_mask,frequency mask
+two_medians_mask,two medainas mask
+derivative_mask,derivative mask
+ransac_freq_mask_calibration,RANSAC frequency mask calibration
+ransac_two_medians_mask_calibration,RANSAC two medainas mask calibration
+ransac_derivative_mask_calibration,RANSAC derivative mask calibration
+sensor_gain,sensor scaled by evenelope factor
+evenelope,evenelope
+evenelope_gain,evenelope scaled
+irr_dav_1_MAX_VALUE,sensor reference

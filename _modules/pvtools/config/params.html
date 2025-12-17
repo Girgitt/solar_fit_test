@@ -1,0 +1,206 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.config.params &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.config.params</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.config.params</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypedDict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="kn">import</span> <span class="n">Timedelta</span>
+
+
+<div class="viewcode-block" id="ModelData">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.ModelData">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelData</span><span class="p">:</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="n">df_time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span>
+    <span class="n">sensor_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">sensor_name_ref</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="ModelDirectories">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.ModelDirectories">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelDirectories</span><span class="p">:</span>
+    <span class="n">project_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">log_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">data_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">plot_dir</span><span class="p">:</span> <span class="n">Path</span>
+    <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">load_metrics_dir</span><span class="p">:</span> <span class="n">Path</span></div>
+
+
+
+<div class="viewcode-block" id="ModelTimes">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.ModelTimes">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelTimes</span><span class="p">:</span>
+    <span class="n">start_time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span>
+    <span class="n">end_time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span>
+    <span class="n">frequency</span><span class="p">:</span> <span class="n">Timedelta</span>
+    <span class="n">divided_linear_regression_interval</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">start_daytime_cut</span><span class="p">:</span> <span class="n">time</span>
+    <span class="n">end_daytime_cut</span><span class="p">:</span> <span class="n">time</span></div>
+
+
+
+<div class="viewcode-block" id="ClearSkyParameters">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.ClearSkyParameters">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ClearSkyParameters</span><span class="p">:</span>
+    <span class="n">warsaw_lat</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">warsaw_lon</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">tz</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">altitude</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">albedo</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">surface_tilt</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># degrees from horizontal</span>
+    <span class="n">surface_azimuth</span><span class="p">:</span> <span class="nb">int</span> <span class="c1"># 180 - south facing</span></div>
+
+
+
+<div class="viewcode-block" id="ClearSkyCalculatedValues">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.ClearSkyCalculatedValues">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ClearSkyCalculatedValues</span><span class="p">:</span>
+    <span class="n">poa</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="n">clearsky_periods</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span>
+    <span class="n">cloudy_periods</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span></div>
+
+
+
+<div class="viewcode-block" id="DatatypeCoefficientsForDividedLinearRegression">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.DatatypeCoefficientsForDividedLinearRegression">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatatypeCoefficientsForDividedLinearRegression</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">hour</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span>
+    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">b</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="DatatypeScalersForMLPRegression">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.DatatypeScalersForMLPRegression">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatatypeScalersForMLPRegression</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">x_scaler_mean</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">x_scaler_scale</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">y_scaler_mean</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">y_scaler_scale</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">activation</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="DatatypeCoefficientsForMLPRegression">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.DatatypeCoefficientsForMLPRegression">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatatypeCoefficientsForMLPRegression</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">layer_1_weights</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span>
+    <span class="n">layer_1_biases</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">layer_2_weights</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span>
+    <span class="n">layer_2_biases</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">output_weights</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span>
+    <span class="n">output_biases</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="DatatypeMLPRegressionParameters">
+<a class="viewcode-back" href="../../../api.html#pvtools.config.params.DatatypeMLPRegressionParameters">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DatatypeMLPRegressionParameters</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">coefficients</span><span class="p">:</span> <span class="n">DatatypeCoefficientsForMLPRegression</span>
+    <span class="n">scalers</span><span class="p">:</span> <span class="n">DatatypeScalersForMLPRegression</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,840 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.calibration.calibrate_to_poa.clearsky_utils &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.calibration.calibrate_to_poa.clearsky_utils</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.calibration.calibrate_to_poa.clearsky_utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian_filter1d</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal</span><span class="w"> </span><span class="kn">import</span> <span class="n">savgol_filter</span><span class="p">,</span> <span class="n">ShortTimeFFT</span><span class="p">,</span> <span class="n">find_peaks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.signal.windows</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearRegression</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnivariateSpline</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.visualisation.plotter</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_frequency_histogram</span><span class="p">,</span> <span class="n">plot_fft_spectrum</span>
+
+
+<span class="c1">#--------------------------------- Savitzky-Golay Filter ---------------------------------#</span>
+
+<div class="viewcode-block" id="clearsky_detection_by_frequency_method">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.clearsky_detection_by_frequency_method">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clearsky_detection_by_frequency_method</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">sampling_sec</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Detect clear-sky periods using a frequency-based method.</span>
+
+<span class="sd">    This function runs the full clear-sky detection pipeline and fits</span>
+<span class="sd">    a linear regression model between sensor data and POA reference.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        sensor (pd.Series): Sensor irradiance measurements</span>
+<span class="sd">        poa_global (pd.Series): Plane-of-array global irradiance reference</span>
+<span class="sd">        time (pd.Series): Time index corresponding to the measurements</span>
+<span class="sd">        sampling_sec (int, optional): Sampling interval in seconds.</span>
+<span class="sd">            Defaults to 5</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple:</span>
+<span class="sd">            - pd.DataFrame: Combined output DataFrame with detection results</span>
+<span class="sd">            - float: Linear regression slope parameter ``a``</span>
+<span class="sd">            - float: Linear regression intercept parameter ``b``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sensor</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+    <span class="n">poa_global</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="n">sensor_lowfreq</span> <span class="o">=</span> <span class="n">extract_low_frequency</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">sensor</span><span class="p">,</span>
+        <span class="n">window_sec</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+        <span class="n">sampling_sec</span><span class="o">=</span><span class="n">sampling_sec</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="mi">3</span>
+    <span class="p">)</span>
+
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">poa_pred_lowfreq</span> <span class="o">=</span> <span class="n">calibrate_lowfreq</span><span class="p">(</span><span class="n">sensor_lowfreq</span><span class="p">,</span> <span class="n">poa_global</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="n">poa_pred</span> <span class="o">=</span> <span class="n">predict_poa</span><span class="p">(</span><span class="n">sensor_lowfreq</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
+    <span class="n">poa_pred</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="n">clear</span><span class="p">,</span> <span class="n">resid</span> <span class="o">=</span> <span class="n">detect_clear_sky</span><span class="p">(</span><span class="n">poa_global</span><span class="p">,</span> <span class="n">poa_pred</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">sensor</span><span class="p">,</span>
+        <span class="s2">&quot;sensor_lowfreq&quot;</span><span class="p">:</span> <span class="n">sensor_lowfreq</span><span class="p">,</span>
+        <span class="s2">&quot;poa&quot;</span><span class="p">:</span> <span class="n">poa_global</span><span class="p">,</span>
+        <span class="s2">&quot;poa_pred&quot;</span><span class="p">:</span> <span class="n">poa_pred</span><span class="p">,</span>
+        <span class="s2">&quot;residual&quot;</span><span class="p">:</span> <span class="n">resid</span><span class="p">,</span>
+        <span class="s2">&quot;clear_sky&quot;</span><span class="p">:</span> <span class="n">clear</span>
+    <span class="p">})</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">time</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span></div>
+
+
+
+<div class="viewcode-block" id="extract_low_frequency">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.extract_low_frequency">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">extract_low_frequency</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">window_sec</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span>
+        <span class="n">sampling_sec</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extracts low frequencies using Savitkzy-Golay filter (from scipy library).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">window_length</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">window_sec</span> <span class="o">/</span> <span class="n">sampling_sec</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">window_length</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">window_length</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">filtered</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;interp&#39;</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">filtered</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">sensor</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calibrate_lowfreq">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.calibrate_lowfreq">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calibrate_lowfreq</span><span class="p">(</span>
+        <span class="n">sensor_lowfreq</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the slope parameter ``a`` and intercept parameter ``b``</span>
+<span class="sd">    for the low frequency calibration method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">sensor_lowfreq</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">poa</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">LinearRegression</span><span class="p">()</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">intercept_</span>
+
+    <span class="k">return</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="predict_poa">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.predict_poa">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">predict_poa</span><span class="p">(</span>
+        <span class="n">sensor_lowfreq</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">b</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple linear regression calculation for predicted ``a`` and ``b`` parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">a</span> <span class="o">*</span> <span class="n">sensor_lowfreq</span> <span class="o">+</span> <span class="n">b</span></div>
+
+
+
+<div class="viewcode-block" id="detect_clear_sky">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.detect_clear_sky">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">detect_clear_sky</span><span class="p">(</span>
+        <span class="n">poa</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_pred</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">40</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Identify clear-sky samples by comparing measured POA to predicted values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">resid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">poa</span> <span class="o">-</span> <span class="n">poa_pred</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">resid</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">,</span> <span class="n">resid</span></div>
+
+
+
+<span class="c1">#--------------------------------- FREQUENCY ANALYSIS ---------------------------------#</span>
+
+<div class="viewcode-block" id="prepare_signal">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.prepare_signal">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">prepare_signal</span><span class="p">(</span><span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate a sensor series and derive its numeric signal and sampling rate.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sensor</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Sensor series must have DatetimeIndex&quot;</span><span class="p">)</span>
+
+    <span class="c1"># compute sampling period</span>
+    <span class="n">deltas</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_series</span><span class="p">()</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="n">deltas</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>           <span class="c1"># typical sampling interval</span>
+    <span class="n">fs</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">dt</span>                  <span class="c1"># sampling frequency (Hz)</span>
+
+    <span class="n">signal</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">signal</span><span class="p">,</span> <span class="n">fs</span></div>
+
+
+<div class="viewcode-block" id="compute_fft">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.compute_fft">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_fft</span><span class="p">(</span>
+        <span class="n">signal</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">fs</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the one-sided FFT magnitude and frequency bins for a signal.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span>
+
+    <span class="n">fft_raw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfft</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span>
+    <span class="n">fft_mag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">fft_raw</span><span class="p">)</span> <span class="o">/</span> <span class="n">N</span>
+
+    <span class="n">freqs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mf">1.0</span><span class="o">/</span><span class="n">fs</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">freqs</span><span class="p">,</span> <span class="n">fft_mag</span></div>
+
+
+<div class="viewcode-block" id="frequency_analysis">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.frequency_analysis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">frequency_analysis</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">max_freq</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run FFT-based exploration of a sensor time series and visualize spectra.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sensor</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="n">signal</span><span class="p">,</span> <span class="n">fs</span> <span class="o">=</span> <span class="n">prepare_signal</span><span class="p">(</span><span class="n">sensor</span><span class="p">)</span>
+    <span class="n">freqs</span><span class="p">,</span> <span class="n">fft_mag</span> <span class="o">=</span> <span class="n">compute_fft</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">fs</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sampling frequency: </span><span class="si">{</span><span class="n">fs</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> Hz&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sampling interval: </span><span class="si">{</span><span class="mi">1</span><span class="o">/</span><span class="n">fs</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of samples: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">signal</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">plot_fft_spectrum</span><span class="p">(</span>
+        <span class="n">freqs</span><span class="p">,</span>
+        <span class="n">fft_mag</span><span class="p">,</span>
+        <span class="n">max_freq</span><span class="o">=</span><span class="n">max_freq</span>
+    <span class="p">)</span>
+
+    <span class="n">plot_frequency_histogram</span><span class="p">(</span>
+        <span class="n">freqs</span><span class="o">=</span><span class="n">freqs</span><span class="p">,</span>
+        <span class="n">fft_mag</span><span class="o">=</span><span class="n">fft_mag</span><span class="p">,</span>
+        <span class="n">bins</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Frequency Histogram of Irradiance Signal&quot;</span><span class="p">,</span>
+        <span class="n">save_dir</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+        <span class="n">show</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">freqs</span><span class="p">,</span> <span class="n">fft_mag</span></div>
+
+
+
+<div class="viewcode-block" id="frequency_mask">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.frequency_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">frequency_mask</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">sampling_sec</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">,</span>
+        <span class="n">low_freq_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.002</span><span class="p">,</span>
+        <span class="n">window_sec</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">3600</span><span class="p">,</span>
+        <span class="n">thershold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Using Short Time Fast Fourier Transform function gets occured frequencies from the input data. Then filter</span>
+<span class="sd">    low-frequencies representing the real trend and filter fast changing data. Returns the boolean clear sky mask.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">n_samples</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="n">fs</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">sampling_sec</span>
+    <span class="n">win_len</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">window_sec</span> <span class="o">/</span> <span class="n">sampling_sec</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">win_len</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">:</span>
+        <span class="n">win_len</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="k">if</span> <span class="n">win_len</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">win_len</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">g_std</span> <span class="o">=</span> <span class="mf">0.4</span> <span class="o">*</span> <span class="n">win_len</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span><span class="n">win_len</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="n">g_std</span><span class="p">,</span> <span class="n">sym</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">sft</span> <span class="o">=</span> <span class="n">ShortTimeFFT</span><span class="p">(</span>
+        <span class="n">win</span><span class="o">=</span><span class="n">window</span><span class="p">,</span>
+        <span class="n">hop</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>  <span class="c1"># 1-sample hop → full resolution</span>
+        <span class="n">fs</span><span class="o">=</span><span class="n">fs</span><span class="p">,</span>
+        <span class="n">fft_mode</span><span class="o">=</span><span class="s1">&#39;onesided&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">sx</span> <span class="o">=</span> <span class="n">sft</span><span class="o">.</span><span class="n">stft</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">mag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">sx</span><span class="p">)</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="n">sft</span><span class="o">.</span><span class="n">f</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">sft</span><span class="o">.</span><span class="n">t</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="n">n_samples</span><span class="p">)</span>
+
+    <span class="n">low_band</span> <span class="o">=</span> <span class="n">f</span> <span class="o">&lt;=</span> <span class="n">low_freq_max</span>
+
+    <span class="n">low_energy</span> <span class="o">=</span> <span class="n">mag</span><span class="p">[</span><span class="n">low_band</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">total_energy</span> <span class="o">=</span> <span class="n">mag</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">low_energy</span> <span class="o">/</span> <span class="p">(</span><span class="n">total_energy</span> <span class="o">+</span> <span class="mf">1e-12</span><span class="p">)</span>
+
+    <span class="n">local_mask</span> <span class="o">=</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="n">thershold</span>
+
+    <span class="n">T</span> <span class="o">=</span> <span class="n">sft</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="n">sample_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">t</span> <span class="o">/</span> <span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">sample_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">sample_idx</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">n_samples</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">sample_idx</span><span class="p">)</span>
+    <span class="n">mask</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">sample_idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">local_mask</span><span class="p">[</span><span class="n">sample_idx</span><span class="p">]</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">duplicated</span><span class="p">(</span><span class="n">keep</span><span class="o">=</span><span class="s1">&#39;first&#39;</span><span class="p">)]</span>
+
+    <span class="n">poa_global</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">index</span>
+
+    <span class="n">df_mask</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+        <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">sensor</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global&quot;</span><span class="p">:</span> <span class="n">poa_global</span><span class="p">,</span>
+        <span class="s2">&quot;mask&quot;</span><span class="p">:</span> <span class="n">mask</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">df_mask</span></div>
+
+
+
+<span class="c1">#--------------------------------- TWO MEDIANS METHOD ---------------------------------#</span>
+
+<div class="viewcode-block" id="two_medians_mask">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.two_medians_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">two_medians_mask</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">short_window</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;30min&quot;</span><span class="p">,</span>
+        <span class="n">long_window</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;4h&quot;</span><span class="p">,</span>
+        <span class="n">rel_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="n">min_run_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Having two windows - short and long (defalut to 30mins and 4hrs) moving from the begging of the data till the end.</span>
+<span class="sd">    Comparing the median data function detects clear sky periods. If the values are similar -&gt; clear sky,</span>
+<span class="sd">    if not -&gt; cloudy sky. Returns boolean clear sky mask.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sensor</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sensor</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;sensor.index must be a DatetimeIndex&quot;</span><span class="p">)</span>
+
+    <span class="n">med_short</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">short_window</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+    <span class="n">med_long</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">long_window</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">min_periods</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+
+    <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-9</span>
+    <span class="n">rel_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">med_short</span> <span class="o">-</span> <span class="n">med_long</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">med_long</span><span class="p">)</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span>
+
+    <span class="n">raw_mask</span> <span class="o">=</span> <span class="n">rel_diff</span> <span class="o">&lt;</span> <span class="n">rel_threshold</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">raw_mask</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">mask</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="n">start</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">and</span> <span class="n">start</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">i</span>
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="ow">and</span> <span class="n">start</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">i</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">else</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">run_length</span> <span class="o">=</span> <span class="n">end</span> <span class="o">-</span> <span class="n">start</span>
+            <span class="k">if</span> <span class="n">run_length</span> <span class="o">&lt;</span> <span class="n">min_run_length</span><span class="p">:</span>
+                <span class="n">values</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">poa_global</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">sensor</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">poa_global</span><span class="o">.</span><span class="n">index</span>
+
+
+    <span class="n">df_mask</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+        <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">sensor</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global&quot;</span><span class="p">:</span> <span class="n">poa_global</span><span class="p">,</span>
+        <span class="s2">&quot;mask&quot;</span><span class="p">:</span> <span class="n">mask</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">df_mask</span></div>
+
+
+
+<span class="c1">#--------------------------------- DERIVATIVE METHOD ---------------------------------#</span>
+
+<div class="viewcode-block" id="create_derivative_df">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.create_derivative_df">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_derivative_df</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates DataFrame containing smoothed data of basic sensor and derivatives of basic sensor and POA.</span>
+
+<span class="sd">    DataFrame contains:</span>
+
+<span class="sd">    * ``time``</span>
+<span class="sd">    * ``sensor``</span>
+<span class="sd">    * ``sensor smooth``</span>
+<span class="sd">    * ``sensor derivative``</span>
+<span class="sd">    * ``poa global``</span>
+<span class="sd">    * ``poa global smooth``</span>
+<span class="sd">    * ``poa global derivative``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">poa_global</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">x_smooth</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+
+    <span class="n">x_d_dt</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+
+    <span class="n">y_smooth</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+
+    <span class="n">y_d_dt</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+
+    <span class="n">x_smooth</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">x_smooth</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">x_d_dt</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">x_d_dt</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="n">y_smooth</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y_smooth</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">y_d_dt</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">y_d_dt</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+        <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">sensor</span><span class="p">,</span>
+        <span class="s2">&quot;sensor_smooth&quot;</span><span class="p">:</span> <span class="n">x_smooth</span><span class="p">,</span>
+        <span class="s2">&quot;sensor_d_dt&quot;</span><span class="p">:</span> <span class="n">x_d_dt</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global&quot;</span><span class="p">:</span> <span class="n">poa_global</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global_smooth&quot;</span><span class="p">:</span> <span class="n">y_smooth</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global_d_dt&quot;</span><span class="p">:</span> <span class="n">y_d_dt</span><span class="p">,</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="create_relative_derivative_mask_df">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.create_relative_derivative_mask_df">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_relative_derivative_mask_df</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates DataFrame containing smoothed data of basic sensor and relative derivatives of basic sensor and POA.</span>
+
+<span class="sd">    Compute a shape-consistency mask based on logarithmic temporal derivatives.</span>
+
+<span class="sd">    This function compares the *relative temporal dynamics* of a measured sensor</span>
+<span class="sd">    signal and a reference POA irradiance signal. The comparison is performed</span>
+<span class="sd">    using first-order temporal derivatives of the logarithms of both signals,</span>
+<span class="sd">    which correspond to relative (scale-invariant) rates of change.</span>
+
+<span class="sd">    The method identifies time periods where both signals evolve with similar</span>
+<span class="sd">    temporal shape, independent of their absolute magnitudes.</span>
+
+<span class="sd">    Steps performed:</span>
+
+<span class="sd">    1. Clip both input signals to a strictly positive lower bound to ensure</span>
+<span class="sd">       numerical stability of the logarithmic transform.</span>
+<span class="sd">    2. Apply a logarithmic transformation to both signals.</span>
+<span class="sd">    3. Estimate first temporal derivatives of the log-signals using a</span>
+<span class="sd">       Savitzky–Golay filter.</span>
+<span class="sd">    4. Compute the absolute difference between the logarithmic derivatives.</span>
+<span class="sd">    5. Generate a boolean mask where the derivative difference is below a</span>
+<span class="sd">       user-defined tolerance.</span>
+
+<span class="sd">    The logarithmic derivative has the physical interpretation:</span>
+
+<span class="sd">    .. math::</span>
+
+<span class="sd">            \\frac{d}{dt} \\log(x(t)) = \\frac{1}{x(t)} \\frac{dx(t)}{dt}</span>
+
+<span class="sd">    and therefore represents the relative rate of change of the signal rather</span>
+<span class="sd">    than its absolute slope.</span>
+
+<span class="sd">    DataFrame contains:</span>
+
+<span class="sd">    * ``time``</span>
+<span class="sd">    * ``sensor``</span>
+<span class="sd">    * ``sensor smooth``</span>
+<span class="sd">    * ``sensor relative derivative``</span>
+<span class="sd">    * ``poa global``</span>
+<span class="sd">    * ``poa global smooth``</span>
+<span class="sd">    * ``poa global relative derivative``</span>
+<span class="sd">    * ``mask``</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        * The comparison is scale-invariant and insensitive to multiplicative</span>
+<span class="sd">          calibration errors.</span>
+<span class="sd">        * This method is particularly useful for clear-sky detection, trend</span>
+<span class="sd">          consistency checks, and sensor calibration pipelines.</span>
+<span class="sd">        * Savitzky–Golay filtering provides simultaneous smoothing and derivative</span>
+<span class="sd">          estimation, reducing sensitivity to high-frequency noise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">poa_global</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    
+    <span class="n">x_clip</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">y_clip</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="n">log_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">x_clip</span><span class="p">)</span>
+    <span class="n">log_y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y_clip</span><span class="p">)</span>
+
+    <span class="n">log_sensor_smooth</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">log_x</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+    <span class="n">log_poa_global_smooth</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">log_y</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+
+    <span class="n">log_sensor_d_dt</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">log_x</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+
+    <span class="n">log_poa_global_d_dt</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">log_y</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">deriv</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">delta</span><span class="o">=</span><span class="n">delta</span>
+    <span class="p">)</span>
+
+    <span class="n">tau</span> <span class="o">=</span> <span class="mf">0.001</span> <span class="c1"># need to be adjusted</span>
+
+    <span class="n">shape_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">log_sensor_d_dt</span> <span class="o">-</span> <span class="n">log_poa_global_d_dt</span><span class="p">)</span>
+    <span class="n">shape_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape_diff</span> <span class="o">&lt;</span> <span class="n">tau</span><span class="p">)</span>
+
+    <span class="n">log_sensor_smooth</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">log_sensor_smooth</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">log_poa_global_smooth</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">log_poa_global_smooth</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">log_sensor_d_dt</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">log_sensor_d_dt</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">log_poa_global_d_dt</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">log_poa_global_d_dt</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">shape_mask</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">shape_mask</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;time&quot;</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+        <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">sensor</span><span class="p">,</span>
+        <span class="s2">&quot;sensor_smooth&quot;</span><span class="p">:</span> <span class="n">log_sensor_smooth</span><span class="p">,</span>
+        <span class="s2">&quot;sensor_d_dt&quot;</span><span class="p">:</span> <span class="n">log_sensor_d_dt</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global&quot;</span><span class="p">:</span> <span class="n">poa_global</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global_smooth&quot;</span><span class="p">:</span> <span class="n">log_poa_global_smooth</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global_d_dt&quot;</span><span class="p">:</span> <span class="n">log_poa_global_d_dt</span><span class="p">,</span>
+        <span class="s2">&quot;mask&quot;</span><span class="p">:</span> <span class="n">shape_mask</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<span class="c1">#--------------------------------- DETERMINE THE SIGNAL AMPLIFICATION SCALE ---------------------------------#</span>
+
+<div class="viewcode-block" id="determine_envelope_of_signal_peaks">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.determine_envelope_of_signal_peaks">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">determine_envelope_of_signal_peaks</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">time</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">smooth_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">minimum_disatnce_between_peaks</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">smoothing_factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mf">1e3</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determines the envelope of the signal peaks of the basic, raw sensor data. Function follows the steps:</span>
+
+<span class="sd">    1. Smooth the data with Savitkzy-Golay filter</span>
+<span class="sd">    2. Find peaks of the smoothed data</span>
+<span class="sd">    3. Takes the 80th percentile of the peaks</span>
+<span class="sd">    4. Calculate the spline through given peaks</span>
+<span class="sd">    5. Assign 0.0 value to the night period</span>
+<span class="sd">    6. Return the envelope of the signal peaks</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">poa_global</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">x_smooth</span> <span class="o">=</span> <span class="n">savgol_filter</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="n">smooth_window</span><span class="p">,</span>
+        <span class="n">polyorder</span><span class="o">=</span><span class="n">polyorder</span>
+    <span class="p">)</span>
+
+    <span class="n">x_smooth_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">x_smooth</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">time</span><span class="p">)</span>
+
+    <span class="n">peaks</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">find_peaks</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">x_smooth</span><span class="p">,</span>
+        <span class="n">distance</span><span class="o">=</span><span class="n">minimum_disatnce_between_peaks</span>
+    <span class="p">)</span>
+
+    <span class="c1">#peaks = pd.Series(peaks)</span>
+
+    <span class="n">thershold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">x_smooth</span><span class="p">[</span><span class="n">peaks</span><span class="p">],</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">good_peaks</span> <span class="o">=</span> <span class="n">peaks</span><span class="p">[</span><span class="n">x_smooth</span><span class="p">[</span><span class="n">peaks</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">thershold</span><span class="p">]</span>
+
+    <span class="n">night_periods</span> <span class="o">=</span> <span class="n">detect_night_periods</span><span class="p">(</span>
+        <span class="n">series</span><span class="o">=</span><span class="n">x_smooth_series</span><span class="p">,</span>
+        <span class="n">eps</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+        <span class="n">min_period_len</span><span class="o">=</span><span class="mi">50</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">night_periods</span><span class="p">:</span>
+        <span class="n">good_peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">good_peaks</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+        <span class="n">good_peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">good_peaks</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+    <span class="n">good_peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">good_peaks</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">good_peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">good_peaks</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_smooth</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">good_peaks</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="n">good_peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">good_peaks</span><span class="p">)</span>
+
+    <span class="n">spline</span> <span class="o">=</span> <span class="n">UnivariateSpline</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">=</span><span class="n">good_peaks</span><span class="p">,</span>
+        <span class="n">y</span><span class="o">=</span><span class="n">x_smooth</span><span class="p">[</span><span class="n">good_peaks</span><span class="p">],</span>
+        <span class="n">k</span><span class="o">=</span><span class="n">polyorder</span><span class="p">,</span>
+        <span class="n">s</span><span class="o">=</span><span class="n">smoothing_factor</span>
+    <span class="p">)</span>
+
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="n">envelope</span> <span class="o">=</span> <span class="n">spline</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">night_periods</span><span class="p">:</span>
+        <span class="n">envelope</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="n">envelope</span><span class="p">[</span><span class="n">envelope</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="k">return</span> <span class="n">envelope</span><span class="p">,</span> <span class="n">x_smooth_series</span></div>
+
+
+
+<div class="viewcode-block" id="detect_night_periods">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.detect_night_periods">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">detect_night_periods</span><span class="p">(</span>
+        <span class="n">series</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">min_period_len</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the periods when irradiance measurements are below input ``eps`` value (default to 0.1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">periods</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">zero_mask</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">eps</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="p">)</span>
+
+    <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">zero_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="n">i</span>
+            <span class="k">while</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span> <span class="ow">and</span> <span class="n">zero_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">min_period_len</span><span class="p">:</span>
+                <span class="n">periods</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">))</span>
+        <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">periods</span></div>
+
+
+
+<div class="viewcode-block" id="compute_gain_factor">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.clearsky_utils.compute_gain_factor">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_gain_factor</span><span class="p">(</span>
+        <span class="n">envelope</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">50.0</span><span class="p">,</span>
+        <span class="n">env_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span>
+        <span class="n">use_median</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the amplification factor by given envelope and poa global values. Returns the ``k`` gain factor,</span>
+<span class="sd">    which represents the value basic, raw sensor data need to be multiplied to get the sensor reference values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">poa_global</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">envelope</span><span class="o">.</span><span class="n">index</span>
+
+    <span class="n">envelope</span><span class="p">,</span> <span class="n">poa_global</span> <span class="o">=</span> <span class="n">envelope</span><span class="o">.</span><span class="n">align</span><span class="p">(</span><span class="n">poa_global</span><span class="p">,</span> <span class="n">join</span><span class="o">=</span><span class="s2">&quot;inner&quot;</span><span class="p">)</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">poa_global</span> <span class="o">&gt;</span> <span class="n">poa_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">envelope</span> <span class="o">&gt;</span> <span class="n">env_min</span><span class="p">)</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">envelope</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">poa_global</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+
+    <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No valid samples for scale estimation&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">use_median</span><span class="p">:</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">y</span> <span class="o">/</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">k</span></div>
+
+
+
+
+
+
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

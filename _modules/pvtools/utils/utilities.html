@@ -1,0 +1,583 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.utils.utilities &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.utils.utilities</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.utils.utilities</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">argparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArgumentParser</span><span class="p">,</span> <span class="n">Namespace</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.config.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelData</span><span class="p">,</span> <span class="n">ModelDirectories</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.io_file.reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dataframe_from_csv</span><span class="p">,</span> <span class="n">load_and_merge_calibrated_data_from_each_sensor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.io_file.writer</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_dataframe_to_csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.preprocess.preprocess_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">sanitize_filename</span>
+
+
+<div class="viewcode-block" id="argument_parsing">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.argument_parsing">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">argument_parsing</span><span class="p">(</span><span class="n">parser</span><span class="p">:</span> <span class="n">ArgumentParser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Namespace</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Argument parsing function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--action&quot;</span><span class="p">,</span>
+                        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;update&quot;</span><span class="p">,</span> <span class="s2">&quot;execute&quot;</span><span class="p">],</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Specify whether to &#39;update&#39; (train/save) or &#39;execute&#39; (load/apply) the model&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--model_id&quot;</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;default&quot;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Model identifier used for saving/loading coefficients&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--csv&quot;</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to CSV file with input data&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--calibration&quot;</span><span class="p">,</span>
+                        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="s2">&quot;fuzzy&quot;</span><span class="p">,</span> <span class="s2">&quot;divided&quot;</span><span class="p">,</span> <span class="s2">&quot;divided_mean&quot;</span><span class="p">,</span> <span class="s2">&quot;decision_tree&quot;</span><span class="p">,</span> <span class="s2">&quot;poly&quot;</span><span class="p">,</span>
+                                 <span class="s2">&quot;mlp&quot;</span><span class="p">],</span>
+                        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Defines which calibration method use to calibrate sensors&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--sensors&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">nargs</span><span class="o">=</span><span class="s2">&quot;+&quot;</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;List of sensors to calibrate.&quot;</span>
+                             <span class="s2">&quot; Number of specified column, counting from 0, skipping time column&quot;</span>
+                             <span class="s2">&quot; Accept multiple numbers separated by space&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--reference&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of specified column, counting from 0, skipping time column.&quot;</span>
+                             <span class="s2">&quot; Accept single number&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--project_dir&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">(),</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Force specific data directory to store logs, plots etc. &quot;</span>
+                             <span class="s2">&quot;(default: current working directory)&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--calibration_metrics_dir&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Directory which contains all metrics needed for calibration.&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--start_time_hour&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Start time (hour) for filter only day time period (GMT)&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--start_time_minute&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Start time (minute) for filter only day time period&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--end_time_hour&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mi">17</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Start time (hour) for filter only day time period (GMT)&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--end_time_minute&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Start time (minute) for filter only day time period&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--latitude&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mf">52.22977</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Decimal latitude coordinates of measurement station (default Warsaw)&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--longtitude&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mf">21.01178</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Decimal longtitude coordinates of measurement station (default Warsaw)&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--timezone&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="s2">&quot;Europe/Warsaw&quot;</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Time zone of measurement station (default Europe/Warsaw).&quot;</span>
+                           <span class="s2">&quot; Check &#39;pytz.all_timezones&#39; for all available options.&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--altitude&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Altitude of measurement station in meters&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--name&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="s2">&quot;Warsaw&quot;</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Name for measurement station&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--frequency&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="s2">&quot;1min&quot;</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Target timestamps for filterenig dataset.&quot;</span>
+                           <span class="s2">&quot; Available formats: &#39;xs&#39; &#39;xmin&#39; &#39;xh&#39; &#39;xms&#39; where x is a number&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--albedo&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Ratio of reflected solar irradiance to global horizontal irradiance (unitless).&quot;</span>
+                           <span class="s2">&quot; Default 0.25&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--surface_tilt&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Surface tilt of the sensor in degrees (default 0, horizontal)&quot;</span><span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--surface_azimuth&quot;</span><span class="p">,</span>
+                      <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                      <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                      <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                      <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Surface azimuth of the sensor in degrees (default 180, south)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--divided_linear_regression_intervals&quot;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;4h&quot;</span><span class="p">,</span>
+                        <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Time interval for one block in divided linear regression.&quot;</span>
+                             <span class="s2">&quot;For all possibilities refer to:&quot;</span>
+                             <span class="s2">&quot;https://pandas.pydata.org/docs/user_guide/timeseries.html#timeseries-offset-aliases&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="print_available_data_columns">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.print_available_data_columns">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print_available_data_columns</span><span class="p">(</span><span class="n">data_columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Print all available data columns possibly to choose as basic sensors and reference.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Available data columns:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data_columns</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="select_available_data_columns_to_process">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.select_available_data_columns_to_process">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">select_available_data_columns_to_process</span><span class="p">(</span>
+        <span class="n">data_columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">sensors_chosen</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">sensor_ref_chosen</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Select which columns are basic sensors and reference. Select by index, starting from 0.</span>
+
+<span class="sd">    NOTE:</span>
+<span class="sd">        * Sensors list cannot be empty.</span>
+<span class="sd">        * Sensor reference can be None or just one. Program do not accept multiple references.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_columns</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sensors_chosen</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;[ERROR] &#39;sensors_chosen&#39; cannot be empty&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">sensor_ref_chosen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sensor_ref_chosen</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;[ERROR] &#39;sensor_ref_chosen&#39; must be an int or None&quot;</span><span class="p">)</span>
+
+    <span class="n">sensors_chosen</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">(</span><span class="n">sensors_chosen</span><span class="p">))</span>
+
+    <span class="n">bad_sensors</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sensors_chosen</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">bad_sensors</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[ERROR] Sensor index out of range: </span><span class="si">{</span><span class="n">bad_sensors</span><span class="si">}</span><span class="s2">; there are </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">sensor_ref_chosen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">sensor_ref_chosen</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">sensor_ref_chosen</span> <span class="o">&gt;=</span> <span class="n">n</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[ERROR] Reference index out of range: </span><span class="si">{</span><span class="n">sensor_ref_chosen</span><span class="si">}</span><span class="s2">; there are </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sensor_ref_chosen</span> <span class="ow">in</span> <span class="n">sensors_chosen</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[ERROR] Sensors and reference overlap at index: </span><span class="si">{</span><span class="n">sensor_ref_chosen</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">sensor_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">data_columns</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">sensors_chosen</span><span class="p">]</span>
+    <span class="n">sensor_name_ref</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">sensor_ref_chosen</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">data_columns</span><span class="p">[</span><span class="n">sensor_ref_chosen</span><span class="p">]</span>
+
+    <span class="n">subset</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">sensor_names</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">sensor_name_ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">subset</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sensor_name_ref</span><span class="p">)</span>
+    <span class="n">df_out</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">subset</span><span class="o">=</span><span class="n">subset</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sensor_names</span><span class="p">,</span> <span class="n">sensor_name_ref</span><span class="p">,</span> <span class="n">df_out</span></div>
+
+
+
+<div class="viewcode-block" id="load_filtered_and_calculated_data_needed_for_execute_function_periods_detected">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.load_filtered_and_calculated_data_needed_for_execute_function_periods_detected">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_filtered_and_calculated_data_needed_for_execute_function_periods_detected</span><span class="p">(</span>
+        <span class="n">model_directories</span><span class="p">:</span> <span class="n">ModelDirectories</span><span class="p">,</span>
+        <span class="n">sensor_name_ref</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads filtered and calculated data needed for execute function. Periods (sunny/cloudy) detected.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">model_directories</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_directories</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">))</span>
+
+    <span class="n">df_sunny</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">model_directories</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="s2">&quot;sunny_periods&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_directories</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">_all.csv&quot;</span><span class="p">))</span>
+
+    <span class="n">df_cloudy</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">model_directories</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="s2">&quot;cloudy_periods&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_directories</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">_all.csv&quot;</span><span class="p">))</span>
+
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">model_directories</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">model_directories</span><span class="o">.</span><span class="n">filename</span> <span class="o">/</span> <span class="s2">&quot;poa_values.csv&quot;</span><span class="p">))</span>
+
+    <span class="n">sensor_name</span> <span class="o">=</span> <span class="n">sanitize_filename</span><span class="p">(</span><span class="n">sensor_name_ref</span><span class="p">)</span>
+
+    <span class="n">clearsky_periods</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">model_directories</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">model_directories</span><span class="o">.</span><span class="n">filename</span> <span class="o">/</span>
+             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sensor_name</span><span class="si">}</span><span class="s2">_sunny_periods_all.csv&quot;</span><span class="p">))</span>
+
+    <span class="n">cloudy_periods</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">model_directories</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">model_directories</span><span class="o">.</span><span class="n">filename</span> <span class="o">/</span>
+             <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sensor_name</span><span class="si">}</span><span class="s2">_cloudy_periods_all.csv&quot;</span><span class="p">))</span>
+
+    <span class="n">df_sunny</span><span class="p">[</span><span class="s1">&#39;if_sunny&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">df_cloudy</span><span class="p">[</span><span class="s1">&#39;if_sunny&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">return_dfs</span> <span class="o">=</span> <span class="p">[</span><span class="n">df</span><span class="p">,</span> <span class="n">df_sunny</span><span class="p">,</span> <span class="n">df_cloudy</span><span class="p">,</span> <span class="n">poa</span><span class="p">,</span> <span class="n">clearsky_periods</span><span class="p">,</span> <span class="n">cloudy_periods</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">return_dfs</span></div>
+
+
+
+<div class="viewcode-block" id="load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected</span><span class="p">(</span>
+        <span class="n">data_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads filtered and calculated data needed for execute function. No periods (sunny/cloudy) detected.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">))</span></div>
+
+
+
+<div class="viewcode-block" id="check_if_sunny_cloudy_periods_exists">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.check_if_sunny_cloudy_periods_exists">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_if_sunny_cloudy_periods_exists</span><span class="p">(</span><span class="n">data_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Verify whether sunny and cloudy period directories are present in the data folder.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">check_dir_sunny</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="s2">&quot;sunny_periods&quot;</span><span class="p">)</span>
+    <span class="n">check_dir_cloudy</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="s2">&quot;cloudy_periods&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">check_dir_sunny</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">check_dir_cloudy</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="initialize_dirs_for_base_dir">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.initialize_dirs_for_base_dir">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">initialize_dirs_for_base_dir</span><span class="p">(</span><span class="n">project_dir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates three basic project structure directories:</span>
+
+<span class="sd">    * ``logs`` - keeps all calculated metrics and parameters. (.json and .csv files)</span>
+<span class="sd">    * ``plots`` - keeps all generated graphs (.png files)</span>
+<span class="sd">    * ``data`` - keeps data. Filtered, calibrated, generated. Saved dataframes (.csv files)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">log_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">project_dir</span><span class="p">,</span> <span class="s2">&quot;logs&quot;</span><span class="p">))</span>
+    <span class="n">plot_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">project_dir</span><span class="p">,</span> <span class="s2">&quot;plots&quot;</span><span class="p">))</span>
+    <span class="n">data_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">project_dir</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">))</span>
+
+    <span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">plot_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">data_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">log_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">,</span> <span class="n">data_dir</span></div>
+
+
+
+<div class="viewcode-block" id="initialize_dirs_for_loading_dependencies">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.initialize_dirs_for_loading_dependencies">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">initialize_dirs_for_loading_dependencies</span><span class="p">(</span><span class="n">calibration_metrics_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialize loading metrics directory.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">log_dir_dependencies</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">calibration_metrics_path</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
+    <span class="n">log_dir_dependencies</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">log_dir_dependencies</span></div>
+
+
+
+<div class="viewcode-block" id="create_calibrated_dataframe">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.create_calibrated_dataframe">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_calibrated_dataframe</span><span class="p">(</span>
+        <span class="n">model_parameters</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">model_directories</span><span class="p">:</span> <span class="n">ModelDirectories</span><span class="p">,</span>
+        <span class="n">calibration_directory</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Combines calibrated Series data for each sensor to one DataFrame. Call function to load .csv files from specified</span>
+<span class="sd">    (inside function) path and save combined DataFrame to .csv file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#FIXME - function not used!!!</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_and_merge_calibrated_data_from_each_sensor</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">model_parameters</span><span class="o">.</span><span class="n">df</span><span class="p">,</span>
+        <span class="n">sensor_names</span><span class="o">=</span><span class="n">model_parameters</span><span class="o">.</span><span class="n">sensor_names</span><span class="p">,</span>
+        <span class="n">calibration_directory</span><span class="o">=</span><span class="n">calibration_directory</span><span class="p">,</span>
+        <span class="n">sensor_name_ref</span> <span class="o">=</span> <span class="n">model_parameters</span><span class="o">.</span><span class="n">sensor_name_ref</span>
+    <span class="p">)</span>
+
+    <span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_directories</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="s2">&quot;calibrated&quot;</span> <span class="o">/</span> <span class="n">model_directories</span><span class="o">.</span><span class="n">filename</span> <span class="o">/</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">calibration_directory</span><span class="o">.</span><span class="n">stem</span><span class="si">}</span><span class="s2">.csv&quot;</span>
+                    <span class="p">)</span>
+
+    <span class="n">save_dataframe_to_csv</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="o">=</span><span class="n">save_dir</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="create_dataframe_with_sensor_values_and_poa">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.create_dataframe_with_sensor_values_and_poa">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_dataframe_with_sensor_values_and_poa</span><span class="p">(</span>
+        <span class="n">df_postprocess</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">df_calibrated</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">sensor_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">poa</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">data_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates DataFrame with sensor and POA values.</span>
+
+<span class="sd">    Save combined DataFrame to .csv file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">df_org</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">))</span>
+    <span class="n">df_org</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">sanitize_filename</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">df_org</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="n">df_org</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df_org</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">])</span>
+
+    <span class="n">df_tmp_org</span> <span class="o">=</span> <span class="n">df_postprocess</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df_tmp_postprocess_calibrated</span> <span class="o">=</span> <span class="n">df_postprocess</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">df_tmp_calibrated</span> <span class="o">=</span> <span class="n">df_calibrated</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">sensor_names</span><span class="p">:</span>
+        <span class="n">df_tmp_org</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_tmp_org</span><span class="p">,</span> <span class="n">df_org</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">col</span><span class="p">]],</span> <span class="n">on</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+        <span class="n">df_tmp_postprocess_calibrated</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_tmp_postprocess_calibrated</span><span class="p">,</span> <span class="n">df_postprocess</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">col</span><span class="p">]],</span>
+                                                 <span class="n">on</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+        <span class="n">df_tmp_calibrated</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">df_tmp_calibrated</span><span class="p">,</span> <span class="n">df_calibrated</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">col</span><span class="p">]],</span>
+                                                 <span class="n">on</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+
+    <span class="n">df_org_sensor_data_with_poa_global</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">df_tmp_org</span><span class="p">,</span>
+        <span class="n">poa</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;poa_global&quot;</span><span class="p">]],</span>
+        <span class="n">on</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">df_postprocess_calibrated_sensor_data_with_poa_global</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">df_tmp_postprocess_calibrated</span><span class="p">,</span>
+        <span class="n">poa</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;poa_global&quot;</span><span class="p">]],</span>
+        <span class="n">on</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">df_calibrated_sensor_data_with_poa_global</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span>
+        <span class="n">df_tmp_calibrated</span><span class="p">,</span>
+        <span class="n">poa</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;poa_global&quot;</span><span class="p">]],</span>
+        <span class="n">on</span><span class="o">=</span><span class="s2">&quot;time&quot;</span><span class="p">,</span>
+        <span class="n">how</span><span class="o">=</span><span class="s2">&quot;left&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">output_path_org</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;df_org_sensor_data_with_poa_global.csv&quot;</span>
+    <span class="n">output_path_postprocess_calibrated</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;df_postprocess_calibrated_sensor_data_with_poa_global.csv&quot;</span>
+    <span class="n">output_path_calibrated</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">data_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;filtered&quot;</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;df_calibrated_sensor_data_with_poa_global.csv&quot;</span>
+
+    <span class="n">save_dataframe_to_csv</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df_org_sensor_data_with_poa_global</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="o">=</span><span class="n">output_path_org</span><span class="p">,</span>
+        <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">index_label</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span>
+
+    <span class="n">save_dataframe_to_csv</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df_postprocess_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="o">=</span><span class="n">output_path_postprocess_calibrated</span><span class="p">,</span>
+        <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">index_label</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span>
+
+    <span class="n">save_dataframe_to_csv</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="o">=</span><span class="n">output_path_calibrated</span><span class="p">,</span>
+        <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">index_label</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">)</span>
+
+    <span class="n">dfs_result</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">df_org</span><span class="p">,</span>
+        <span class="n">df_postprocess_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+        <span class="n">df_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+        <span class="n">df_org_sensor_data_with_poa_global</span>
+    <span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">dfs_result</span></div>
+
+
+<div class="viewcode-block" id="check_if_calibration_method_available">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.utilities.check_if_calibration_method_available">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">check_if_calibration_method_available</span><span class="p">(</span>
+        <span class="n">log_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks if calibration method is available. Possible choices are:</span>
+
+<span class="sd">    * ``linear`` - linear regression</span>
+<span class="sd">    * ``fuzzy`` - fuzzy linear regression</span>
+<span class="sd">    * ``divided`` - divided linear regression</span>
+<span class="sd">    * ``divided_mean`` - divided linear regression using mean values</span>
+<span class="sd">    * ``poly`` - polynomial regression</span>
+<span class="sd">    * ``decision_tree`` - decision tree regression</span>
+<span class="sd">    * ``mlp`` - MLP regression</span>
+
+<span class="sd">    Warning:</span>
+<span class="sd">        Unsupported calibration method cause with ValueError!</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">method_dirs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;linear&quot;</span><span class="p">:</span> <span class="s2">&quot;linear_regression&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;fuzzy&quot;</span><span class="p">:</span> <span class="s2">&quot;fuzzy_regression&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;divided&quot;</span><span class="p">:</span> <span class="s2">&quot;divided_linear_regression&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;divided_mean&quot;</span><span class="p">:</span> <span class="s2">&quot;divided_linear_regression_mean&quot;</span><span class="p">,</span> <span class="c1"># Later need to be changed</span>
+        <span class="s2">&quot;decision_tree&quot;</span><span class="p">:</span> <span class="s2">&quot;decision_tree_regression&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;poly&quot;</span><span class="p">:</span> <span class="s2">&quot;polynominal_regression&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;mlp&quot;</span><span class="p">:</span> <span class="s2">&quot;mlp_regression&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">calibration_method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">method_dirs</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported calibration method: </span><span class="si">{</span><span class="n">calibration_method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="n">method_dirs</span><span class="p">[</span><span class="n">calibration_method</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">directory</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

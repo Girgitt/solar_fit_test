@@ -1,0 +1,229 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.solar_domain.determine_orientation &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.solar_domain.determine_orientation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.solar_domain.determine_orientation</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pvlib</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvanalytics.system</span><span class="w"> </span><span class="kn">import</span> <span class="n">_peak_times</span> <span class="c1"># infer_orientation_daily_peak</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.solar_domain.clearsky</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_solar_data_for_location_and_time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.config.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClearSkyParameters</span><span class="p">,</span> <span class="n">ModelData</span><span class="p">,</span> <span class="n">ModelTimes</span>
+
+
+<div class="viewcode-block" id="determine_system_azimuth_and_tilt">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.determine_orientation.determine_system_azimuth_and_tilt">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">determine_system_azimuth_and_tilt</span><span class="p">(</span>
+        <span class="n">model_data</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="p">:</span> <span class="n">ModelTimes</span><span class="p">,</span>
+        <span class="n">clearsky_params</span><span class="p">:</span> <span class="n">ClearSkyParameters</span><span class="p">,</span>
+        <span class="n">sunny_mask</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate array tilt and azimuth by matching measured peaks to simulated irradiance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sensor_name_ref</span> <span class="o">=</span> <span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span>
+    <span class="n">input_tilt</span> <span class="o">=</span> <span class="n">clearsky_params</span><span class="o">.</span><span class="n">surface_tilt</span>
+    <span class="n">input_azimuth</span> <span class="o">=</span> <span class="n">clearsky_params</span><span class="o">.</span><span class="n">surface_azimuth</span>
+
+    <span class="n">tilts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">input_tilt</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="n">input_tilt</span><span class="o">+</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">azimuths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">input_azimuth</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="n">input_azimuth</span><span class="o">+</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">measured</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">sensor_name_ref</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
+
+    <span class="p">(</span><span class="n">tus</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">solarpos</span><span class="p">,</span> <span class="n">cs</span><span class="p">,</span> <span class="n">airmass</span><span class="p">,</span> <span class="n">dni_extra</span><span class="p">)</span> <span class="o">=</span> <span class="n">get_solar_data_for_location_and_time</span><span class="p">(</span>
+        <span class="n">clearsky_params</span><span class="o">=</span><span class="n">clearsky_params</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="o">=</span><span class="n">model_times</span>
+    <span class="p">)</span>
+
+    <span class="n">freq</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">model_times</span><span class="o">.</span><span class="n">frequency</span><span class="p">)</span>
+    <span class="n">measured</span> <span class="o">=</span> <span class="n">measured</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;nearest&quot;</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="n">freq</span><span class="p">)</span>
+    <span class="n">sunny_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">sunny_mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;boolean&#39;</span><span class="p">)</span>
+                  <span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">tolerance</span><span class="o">=</span><span class="n">freq</span><span class="p">)</span>
+                  <span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+                  <span class="p">)</span>
+
+    <span class="n">azimuth_deg</span><span class="p">,</span> <span class="n">tilt_deg</span> <span class="o">=</span> <span class="n">infer_orientation_daily_peak</span><span class="p">(</span>
+        <span class="n">power_or_poa</span><span class="o">=</span><span class="n">measured</span><span class="p">,</span>
+        <span class="n">sunny</span><span class="o">=</span><span class="n">sunny_mask</span><span class="p">,</span>
+        <span class="n">tilts</span><span class="o">=</span><span class="n">tilts</span><span class="p">,</span>
+        <span class="n">azimuths</span><span class="o">=</span><span class="n">azimuths</span><span class="p">,</span>
+        <span class="n">solar_azimuth</span><span class="o">=</span><span class="n">solarpos</span><span class="p">[</span><span class="s1">&#39;azimuth&#39;</span><span class="p">],</span>
+        <span class="n">solar_zenith</span><span class="o">=</span><span class="n">solarpos</span><span class="p">[</span><span class="s1">&#39;apparent_zenith&#39;</span><span class="p">],</span>
+        <span class="n">ghi</span><span class="o">=</span><span class="n">cs</span><span class="p">[</span><span class="s1">&#39;ghi&#39;</span><span class="p">],</span>
+        <span class="n">dhi</span><span class="o">=</span><span class="n">cs</span><span class="p">[</span><span class="s1">&#39;dhi&#39;</span><span class="p">],</span>
+        <span class="n">dni</span><span class="o">=</span><span class="n">cs</span><span class="p">[</span><span class="s1">&#39;dni&#39;</span><span class="p">],</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Estimated tilt: </span><span class="si">{</span><span class="n">tilt_deg</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°, azimuth: </span><span class="si">{</span><span class="n">azimuth_deg</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">°&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">tilt_deg</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">azimuth_deg</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="infer_orientation_daily_peak">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.determine_orientation.infer_orientation_daily_peak">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">infer_orientation_daily_peak</span><span class="p">(</span>
+        <span class="n">power_or_poa</span><span class="p">,</span>
+        <span class="n">sunny</span><span class="p">,</span>
+        <span class="n">tilts</span><span class="p">,</span>
+        <span class="n">azimuths</span><span class="p">,</span>
+        <span class="n">solar_azimuth</span><span class="p">,</span>
+        <span class="n">solar_zenith</span><span class="p">,</span>
+        <span class="n">ghi</span><span class="p">,</span>
+        <span class="n">dhi</span><span class="p">,</span>
+        <span class="n">dni</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Select tilt and azimuth values that minimize squared error against modeled peak azimuths.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">peak_times</span> <span class="o">=</span> <span class="n">_peak_times</span><span class="p">(</span><span class="n">power_or_poa</span><span class="p">[</span><span class="n">sunny</span><span class="p">])</span> <span class="c1">#FIXME - function _peak_times() not always works correct. Test tilt=15 and azimuth=90</span>
+    <span class="n">azimuth_by_minute</span> <span class="o">=</span> <span class="n">solar_azimuth</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="s1">&#39;1min&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)</span>
+    <span class="n">modeled_azimuth</span> <span class="o">=</span> <span class="n">azimuth_by_minute</span><span class="p">[</span><span class="n">peak_times</span><span class="p">]</span>
+    <span class="n">best_azimuth</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">best_tilt</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">smallest_sse</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">for</span> <span class="n">azimuth</span> <span class="ow">in</span> <span class="n">azimuths</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">tilt</span> <span class="ow">in</span> <span class="n">tilts</span><span class="p">:</span>
+            <span class="n">poa</span> <span class="o">=</span> <span class="n">pvlib</span><span class="o">.</span><span class="n">irradiance</span><span class="o">.</span><span class="n">get_total_irradiance</span><span class="p">(</span>
+                <span class="n">tilt</span><span class="p">,</span>
+                <span class="n">azimuth</span><span class="p">,</span>
+                <span class="n">solar_zenith</span><span class="p">,</span>
+                <span class="n">solar_azimuth</span><span class="p">,</span>
+                <span class="n">ghi</span><span class="o">=</span><span class="n">ghi</span><span class="p">,</span>
+                <span class="n">dhi</span><span class="o">=</span><span class="n">dhi</span><span class="p">,</span>
+                <span class="n">dni</span><span class="o">=</span><span class="n">dni</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">poa_global</span>
+            <span class="n">idx_daily_max</span> <span class="o">=</span> <span class="n">by_day</span><span class="p">(</span><span class="n">poa</span><span class="p">)</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()</span>
+            <span class="c1">#poa_azimuths = azimuth_by_minute.reindex(idx_daily_max, method=&quot;nearest&quot;, tolerance=&quot;30s&quot;)</span>
+            <span class="n">poa_azimuths</span> <span class="o">=</span> <span class="n">azimuth_by_minute</span><span class="p">[</span><span class="n">by_day</span><span class="p">(</span><span class="n">poa</span><span class="p">)</span><span class="o">.</span><span class="n">idxmax</span><span class="p">()]</span> <span class="c1">#- this was originally in library. But it does not work!</span>
+            <span class="n">filtered_azimuths</span> <span class="o">=</span> <span class="n">poa_azimuths</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span>
+                <span class="n">poa_azimuths</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
+                <span class="n">modeled_azimuth</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">date</span>
+            <span class="p">)]</span>
+            <span class="n">sum_of_squares</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">filtered_azimuths</span><span class="o">.</span><span class="n">values</span> <span class="o">-</span> <span class="n">modeled_azimuth</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">smallest_sse</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">smallest_sse</span> <span class="o">&gt;</span> <span class="n">sum_of_squares</span><span class="p">):</span>
+                <span class="n">smallest_sse</span> <span class="o">=</span> <span class="n">sum_of_squares</span>
+                <span class="n">best_azimuth</span> <span class="o">=</span> <span class="n">azimuth</span>
+                <span class="n">best_tilt</span> <span class="o">=</span> <span class="n">tilt</span>
+
+    <span class="k">return</span> <span class="n">best_azimuth</span><span class="p">,</span> <span class="n">best_tilt</span></div>
+
+
+
+<div class="viewcode-block" id="by_day">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.determine_orientation.by_day">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">by_day</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Group a time-indexed series by day preserving timezone information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">date</span><span class="p">)</span><span class="o">.</span><span class="n">tz_localize</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tz</span><span class="p">))</span> <span class="c1"># original code</span></div>
+
+    <span class="c1">#return data.groupby(pd.Grouper(freq=&quot;D&quot;))</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

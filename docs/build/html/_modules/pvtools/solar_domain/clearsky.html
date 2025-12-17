@@ -1,0 +1,542 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.solar_domain.clearsky &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.solar_domain.clearsky</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.solar_domain.clearsky</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pvlib</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">product</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatetimeIndex</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">irradiance</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvlib.location</span><span class="w"> </span><span class="kn">import</span> <span class="n">Location</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvlib.clearsky</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_clearsky</span><span class="p">,</span> <span class="n">simplified_solis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvlib_mod.clearsky_mod</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_clearsky_mod</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.config.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">ClearSkyParameters</span><span class="p">,</span> <span class="n">ModelTimes</span><span class="p">,</span> <span class="n">ModelDirectories</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.preprocess.preprocess_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">sanitize_filename</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.io_file.writer</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_dataframe_to_csv</span>
+
+
+<div class="viewcode-block" id="clear_sky">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.clear_sky">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">clear_sky</span><span class="p">(</span>
+        <span class="n">clearsky_params</span><span class="p">:</span> <span class="n">ClearSkyParameters</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="p">:</span> <span class="n">ModelDirectories</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="p">:</span> <span class="n">ModelTimes</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Using external library ``pvlib`` calculates DataFrame of Plane-Of-Array (POA) and DataFrame of clear sky.</span>
+
+<span class="sd">    Returns: **poa**, **cs**</span>
+
+<span class="sd">        * **poa** (DataFrame) - contains following columns:</span>
+
+<span class="sd">            * ``time`` : Timestamps</span>
+<span class="sd">            * ``poa_global`` : Total in-plane irradiance [Wm⁻²]</span>
+<span class="sd">            * ``poa_direct`` : Total in-plane beam irradiance [Wm⁻²]</span>
+<span class="sd">            * ``poa_diffuse`` : Total in-plane diffuse irradiance [Wm⁻²]</span>
+<span class="sd">            * ``poa_sky_diffuse`` : In-plane diffuse irradiance from sky [Wm⁻²]</span>
+<span class="sd">            * ``poa_ground_diffuse`` : In-plane diffuse irradiance from ground [Wm⁻²]</span>
+
+
+<span class="sd">        * **cs** (DataFrame) - contains following columns:</span>
+
+<span class="sd">            * ``dni`` : Direct Normal Irradiance [Wm⁻²]</span>
+<span class="sd">            * ``dhi`` : Diffuse Horizontal Irradiance [Wm⁻²]</span>
+<span class="sd">            * ``ghi`` : Global Horizontal Irradiance [Wm⁻²]</span>
+
+<span class="sd">    There is math forumla to describe dependencies of ``cs`` values:</span>
+
+<span class="sd">    GHI = DNI × cos(θ) + DHI</span>
+
+<span class="sd">    where:</span>
+<span class="sd">        θ is the solar zenith angle</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span>
+    <span class="n">save_dir</span> <span class="o">=</span> <span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span>
+
+    <span class="p">(</span><span class="n">tus</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">solarpos</span><span class="p">,</span> <span class="n">cs</span><span class="p">,</span> <span class="n">airmass</span><span class="p">,</span> <span class="n">dni_extra</span><span class="p">)</span> <span class="o">=</span> <span class="n">get_solar_data_for_location_and_time</span><span class="p">(</span><span class="n">clearsky_params</span><span class="p">,</span> <span class="n">model_times</span><span class="p">)</span>
+
+    <span class="n">dni</span> <span class="o">=</span> <span class="n">cs</span><span class="p">[</span><span class="s1">&#39;dni&#39;</span><span class="p">]</span>
+    <span class="n">dhi</span> <span class="o">=</span> <span class="n">cs</span><span class="p">[</span><span class="s1">&#39;dhi&#39;</span><span class="p">]</span>
+    <span class="n">ghi</span> <span class="o">=</span> <span class="n">cs</span><span class="p">[</span><span class="s1">&#39;ghi&#39;</span><span class="p">]</span>
+
+    <span class="c1"># panel orientation</span>
+    <span class="n">surface_tilt</span> <span class="o">=</span> <span class="n">clearsky_params</span><span class="o">.</span><span class="n">surface_tilt</span>
+    <span class="n">surface_azimuth</span> <span class="o">=</span> <span class="n">clearsky_params</span><span class="o">.</span><span class="n">surface_azimuth</span>
+
+    <span class="c1"># get POA</span>
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">irradiance</span><span class="o">.</span><span class="n">get_total_irradiance</span><span class="p">(</span>
+        <span class="n">surface_tilt</span><span class="o">=</span><span class="n">surface_tilt</span><span class="p">,</span>
+        <span class="n">surface_azimuth</span><span class="o">=</span><span class="n">surface_azimuth</span><span class="p">,</span>
+        <span class="n">solar_zenith</span><span class="o">=</span><span class="n">solarpos</span><span class="p">[</span><span class="s1">&#39;zenith&#39;</span><span class="p">],</span>
+        <span class="n">solar_azimuth</span><span class="o">=</span><span class="n">solarpos</span><span class="p">[</span><span class="s1">&#39;azimuth&#39;</span><span class="p">],</span>
+        <span class="n">dni</span><span class="o">=</span><span class="n">dni</span><span class="p">,</span>
+        <span class="n">ghi</span><span class="o">=</span><span class="n">ghi</span><span class="p">,</span>
+        <span class="n">dhi</span><span class="o">=</span><span class="n">dhi</span><span class="p">,</span>
+        <span class="n">dni_extra</span><span class="o">=</span><span class="n">dni_extra</span><span class="p">,</span>
+        <span class="n">airmass</span><span class="o">=</span><span class="n">airmass</span><span class="p">,</span>
+        <span class="n">albedo</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">albedo</span><span class="p">,</span>
+        <span class="n">model</span><span class="o">=</span><span class="s1">&#39;perez-driesse&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">poa</span><span class="o">.</span><span class="n">rename_axis</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">poa</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">save_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
+        <span class="n">output_path</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="p">(</span><span class="s2">&quot;poa_values&quot;</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">poa</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">poa</span><span class="p">,</span> <span class="n">cs</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="get_solar_data_for_location_and_time">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.get_solar_data_for_location_and_time">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_solar_data_for_location_and_time</span><span class="p">(</span>
+        <span class="n">clearsky_params</span><span class="p">:</span> <span class="n">ClearSkyParameters</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="p">:</span> <span class="n">ModelTimes</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Location</span><span class="p">,</span> <span class="n">DatetimeIndex</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        clearsky_params:</span>
+<span class="sd">        model_times:</span>
+
+<span class="sd">    Returns:</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">tus</span> <span class="o">=</span> <span class="n">Location</span><span class="p">(</span>
+        <span class="n">latitude</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">warsaw_lat</span><span class="p">,</span>
+        <span class="n">longitude</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">warsaw_lon</span><span class="p">,</span>
+        <span class="n">tz</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">tz</span><span class="p">,</span>
+        <span class="n">altitude</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">altitude</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">name</span>
+    <span class="p">)</span>
+
+    <span class="n">times</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span>
+        <span class="n">start</span><span class="o">=</span><span class="n">model_times</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+        <span class="n">end</span><span class="o">=</span><span class="n">model_times</span><span class="o">.</span><span class="n">end_time</span><span class="p">,</span>
+        <span class="n">freq</span><span class="o">=</span><span class="n">model_times</span><span class="o">.</span><span class="n">frequency</span>
+    <span class="p">)</span>
+
+    <span class="n">solpos</span> <span class="o">=</span> <span class="n">pvlib</span><span class="o">.</span><span class="n">solarposition</span><span class="o">.</span><span class="n">get_solarposition</span><span class="p">(</span>
+        <span class="n">time</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>
+        <span class="n">latitude</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">warsaw_lat</span><span class="p">,</span>
+        <span class="n">longitude</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">warsaw_lon</span><span class="p">,</span>
+        <span class="n">altitude</span><span class="o">=</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">altitude</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s1">&#39;pyephem&#39;</span><span class="p">,</span> <span class="c1">#&#39;nrel_numba&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">apparent_zenith</span> <span class="o">=</span> <span class="n">solpos</span><span class="p">[</span><span class="s1">&#39;apparent_zenith&#39;</span><span class="p">]</span>
+    <span class="n">airmass</span> <span class="o">=</span> <span class="n">pvlib</span><span class="o">.</span><span class="n">atmosphere</span><span class="o">.</span><span class="n">get_relative_airmass</span><span class="p">(</span><span class="n">apparent_zenith</span><span class="p">)</span>
+
+    <span class="n">apparent_elevation</span> <span class="o">=</span> <span class="n">solpos</span><span class="p">[</span><span class="s1">&#39;apparent_elevation&#39;</span><span class="p">]</span>
+    <span class="n">aod700</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">precipitable_water</span> <span class="o">=</span> <span class="mf">1.5</span> <span class="c1">#FIXME This parameters shouldn&#39;t be hard-coded. Wait for response to download data!</span>
+    <span class="n">pressure</span> <span class="o">=</span> <span class="n">pvlib</span><span class="o">.</span><span class="n">atmosphere</span><span class="o">.</span><span class="n">alt2pres</span><span class="p">(</span><span class="n">clearsky_params</span><span class="o">.</span><span class="n">altitude</span><span class="p">)</span>
+
+    <span class="c1">#FIXME - variables should be input variables. Hard coded for testing</span>
+    <span class="n">dni_extra</span> <span class="o">=</span> <span class="n">pvlib</span><span class="o">.</span><span class="n">irradiance</span><span class="o">.</span><span class="n">get_extra_radiation</span><span class="p">(</span>
+        <span class="n">datetime_or_doy</span><span class="o">=</span><span class="n">times</span><span class="p">,</span>
+        <span class="n">solar_constant</span><span class="o">=</span><span class="mf">1366.1</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s1">&#39;pyephem&#39;</span><span class="p">,</span> <span class="c1">#&#39;nrel&#39;</span>
+        <span class="p">)</span>
+
+    <span class="n">cs</span> <span class="o">=</span> <span class="n">simplified_solis</span><span class="p">(</span>
+        <span class="n">apparent_elevation</span><span class="o">=</span><span class="n">apparent_elevation</span><span class="p">,</span>
+        <span class="n">aod700</span><span class="o">=</span><span class="n">aod700</span><span class="p">,</span>
+        <span class="n">precipitable_water</span><span class="o">=</span><span class="n">precipitable_water</span><span class="p">,</span>
+        <span class="n">pressure</span><span class="o">=</span><span class="n">pressure</span><span class="p">,</span>
+        <span class="n">dni_extra</span><span class="o">=</span><span class="n">dni_extra</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">tus</span><span class="p">,</span> <span class="n">times</span><span class="p">,</span> <span class="n">solpos</span><span class="p">,</span> <span class="n">cs</span><span class="p">,</span> <span class="n">airmass</span><span class="p">,</span> <span class="n">dni_extra</span></div>
+
+
+
+<div class="viewcode-block" id="detect_clearsky_periods">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.detect_clearsky_periods">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">detect_clearsky_periods</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">poa</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">sensor_name_ref</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">save_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Derive sunny and cloudy masks by comparing measured irradiance to POA reference data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">poa</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">,</span> <span class="n">utc</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">tz_convert</span><span class="p">(</span><span class="s1">&#39;Europe/Warsaw&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">poa</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">tz</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">poa</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">poa</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">tz_localize</span><span class="p">(</span><span class="s1">&#39;Europe/Warsaw&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">poa</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">poa</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">tz_convert</span><span class="p">(</span><span class="s1">&#39;Europe/Warsaw&#39;</span><span class="p">)</span>
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">poa</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)</span>
+
+    <span class="n">poa</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">poa</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">])</span>
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">poa</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)</span>
+    <span class="n">poa_global</span> <span class="o">=</span> <span class="n">poa</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">measured</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">sensor_name_ref</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">measured</span> <span class="o">=</span> <span class="n">measured</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s1">&#39;measured&#39;</span><span class="p">)</span>
+
+    <span class="n">pair</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+        <span class="p">[</span><span class="n">measured</span><span class="p">,</span> <span class="n">poa_global</span><span class="p">],</span>
+        <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">join</span><span class="o">=</span><span class="s1">&#39;inner&#39;</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+
+    <span class="n">tolerance</span> <span class="o">=</span> <span class="mf">0.3</span> <span class="c1"># 30%</span>
+    <span class="n">series_mask</span> <span class="o">=</span> <span class="n">pair</span><span class="p">[</span><span class="s1">&#39;measured&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">between</span><span class="p">(</span><span class="n">pair</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">tolerance</span><span class="p">),</span> <span class="n">pair</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">tolerance</span><span class="p">))</span>
+
+    <span class="n">masks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">day</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">pair</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">pair</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">normalize</span><span class="p">()):</span>
+        <span class="n">grp</span> <span class="o">=</span> <span class="n">grp</span><span class="o">.</span><span class="n">asfreq</span><span class="p">(</span><span class="s1">&#39;1min&#39;</span><span class="p">)</span>
+
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">grp</span><span class="p">[[</span><span class="s1">&#39;measured&#39;</span><span class="p">,</span> <span class="s1">&#39;poa_global&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sub</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">detect_clearsky</span><span class="p">(</span>
+            <span class="n">sub</span><span class="p">[</span><span class="s1">&#39;measured&#39;</span><span class="p">],</span>
+            <span class="n">sub</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">],</span>
+            <span class="n">window_length</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="c1">#before 4</span>
+            <span class="n">mean_diff</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+            <span class="n">max_diff</span><span class="o">=</span><span class="mi">125</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">masks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+
+    <span class="n">sunny_subset</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">masks</span><span class="p">)</span><span class="o">.</span><span class="n">sort_index</span><span class="p">()</span>
+
+    <span class="n">sunny_subset</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;time&#39;</span>
+    <span class="n">df_sunny</span> <span class="o">=</span> <span class="n">sunny_subset</span><span class="o">.</span><span class="n">to_frame</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;if_sunny&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+    <span class="n">series_sunny</span> <span class="o">=</span> <span class="n">df_sunny</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;time&#39;</span><span class="p">)[</span><span class="s1">&#39;if_sunny&#39;</span><span class="p">]</span>
+    <span class="n">sunny_mask</span> <span class="o">=</span> <span class="n">series_sunny</span> <span class="o">&amp;</span> <span class="n">series_mask</span>
+    <span class="n">sunny_mask</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;if_sunny&#39;</span>
+
+    <span class="n">cloudy_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">sunny_mask</span>
+
+    <span class="n">sunny_intervals</span> <span class="o">=</span> <span class="n">detect_sunny_cloudy_intervals</span><span class="p">(</span><span class="n">sunny_mask</span><span class="p">)</span>
+    <span class="n">cloudy_intervals</span> <span class="o">=</span> <span class="n">detect_sunny_cloudy_intervals</span><span class="p">(</span><span class="n">cloudy_mask</span><span class="p">)</span>
+
+    <span class="n">sunny_periods_cutted_short</span><span class="p">,</span> <span class="n">cloudy_periods_cutted_short</span> <span class="o">=</span> <span class="n">delete_short_periods</span><span class="p">(</span>
+        <span class="n">sunny_mask</span><span class="o">=</span><span class="n">sunny_mask</span><span class="p">,</span>
+        <span class="n">cloudy_mask</span><span class="o">=</span><span class="n">cloudy_mask</span><span class="p">,</span>
+        <span class="n">sunny_intervals</span><span class="o">=</span><span class="n">sunny_intervals</span><span class="p">,</span>
+        <span class="n">cloudy_intervals</span><span class="o">=</span><span class="n">cloudy_intervals</span><span class="p">,</span>
+        <span class="n">min_length</span><span class="o">=</span><span class="mi">30</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">save_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
+        <span class="n">s_name</span> <span class="o">=</span> <span class="n">sanitize_filename</span><span class="p">(</span><span class="n">sensor_name_ref</span><span class="p">)</span>
+        <span class="n">output_path_sunny</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="p">(</span><span class="n">s_name</span> <span class="o">+</span> <span class="s2">&quot;_sunny_periods_all&quot;</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">sunny_mask</span><span class="p">,</span> <span class="n">output_path_sunny</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">output_path_cloudy</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="p">(</span><span class="n">s_name</span> <span class="o">+</span> <span class="s2">&quot;_cloudy_periods_all&quot;</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">cloudy_mask</span><span class="p">,</span> <span class="n">output_path_cloudy</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">output_path_sunny_intervals</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="s2">&quot;sunny_intervals.csv&quot;</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">sunny_intervals</span><span class="p">,</span> <span class="n">output_path_sunny_intervals</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">output_path_cloudy_intervals</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="s2">&quot;cloudy_intervals.csv&quot;</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">cloudy_intervals</span><span class="p">,</span> <span class="n">output_path_cloudy_intervals</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">output_path_sunny</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="p">(</span><span class="n">s_name</span> <span class="o">+</span> <span class="s2">&quot;_sunny_periods_cutted_short&quot;</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">sunny_periods_cutted_short</span><span class="p">,</span> <span class="n">output_path_sunny</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">output_path_cloudy</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="p">(</span><span class="n">s_name</span> <span class="o">+</span> <span class="s2">&quot;_cloudy_periods_cutted_short&quot;</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">cloudy_periods_cutted_short</span><span class="p">,</span> <span class="n">output_path_cloudy</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sunny_mask</span><span class="p">,</span> <span class="n">cloudy_mask</span></div>
+
+
+<div class="viewcode-block" id="detect_clearsky_periods_v2">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.detect_clearsky_periods_v2">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">detect_clearsky_periods_v2</span><span class="p">(</span>
+        <span class="n">measured_ref</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">clearsky</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">times</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">sensor_name_ref</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">save_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Detect clear-sky samples using the modified pvlib routine and export masks if requested.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">measured_ref</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">times</span>
+    <span class="n">clearsky</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">times</span>
+
+    <span class="n">clear</span><span class="p">,</span> <span class="n">comp</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">detect_clearsky_mod</span><span class="p">(</span>
+        <span class="n">measured</span><span class="o">=</span><span class="n">measured_ref</span><span class="p">,</span>
+        <span class="n">clearsky</span><span class="o">=</span><span class="n">clearsky</span><span class="p">,</span>
+        <span class="n">window_length</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span>
+        <span class="n">mean_diff</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+        <span class="n">max_diff</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+        <span class="n">lower_line_length</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">upper_line_length</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">var_diff</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+        <span class="n">slope_dev</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+        <span class="n">max_iterations</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">return_components</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="n">clear</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;if_sunny&#39;</span>
+    <span class="n">cloudy</span> <span class="o">=</span> <span class="o">~</span><span class="n">clear</span>
+
+    <span class="k">if</span> <span class="n">save_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">save_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
+        <span class="n">s_name</span> <span class="o">=</span> <span class="n">sanitize_filename</span><span class="p">(</span><span class="n">sensor_name_ref</span><span class="p">)</span>
+        <span class="n">output_path_sunny</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="p">(</span><span class="n">s_name</span> <span class="o">+</span> <span class="s2">&quot;_sunny_periods_all&quot;</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">clear</span><span class="p">,</span> <span class="n">output_path_sunny</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">output_path_cloudy</span> <span class="o">=</span> <span class="n">save_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">filename</span> <span class="o">/</span> <span class="p">(</span><span class="n">s_name</span> <span class="o">+</span> <span class="s2">&quot;_cloudy_periods_all&quot;</span> <span class="o">+</span> <span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+        <span class="n">save_dataframe_to_csv</span><span class="p">(</span><span class="n">cloudy</span><span class="p">,</span> <span class="n">output_path_cloudy</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">clear</span><span class="p">,</span> <span class="n">cloudy</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_adaptive_best_mask">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.calculate_adaptive_best_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_adaptive_best_mask</span><span class="p">(</span><span class="n">pair</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Search a grid of thresholds to find a clear-sky mask with strong correlation and coverage.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">poa_global_ref</span> <span class="o">=</span> <span class="n">pair</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.95</span><span class="p">)</span>
+    <span class="n">mean_percentage_grid</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.08</span><span class="p">,</span> <span class="mf">0.09</span><span class="p">,</span> <span class="mf">0.10</span><span class="p">]</span> <span class="c1">#[0.06, 0.07, 0.08]</span>
+    <span class="n">max_percentage_grid</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.12</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">]</span> <span class="c1">#[0.10, 0.12]</span>
+
+    <span class="n">step</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_series</span><span class="p">()</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+    <span class="n">window_minutes</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="nb">round</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="s1">&#39;10min&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="n">step</span><span class="p">)))</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">step</span> <span class="o">/</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="s1">&#39;1min&#39;</span><span class="p">))</span>
+    <span class="n">window_length</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">window_minutes</span><span class="p">))</span>
+
+    <span class="n">best_mask</span><span class="p">,</span> <span class="n">best_score</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+    <span class="k">for</span> <span class="n">mean_pct</span><span class="p">,</span> <span class="n">max_pct</span> <span class="ow">in</span> <span class="n">product</span><span class="p">(</span><span class="n">mean_percentage_grid</span><span class="p">,</span> <span class="n">max_percentage_grid</span><span class="p">):</span>
+        <span class="n">mean_diff</span> <span class="o">=</span> <span class="n">mean_pct</span> <span class="o">*</span> <span class="n">poa_global_ref</span>
+        <span class="n">max_diff</span> <span class="o">=</span> <span class="n">max_pct</span> <span class="o">*</span> <span class="n">poa_global_ref</span>
+
+        <span class="n">m</span> <span class="o">=</span> <span class="n">detect_clearsky</span><span class="p">(</span>
+            <span class="n">pair</span><span class="p">[</span><span class="s1">&#39;measured&#39;</span><span class="p">],</span> <span class="n">pair</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">],</span>
+            <span class="n">window_length</span><span class="o">=</span><span class="n">window_length</span><span class="p">,</span> <span class="c1">#10</span>
+            <span class="n">mean_diff</span><span class="o">=</span><span class="n">mean_diff</span><span class="p">,</span> <span class="c1">#100</span>
+            <span class="n">max_diff</span><span class="o">=</span><span class="n">max_diff</span><span class="p">,</span> <span class="c1">#100</span>
+        <span class="p">)</span>
+
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">pair</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;measured&#39;</span><span class="p">,</span> <span class="s1">&#39;poa_global&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">corr</span><span class="p">()</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">nmid</span> <span class="o">=</span> <span class="p">(</span><span class="n">pair</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.4</span> <span class="o">*</span> <span class="n">poa_global_ref</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">nsel</span> <span class="o">=</span> <span class="p">(</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">pair</span><span class="p">[</span><span class="s1">&#39;poa_global&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.4</span> <span class="o">*</span> <span class="n">poa_global_ref</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="n">cover</span> <span class="o">=</span> <span class="n">nsel</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">nmid</span><span class="p">)</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">corr</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">notna</span><span class="p">(</span><span class="n">corr</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.6</span> <span class="o">*</span> <span class="n">cover</span>
+            <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="n">best_score</span><span class="p">:</span>
+                <span class="n">best_score</span><span class="p">,</span> <span class="n">best_mask</span> <span class="o">=</span> <span class="n">score</span><span class="p">,</span> <span class="n">mask</span>
+
+    <span class="n">sunny_subset</span> <span class="o">=</span> <span class="n">best_mask</span> <span class="k">if</span> <span class="n">best_mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">pair</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sunny_subset</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_my_own_mask">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.calculate_my_own_mask">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_my_own_mask</span><span class="p">(</span>
+        <span class="n">pair</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.90</span><span class="p">,</span> <span class="c1"># percentage</span>
+        <span class="n">time_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span> <span class="c1"># minutes</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Mark periods where measurements stay within a tolerance band for a minimum duration.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="p">(</span><span class="n">pair</span><span class="p">[</span><span class="s2">&quot;measured&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">pair</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+    <span class="n">tolerance</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">ratio</span><span class="p">)</span> <span class="o">*</span> <span class="n">pair</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">]</span>
+    <span class="n">base</span> <span class="o">=</span> <span class="n">diff</span><span class="o">.</span><span class="n">le</span><span class="p">(</span><span class="n">tolerance</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">diff</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">tolerance</span><span class="o">.</span><span class="n">gt</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">ne</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">fill_value</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+    <span class="n">run_len</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="s2">&quot;size&quot;</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">base</span> <span class="o">&amp;</span> <span class="n">run_len</span><span class="o">.</span><span class="n">ge</span><span class="p">(</span><span class="n">time_period</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="detect_sunny_cloudy_intervals">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.detect_sunny_cloudy_intervals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">detect_sunny_cloudy_intervals</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert a boolean series into start and end timestamps for contiguous true intervals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">groups</span> <span class="o">=</span> <span class="p">(</span><span class="n">s</span> <span class="o">!=</span> <span class="n">s</span><span class="o">.</span><span class="n">shift</span><span class="p">())</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+    <span class="n">true_groups</span> <span class="o">=</span> <span class="n">s</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">group</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="n">group</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">group</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">group</span> <span class="ow">in</span> <span class="n">true_groups</span>
+    <span class="p">]</span>
+
+    <span class="n">intervals</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">intervals</span></div>
+
+
+<div class="viewcode-block" id="delete_short_periods">
+<a class="viewcode-back" href="../../../api.html#pvtools.solar_domain.clearsky.delete_short_periods">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">delete_short_periods</span><span class="p">(</span>
+        <span class="n">sunny_mask</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">cloudy_mask</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">sunny_intervals</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">cloudy_intervals</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">min_length</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Remove sunny or cloudy stretches shorter than the specified length threshold.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sunny_mask_filtered</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cloudy_mask_filtered</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">sunny_intervals</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_length</span><span class="p">:</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span>
+            <span class="n">end_time</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;end&quot;</span><span class="p">]</span>
+            <span class="n">sunny_mask_filtered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sunny_mask</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">start_time</span><span class="p">:</span><span class="n">end_time</span><span class="p">])</span>
+
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">cloudy_intervals</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;length&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">min_length</span><span class="p">:</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span>
+            <span class="n">end_time</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;end&quot;</span><span class="p">]</span>
+            <span class="n">cloudy_mask_filtered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cloudy_mask</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">start_time</span><span class="p">:</span><span class="n">end_time</span><span class="p">])</span>
+
+    <span class="n">sunny_mask_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+    <span class="n">cloudy_mask_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">sunny_mask_filtered</span><span class="p">:</span>
+        <span class="n">sunny_mask_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">sunny_mask_filtered</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cloudy_mask_filtered</span><span class="p">:</span>
+        <span class="n">cloudy_mask_combined</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">cloudy_mask_filtered</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">sunny_mask_combined</span><span class="p">,</span> <span class="n">cloudy_mask_combined</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

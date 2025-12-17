@@ -1,0 +1,367 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.utils.execute_function &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.utils.execute_function</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.utils.execute_function</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypeAlias</span><span class="p">,</span> <span class="n">Literal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.calibration.execute_calibration</span><span class="w"> </span><span class="kn">import</span> <span class="n">calibrate_to_reference</span><span class="p">,</span> <span class="n">calibrate_directly_to_poa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.config.params</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelData</span><span class="p">,</span> <span class="n">ModelDirectories</span><span class="p">,</span> <span class="n">ClearSkyParameters</span><span class="p">,</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span> <span class="n">ModelTimes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.visualisation.execute_plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_calibrated_to_reference</span><span class="p">,</span> <span class="n">plot_calibrated_to_poa</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.utils.utilities</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected</span><span class="p">,</span>
+                                     <span class="n">load_filtered_and_calculated_data_needed_for_execute_function_periods_detected</span><span class="p">,</span>
+                                     <span class="n">create_calibrated_dataframe</span><span class="p">,</span> <span class="n">check_if_calibration_method_available</span><span class="p">,</span>
+                                     <span class="n">check_if_sunny_cloudy_periods_exists</span><span class="p">,</span> <span class="n">create_dataframe_with_sensor_values_and_poa</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.postprocess.postprocess_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">postprocess_data</span><span class="p">,</span> <span class="n">merge_sunny_and_cloudy_calibrated_dataframes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.solar_domain.clearsky</span><span class="w"> </span><span class="kn">import</span> <span class="n">clear_sky</span><span class="p">,</span> <span class="n">detect_clearsky_periods</span><span class="p">,</span> <span class="n">detect_clearsky_periods_v2</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.solar_domain.determine_orientation</span><span class="w"> </span><span class="kn">import</span> <span class="n">determine_system_azimuth_and_tilt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.utils.apply_mask_for_dataframe</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_mask_for_dataframe</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.preprocess.preprocess_data</span><span class="w"> </span><span class="kn">import</span> <span class="n">delete_night_period</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.visualisation.plotter</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_clear_sky</span><span class="p">,</span> <span class="n">plot_poa_components</span><span class="p">,</span> <span class="n">plot_poa_reference_with_clearsky_periods</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pvtools.io_file.reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dataframe_from_csv</span><span class="p">,</span> <span class="n">load_str_dict_from_csv</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;calibrate&quot;</span><span class="p">)</span>
+
+<span class="n">Period_type</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;sunny&#39;</span><span class="p">,</span> <span class="s1">&#39;cloudy&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="execute_function">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.execute_function.execute_function">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">execute_function</span><span class="p">(</span>
+        <span class="n">model_data</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="p">:</span> <span class="n">ModelDirectories</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="p">:</span> <span class="n">ModelTimes</span><span class="p">,</span>
+        <span class="n">clearsky_params</span><span class="p">:</span> <span class="n">ClearSkyParameters</span><span class="p">,</span>
+        <span class="n">clearsky_cal_val</span><span class="p">:</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For time of data from sensors first calculate corresponding POA values. Delete defined in input parameters night</span>
+<span class="sd">    period (during night values are 0 W/m2, useless data).</span>
+
+<span class="sd">    There are two main behaviours of the function depending on the presence of reference sensor. Using defined input</span>
+<span class="sd">    parameter for calibration metrics directory program follows the steps:</span>
+
+<span class="sd">    * Sensor reference passed:</span>
+
+<span class="sd">        * Periods in metrics directory found. Calibrate determined clear sky with clear sky metrics and cloudy sky</span>
+<span class="sd">         with cloudy sky metrics.</span>
+<span class="sd">        * Periods in metrics directory NOT found. Calibrate all data with all-data metrics (not separate metrics for</span>
+<span class="sd">         sunny and cloudy periods).</span>
+
+<span class="sd">    * Sensor reference not passed:</span>
+
+<span class="sd">        * Determine clear sky based on POA and basic sensor data. Used only when no reference passed (less accurate).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1">#FIXME - the priority needs to be checked! Probably there is a bug with order!</span>
+    <span class="c1"># In docstring is the target behaviour.</span>
+    <span class="c1"># load_filtered_and_calculated_data_needed_for_execute_function_periods_detected - NOT USED!!!</span>
+
+    <span class="n">poa</span><span class="p">,</span> <span class="n">cs</span> <span class="o">=</span> <span class="n">clear_sky</span><span class="p">(</span>
+        <span class="n">clearsky_params</span><span class="o">=</span><span class="n">clearsky_params</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="o">=</span><span class="n">model_times</span>
+    <span class="p">)</span>
+
+    <span class="n">poa</span> <span class="o">=</span> <span class="n">delete_night_period</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">poa</span><span class="p">,</span>
+        <span class="n">start</span><span class="o">=</span><span class="n">model_times</span><span class="o">.</span><span class="n">start_daytime_cut</span><span class="p">,</span>
+        <span class="n">end</span><span class="o">=</span><span class="n">model_times</span><span class="o">.</span><span class="n">end_daytime_cut</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span>
+    <span class="n">save_dir_plot</span> <span class="o">=</span> <span class="n">model_dirs</span><span class="o">.</span><span class="n">plot_dir</span> <span class="o">/</span> <span class="n">filename</span>
+
+    <span class="n">plot_clear_sky</span><span class="p">(</span><span class="n">cs</span><span class="p">,</span> <span class="n">save_dir</span><span class="o">=</span><span class="n">save_dir_plot</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">plot_poa_components</span><span class="p">(</span><span class="n">poa</span><span class="p">,</span> <span class="n">save_dir</span><span class="o">=</span><span class="n">save_dir_plot</span><span class="p">,</span> <span class="n">show</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span> <span class="o">=</span> <span class="n">poa</span>
+    <span class="n">clearsky_periods</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cloudy_periods</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">period_flag</span><span class="o">=</span><span class="kc">False</span>
+
+    <span class="k">if</span> <span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">clearsky_periods</span><span class="p">,</span> <span class="n">cloudy_periods</span><span class="p">,</span> <span class="n">df_cutted_short_periods</span> <span class="o">=</span> <span class="n">run_full_clearsky_data_pipeline</span><span class="p">(</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">clearsky_cal_val</span><span class="o">=</span><span class="n">clearsky_cal_val</span>
+        <span class="p">)</span>
+
+        <span class="c1">#model_data.df = df_cutted_short_periods</span>
+        <span class="n">period_flag</span><span class="o">=</span><span class="kc">True</span>
+
+        <span class="n">plot_poa_reference_with_clearsky_periods</span><span class="p">(</span>
+            <span class="n">poa_global</span><span class="o">=</span><span class="n">poa</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="s2">&quot;poa_global&quot;</span><span class="p">]],</span>
+            <span class="n">sensor_reference</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;time&quot;</span><span class="p">,</span> <span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span><span class="p">]],</span>
+            <span class="n">sunny</span><span class="o">=</span><span class="n">clearsky_periods</span><span class="p">,</span>
+            <span class="n">save_dir</span><span class="o">=</span><span class="n">save_dir_plot</span><span class="p">,</span>
+            <span class="n">show</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected</span><span class="p">(</span>
+            <span class="n">data_dir</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">model_data</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">df</span>
+
+    <span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">clearsky_periods</span> <span class="o">=</span> <span class="n">clearsky_periods</span>
+    <span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">cloudy_periods</span> <span class="o">=</span> <span class="n">cloudy_periods</span>
+    <span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span> <span class="o">=</span> <span class="n">poa</span>
+
+    <span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;if_sunny&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">clearsky_periods</span><span class="p">)</span>
+
+    <span class="n">surface_tilt</span> <span class="o">=</span> <span class="n">clearsky_params</span><span class="o">.</span><span class="n">surface_tilt</span>
+
+    <span class="c1">#FIXME - funkcja determine_system_azimuth_and_tilt potrzebuje sensora referencyjnego (nie zawsze podany)</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    if surface_tilt != 0:</span>
+<span class="sd">        clearsky_params.surface_tilt, clearsky_params.surface_azimuth = determine_system_azimuth_and_tilt(</span>
+<span class="sd">            model_data=model_data,</span>
+<span class="sd">            model_times=model_times,</span>
+<span class="sd">            clearsky_params=clearsky_params,</span>
+<span class="sd">            sunny_mask=clearsky_periods</span>
+<span class="sd">        )</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">calibration_directory</span> <span class="o">=</span> <span class="n">check_if_calibration_method_available</span><span class="p">(</span>
+        <span class="n">log_dir</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">log_dir</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span>
+    <span class="p">)</span>
+
+    <span class="n">calibrate_to_reference</span><span class="p">(</span>
+        <span class="n">clearsky_cal_val</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="p">,</span>
+        <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+        <span class="n">model_times</span><span class="o">=</span><span class="n">model_times</span><span class="p">,</span>
+        <span class="n">period_flag</span><span class="o">=</span><span class="n">period_flag</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span>
+    <span class="p">)</span>
+
+    <span class="n">calibrate_directly_to_poa</span><span class="p">(</span>
+        <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+        <span class="n">clearsky_cal_val</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span>
+    <span class="p">)</span>
+
+    <span class="n">df_calibrated</span> <span class="o">=</span> <span class="n">create_calibrated_dataframe</span><span class="p">(</span>
+        <span class="n">model_parameters</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+        <span class="n">model_directories</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+        <span class="n">calibration_directory</span><span class="o">=</span><span class="n">calibration_directory</span>
+    <span class="p">)</span>
+
+    <span class="n">df_postprocess</span> <span class="o">=</span> <span class="n">postprocess_data</span><span class="p">(</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df_calibrated</span><span class="p">,</span>
+        <span class="n">sensor_names</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_names</span><span class="p">,</span>
+        <span class="n">data_dir</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+        <span class="n">clearsky_df</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">,</span>
+        <span class="n">poa_global_name</span><span class="o">=</span><span class="s1">&#39;poa_global&#39;</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span>
+    <span class="p">)</span>
+
+    <span class="n">model_data</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">df_postprocess</span>
+
+    <span class="p">[</span><span class="n">df_org</span><span class="p">,</span>
+     <span class="n">df_postprocess_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+     <span class="n">df_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+     <span class="n">df_org_sensor_data_with_poa_global</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">create_dataframe_with_sensor_values_and_poa</span><span class="p">(</span>
+            <span class="n">df_postprocess</span><span class="o">=</span><span class="n">df_postprocess</span><span class="p">,</span>
+            <span class="n">df_calibrated</span><span class="o">=</span><span class="n">df_calibrated</span><span class="p">,</span>
+            <span class="n">sensor_names</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_names</span><span class="p">,</span>
+            <span class="n">poa</span> <span class="o">=</span> <span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">,</span>
+            <span class="n">data_dir</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span>
+    <span class="p">))</span>
+
+    <span class="n">list_of_dataframes</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">df_postprocess</span><span class="p">,</span>
+        <span class="n">df_org</span><span class="p">,</span>
+        <span class="n">df_postprocess_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+        <span class="n">df_calibrated_sensor_data_with_poa_global</span><span class="p">,</span>
+        <span class="n">df_org_sensor_data_with_poa_global</span>
+    <span class="p">]</span>
+
+    <span class="n">plot_calibrated_to_reference</span><span class="p">(</span>
+        <span class="n">dataframes</span><span class="o">=</span><span class="n">list_of_dataframes</span><span class="p">,</span>
+        <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+        <span class="n">clearsky_cal_val</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="p">,</span>
+        <span class="n">calibration_method</span><span class="o">=</span><span class="n">calibration_method</span>
+    <span class="p">)</span>
+
+    <span class="n">load_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span> <span class="o">/</span> <span class="s2">&quot;calculated_data&quot;</span> <span class="o">/</span> <span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span> <span class="o">/</span> <span class="s2">&quot;direct_calibration_to_poa&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">sensor_name</span> <span class="ow">in</span> <span class="n">model_data</span><span class="o">.</span><span class="n">sensor_names</span><span class="p">:</span>
+        <span class="n">df_direct_calibration_to_poa</span> <span class="o">=</span> <span class="n">load_dataframe_from_csv</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">load_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sensor_name</span><span class="si">}</span><span class="s2">_df&quot;</span><span class="p">))</span>
+        <span class="n">dict_direct_calibration_to_poa</span> <span class="o">=</span> <span class="n">load_str_dict_from_csv</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">load_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sensor_name</span><span class="si">}</span><span class="s2">_dict&quot;</span><span class="p">))</span>
+
+        <span class="n">df_direct_calibration_to_poa</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df_direct_calibration_to_poa</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">])</span>
+
+        <span class="n">plot_calibrated_to_poa</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">=</span><span class="n">df_direct_calibration_to_poa</span><span class="p">,</span>
+            <span class="n">dict_</span><span class="o">=</span><span class="n">dict_direct_calibration_to_poa</span><span class="p">,</span>
+            <span class="n">model_dirs</span><span class="o">=</span><span class="n">model_dirs</span><span class="p">,</span>
+            <span class="n">model_data</span><span class="o">=</span><span class="n">model_data</span><span class="p">,</span>
+            <span class="n">sensor_name</span><span class="o">=</span><span class="n">sensor_name</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="run_full_clearsky_data_pipeline">
+<a class="viewcode-back" href="../../../api.html#pvtools.utils.execute_function.run_full_clearsky_data_pipeline">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_full_clearsky_data_pipeline</span><span class="p">(</span>
+        <span class="n">model_data</span><span class="p">:</span> <span class="n">ModelData</span><span class="p">,</span>
+        <span class="n">model_dirs</span><span class="p">:</span> <span class="n">ModelDirectories</span><span class="p">,</span>
+        <span class="n">clearsky_cal_val</span><span class="p">:</span> <span class="n">ClearSkyCalculatedValues</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(</span>
+<span class="sd">        poa=clearsky_cal_val.poa,</span>
+<span class="sd">        df=model_data.df,</span>
+<span class="sd">        sensor_name_ref=model_data.sensor_name_ref,</span>
+<span class="sd">        save_dir=model_dirs.data_dir,</span>
+<span class="sd">        filename=model_dirs.filename</span>
+<span class="sd">    )</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">clearsky_periods_all</span><span class="p">,</span> <span class="n">cloudy_periods_all</span> <span class="o">=</span> <span class="n">detect_clearsky_periods_v2</span><span class="p">(</span>
+        <span class="n">measured_ref</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span><span class="p">],</span>
+        <span class="n">clearsky</span><span class="o">=</span><span class="n">clearsky_cal_val</span><span class="o">.</span><span class="n">poa</span><span class="p">[</span><span class="s2">&quot;poa_global&quot;</span><span class="p">],</span>  <span class="c1"># cs[&quot;ghi&quot;],</span>
+        <span class="n">times</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;time&quot;</span><span class="p">],</span>
+        <span class="n">sensor_name_ref</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span><span class="p">,</span>
+        <span class="n">save_dir</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span>
+    <span class="p">)</span>
+
+    <span class="n">df_sunny_periods_cutted_short</span> <span class="o">=</span> <span class="n">apply_mask_for_dataframe</span><span class="p">(</span>
+        <span class="n">data_filename</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+        <span class="n">sensor_name_ref</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span><span class="p">,</span>
+        <span class="n">period_type</span><span class="o">=</span><span class="s2">&quot;sunny&quot;</span><span class="p">,</span>
+        <span class="n">save_dir</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span>
+    <span class="p">)</span>
+
+    <span class="n">df_cloudy_periods_cutted_short</span> <span class="o">=</span> <span class="n">apply_mask_for_dataframe</span><span class="p">(</span>
+        <span class="n">data_filename</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+        <span class="n">sensor_name_ref</span><span class="o">=</span><span class="n">model_data</span><span class="o">.</span><span class="n">sensor_name_ref</span><span class="p">,</span>
+        <span class="n">period_type</span><span class="o">=</span><span class="s2">&quot;cloudy&quot;</span><span class="p">,</span>
+        <span class="n">save_dir</span><span class="o">=</span><span class="n">model_dirs</span><span class="o">.</span><span class="n">data_dir</span>
+    <span class="p">)</span>
+
+    <span class="n">df_cutted_short_periods</span> <span class="o">=</span> <span class="n">merge_sunny_and_cloudy_calibrated_dataframes</span><span class="p">(</span>
+        <span class="n">df_sunny</span><span class="o">=</span><span class="n">df_sunny_periods_cutted_short</span><span class="p">,</span>
+        <span class="n">df_cloudy</span><span class="o">=</span><span class="n">df_cloudy_periods_cutted_short</span>
+    <span class="p">)</span>
+
+    <span class="n">return_dfs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">clearsky_periods_all</span><span class="p">,</span>
+        <span class="n">cloudy_periods_all</span><span class="p">,</span>
+        <span class="n">df_cutted_short_periods</span>
+    <span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">return_dfs</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

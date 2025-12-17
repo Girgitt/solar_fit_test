@@ -1,0 +1,185 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>pvtools.calibration.calibrate_to_poa.ransac &mdash; Solar Fit Test 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Solar Fit Test
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">Solar Fit</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Solar Fit Test</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">pvtools.calibration.calibrate_to_poa.ransac</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for pvtools.calibration.calibrate_to_poa.ransac</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">RANSACRegressor</span><span class="p">,</span> <span class="n">LinearRegression</span>
+
+
+<div class="viewcode-block" id="ransac_pipeline">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.ransac.ransac_pipeline">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">ransac_pipeline</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">clearsky_mask</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    General function to run a calibration RANSAC method pipeline on sensor data.</span>
+
+<span class="sd">    Return DataFrame contains columns:</span>
+
+<span class="sd">    * ``sensor``</span>
+<span class="sd">    * ``poa global``</span>
+<span class="sd">    * ``sensor calibrated``</span>
+<span class="sd">    * ``given mask``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">sensor_cal</span> <span class="o">=</span> <span class="n">robust_calibration</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="o">=</span><span class="n">sensor</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="o">=</span><span class="n">poa_global</span><span class="p">,</span>
+        <span class="n">clearsky_mask</span><span class="o">=</span><span class="n">clearsky_mask</span>
+    <span class="p">)</span>
+
+    <span class="n">sensor_cal</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">sensor_cal</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">sensor</span><span class="p">,</span>
+        <span class="s2">&quot;poa_global&quot;</span><span class="p">:</span> <span class="n">poa_global</span><span class="p">,</span>
+        <span class="s2">&quot;sensor_cal&quot;</span><span class="p">:</span> <span class="n">sensor_cal</span><span class="p">,</span>
+        <span class="s2">&quot;mask&quot;</span><span class="p">:</span> <span class="n">clearsky_mask</span>
+    <span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<div class="viewcode-block" id="robust_calibration">
+<a class="viewcode-back" href="../../../../api.html#pvtools.calibration.calibrate_to_poa.ransac.robust_calibration">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">robust_calibration</span><span class="p">(</span>
+        <span class="n">sensor</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">poa_global</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+        <span class="n">clearsky_mask</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span> <span class="c1">#np.ndarray -&gt; datatype of model.inlier_mask_</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calibrate data using RANSAC method.</span>
+
+<span class="sd">    Returns ``a`` and ``b`` parameters of Linear Regression and the ndarray ``y pred`` as predicted values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sensor_clearsky</span> <span class="o">=</span> <span class="n">sensor</span><span class="p">[</span><span class="n">clearsky_mask</span><span class="p">]</span>
+    <span class="n">poa_global_clearsky</span> <span class="o">=</span> <span class="n">poa_global</span><span class="p">[</span><span class="n">clearsky_mask</span><span class="p">]</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">sensor</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">poa_global</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">x_clearsky</span> <span class="o">=</span> <span class="n">sensor_clearsky</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">y_clearsky</span> <span class="o">=</span> <span class="n">poa_global_clearsky</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
+
+    <span class="n">base_model</span> <span class="o">=</span> <span class="n">LinearRegression</span><span class="p">(</span><span class="n">fit_intercept</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">RANSACRegressor</span><span class="p">(</span>
+        <span class="n">base_model</span><span class="p">,</span>
+        <span class="n">min_samples</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>        <span class="c1"># require 40% inliers</span>
+        <span class="n">residual_threshold</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>  <span class="c1"># 20 W/m2 tolerance</span>
+        <span class="n">max_trials</span><span class="o">=</span><span class="mi">200</span>
+    <span class="p">)</span>
+
+    <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x_clearsky</span><span class="p">,</span> <span class="n">y_clearsky</span><span class="p">)</span>
+
+    <span class="c1">#model.estimator_.intercept_ = 0.0</span>
+
+    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">estimator_</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">estimator_</span><span class="o">.</span><span class="n">intercept_</span>
+
+    <span class="k">return</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">y_pred</span> <span class="c1"># model.inlier_mask_</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Mateusz Kania.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
