@@ -45,6 +45,10 @@ def merge_sunny_and_cloudy_calibrated_dataframes(
         df_cloudy: pd.DataFrame
 ) -> pd.DataFrame:
 
+    """
+    Merge calibrated sunny and cloudy datasets while preserving chronological order.
+    """
+
     df_combined = pd.concat([df_sunny, df_cloudy])
 
     df_combined = df_combined.sort_values('time').drop_duplicates('time')

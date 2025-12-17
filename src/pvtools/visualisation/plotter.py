@@ -66,6 +66,9 @@ def subplot_predicted_data(
         y_pred: str,
         calibration_method: str,
 ) -> list[tuple[str, str, Figure]]:
+    """
+    Create comparison plots of true and predicted signals for each sensor.
+    """
 
     figures = []
 
@@ -321,6 +324,10 @@ def plot_fft_spectrum(
         filename: str = "default_filename",
         show: bool = False,
 ) -> None:
+
+    """
+    Plot FFT magnitude across frequencies with optional upper frequency limit.
+    """
 
     fig, ax = plt.figure(figsize=(12, 5))
 

@@ -17,6 +17,9 @@ class SensorCalibrationMetrics:
     """
 
     def __init__(self, y_true: np.ndarray, y_pred:np.ndarray):
+        """
+        Prepare error metrics from true and predicted irradiance values.
+        """
         self.y_true: np.ndarray = np.array(y_true)
         self.y_pred: np.ndarray = np.array(y_pred)
 

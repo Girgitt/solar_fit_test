@@ -262,6 +262,22 @@ def divided_linear_regression_use_calibration_values(
             param_list: list[DatatypeCoefficientsForDividedLinearRegression]
     ) -> list[tuple[pd.Timestamp, float, float]]:
 
+        """
+        Order divided regression coefficients by start hour.
+        """
+
+        """
+        Generate ordered (time, a, b) tuples from divided regression coefficients.
+        """
+
+        """
+        Prepare sorted interval tuples from divided regression parameters.
+        """
+
+        """
+        Convert calibration parameter dictionaries into ordered time intervals.
+        """
+
         intervals = []
         for p in param_list:
             if all(k in p for k in ("hour", "a", "b")):
@@ -345,6 +361,10 @@ def divided_linear_regression_use_calibration_values_mean(
     def build_intervals(
             param_list: list[DatatypeCoefficientsForDividedLinearRegression]
     ) -> list[tuple[pd.Timestamp, float, float]]:
+
+        """
+        Convert divided regression parameters into sorted interval tuples.
+        """
 
         intervals = []
         for p in param_list:

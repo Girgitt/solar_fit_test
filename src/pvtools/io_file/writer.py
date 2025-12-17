@@ -22,6 +22,10 @@ def save_metrics_to_json(
         scalers_list: list[dict] = None
 ) -> None:
 
+    """
+    Serialize model metrics, coefficients and scalers to a JSON file.
+    """
+
     for attr in required_metric_fields:
         if not hasattr(metrics, attr):
             raise TypeError(f"metrics must have '{attr}' attribute")
@@ -61,6 +65,10 @@ def save_true_and_predicted_data_to_csv(
         time: pd.Series = None
 ) -> None:
 
+    """
+    Store predicted values with optional ground truth, indices and timestamps.
+    """
+
     if y_true is not None:
         columns = pd.DataFrame({"y_true": y_true, "y_pred": y_pred})
     else:
@@ -86,6 +94,10 @@ def save_dataframe_to_csv(
         index_label: Optional[str] = None
 ) -> None:
 
+    """
+    Write a dataframe to CSV, ensuring parent directories exist.
+    """
+
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(
@@ -100,6 +112,10 @@ def save_figure(
         save_dir: Path=None,
         filename: str=None,
 ) -> None:
+
+    """
+    Persist a matplotlib figure to disk at high resolution.
+    """
 
     if save_dir is not None:
         save_dir = Path(save_dir)
@@ -119,6 +135,10 @@ def save_predicted_data_figures(
         save_dir: Path=None,
 ) -> None:
 
+    """
+    Save a collection of prediction figures grouped by sensor and method.
+    """
+
     log.info(f"Saving figures to: {save_dir} (type: {type(save_dir)})")
 
     save_dir = Path(save_dir)
@@ -132,6 +152,10 @@ def save_str_dict_to_csv(
         dict_: dict[str, str],
         output_path: Path
 ) -> None:
+
+    """
+    Save a dictionary of string pairs as a two-column CSV file.
+    """
 
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)

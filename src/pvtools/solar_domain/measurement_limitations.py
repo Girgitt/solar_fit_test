@@ -14,6 +14,10 @@ def limit_sensor_ref_irradiance_to_clear_sky_model(
         filename: str = None
 ) -> pd.DataFrame:
 
+    """
+    Cap reference sensor readings at clear-sky POA values and optionally persist the result.
+    """
+
     if not isinstance(df, pd.DataFrame) or not isinstance(clearsky_df, pd.DataFrame):
         raise TypeError("Expected 'df' and 'clear_sky_df' to be a pandas DataFrame")
 
@@ -48,6 +52,10 @@ def limit_sensors_irradiance_to_clear_sky_model(
         poa_global_name: str = 'poa_global'
 ) -> pd.DataFrame:
 
+    """
+    Clamp multiple sensor measurements to the modeled clear-sky envelope.
+    """
+
     if not isinstance(df, pd.DataFrame) or not isinstance(clearsky_df, pd.DataFrame):
         raise TypeError("Expected 'df' and 'clear_sky_df' to be a pandas DataFrame")
 
@@ -71,6 +79,10 @@ def limit_sensors_irradiance_to_clear_sky_model(
 
 
 def remove_negative_measurements(df: pd.DataFrame) -> pd.DataFrame:
+
+    """
+    Replace negative irradiance values with zero across all measurement columns.
+    """
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Expected 'df' to be a pandas DataFrame")
 

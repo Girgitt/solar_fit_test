@@ -135,6 +135,10 @@ def detect_clear_sky(
         threshold: float = 40
 ) -> [pd.Series, pd.Series]:
 
+    """
+    Identify clear-sky samples by comparing measured POA to predicted values.
+    """
+
     resid = np.abs(poa - poa_pred)
 
     return resid < threshold, resid
@@ -143,6 +147,10 @@ def detect_clear_sky(
 #--------------------------------- FREQUENCY ANALYSIS ---------------------------------#
 
 def prepare_signal(sensor: pd.Series):
+
+    """
+    Validate a sensor series and derive its numeric signal and sampling rate.
+    """
 
     if not isinstance(sensor.index, pd.DatetimeIndex):
         raise ValueError("Sensor series must have DatetimeIndex")
@@ -161,6 +169,10 @@ def compute_fft(
         fs: float
 ):
 
+    """
+    Compute the one-sided FFT magnitude and frequency bins for a signal.
+    """
+
     N = len(signal)
 
     fft_raw = np.fft.rfft(signal)
@@ -175,6 +187,10 @@ def frequency_analysis(
         time: pd.Series,
         max_freq=None
 ):
+
+    """
+    Run FFT-based exploration of a sensor time series and visualize spectra.
+    """
 
     sensor.index = time
 

@@ -19,6 +19,10 @@ def load_and_merge_calibrated_data_from_each_sensor(
         sensor_name_ref: Optional[str] = None
 ) -> pd.DataFrame:
 
+    """
+    Combine per-sensor calibration outputs into a single time-aligned dataframe.
+    """
+
     df = df.copy().reset_index(drop=True)
 
     merged_df = pd.DataFrame()
@@ -56,6 +60,10 @@ def load_and_merge_calibrated_data_from_each_sensor(
 
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
 
+    """
+    Read a CSV file into a DataFrame, enforcing the ``.csv`` suffix.
+    """
+
     load_path = Path(load_path)
 
     if load_path.suffix == "":
@@ -67,6 +75,10 @@ def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
 
 
 def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) -> Dict[str, Dict[str, pd.DataFrame]]:
+
+    """
+    Load true versus predicted datasets for every calibration method from disk.
+    """
 
     all_data = {}
 
@@ -214,6 +226,10 @@ def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeMLPRegressionPa
 
 
 def load_str_dict_from_csv(load_path: Path = None) -> dict[str, str]:
+
+    """
+    Restore a string-to-string mapping saved as a CSV with ``key`` and ``value`` columns.
+    """
 
     load_path = Path(load_path)
 
