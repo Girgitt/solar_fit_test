@@ -13,6 +13,11 @@ def limit_sensor_ref_irradiance_to_clear_sky_model(
         save_dir: Path = None,
         filename: str = None
 ) -> pd.DataFrame:
+
+    """
+    Cap reference sensor readings at clear-sky POA values and optionally persist the result.
+    """
+
     if not isinstance(df, pd.DataFrame) or not isinstance(clearsky_df, pd.DataFrame):
         raise TypeError("Expected 'df' and 'clear_sky_df' to be a pandas DataFrame")
 
@@ -46,17 +51,22 @@ def limit_sensors_irradiance_to_clear_sky_model(
         sensor_names: list[str] = None,
         poa_global_name: str = 'poa_global'
 ) -> pd.DataFrame:
+
+    """
+    Clamp multiple sensor measurements to the modeled clear-sky envelope.
+    """
+
     if not isinstance(df, pd.DataFrame) or not isinstance(clearsky_df, pd.DataFrame):
         raise TypeError("Expected 'df' and 'clear_sky_df' to be a pandas DataFrame")
 
     if 'time' not in df.columns or 'time' not in clearsky_df.columns:
         raise ValueError("'time' column needs to be provided!")
 
-    mismatched_times = set(df['time']) - set(clearsky_df['time'])
-    if mismatched_times:
+    if not (df["time"] == clearsky_df["time"]).all():
         raise ValueError("Timestamps are mismatched!")
 
     df = df.copy()
+    clearsky_df["time"] = pd.to_datetime(clearsky_df["time"])
 
     merged = (df[['time', *sensor_names]].merge(clearsky_df[['time', poa_global_name]], on='time', how='inner', sort=False))
 
@@ -69,6 +79,10 @@ def limit_sensors_irradiance_to_clear_sky_model(
 
 
 def remove_negative_measurements(df: pd.DataFrame) -> pd.DataFrame:
+
+    """
+    Replace negative irradiance values with zero across all measurement columns.
+    """
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Expected 'df' to be a pandas DataFrame")
 

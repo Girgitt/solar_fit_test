@@ -5,8 +5,7 @@ import numpy as np
 from datetime import time
 from zoneinfo import ZoneInfo
 
-from pvtools.preprocess.preprocess_data import (normalize_values,
-                                                sanitize_filename,
+from pvtools.preprocess.preprocess_data import (sanitize_filename,
                                                 delete_night_period,
                                                 average_measurements,
                                                 preprocess_data,

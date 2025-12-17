@@ -1,13 +1,9 @@
-import datetime
-
 import pandas as pd
-import numpy as np
 import re
 
 from datetime import time
 from zoneinfo import ZoneInfo
 from pathlib import Path
-from sklearn.preprocessing import MinMaxScaler
 
 from pvtools.io_file.writer import save_dataframe_to_csv
 
@@ -15,10 +11,24 @@ from pvtools.io_file.writer import save_dataframe_to_csv
 def preprocess_data(
         df: pd.DataFrame,
         target_timedelta: str = '1min',
-        start_time: time = time(4,0), # 4:00 GMT -> 6:00 UTC+2
-        end_time: time = time(17,0), # 17:00 GMT -> 19:00 UTC+2
-        save_dir: Path = None
-) -> pd.DataFrame:
+        start_daytime: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
+        end_daytime: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
+        save_dir: Path = None,
+        filename: str = None,
+) -> tuple[pd.DataFrame, pd.Timedelta]:
+    """
+    Calls sanitize filename function on all column names. It removes special characters and remove all character
+    before ``@`` to make column names more readable and usable.
+
+    Provides proper time datatype and timezone.
+
+    Downsamples data to frequency, specified as input praameter of the program.
+
+    Deletes night period, specified as input praameter of the program.
+
+    Save filtered data to csv file.
+    """
+
     df = df.copy()
 
     df.columns = [sanitize_filename(name) for name in df.columns]
@@ -29,7 +39,12 @@ def preprocess_data(
         tz_name='Europe/Warsaw'
     )
 
-    if check_if_target_frequency_is_lower_than_measurements(df=df, target_timedelta=target_timedelta) is False:
+    target_timedelta, check_freq = check_if_target_frequency_is_lower_than_measurements(
+        df=df,
+        target_timedelta=target_timedelta
+    )
+
+    if check_freq is False:
         df_avereged = average_measurements(
             df=df,
             target_timedelta=target_timedelta
@@ -39,19 +54,22 @@ def preprocess_data(
 
     df_filtered = delete_night_period(
         df=df_avereged,
-        start=start_time,
-        end=end_time
+        start=start_daytime,
+        end=end_daytime
     )
 
     if save_dir is not None:
         save_dir = Path(save_dir)
-        output_path = save_dir.parent.parent / "filtered" / (save_dir.stem + save_dir.suffix)
+        output_path = save_dir / "filtered" / f"{filename}.csv"
         save_dataframe_to_csv(df_filtered, output_path, index=False)
 
-    return df_filtered
+    return df_filtered, target_timedelta
 
 
 def ensure_dataframe_contains_valid_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Cheks datatype, remove missing values.
+    """
     df = df.copy()
 
     if not isinstance(df, pd.DataFrame):
@@ -67,6 +85,15 @@ def ensure_datetime_contains_timezone(
         tz_name: str = 'Europe/Warsaw',
         save_dir: Path = None,
 ) -> pd.DataFrame:
+    """
+    Cheks if input time datatype is correct and (if necessary) cconverts to specified output type.
+
+    Note:
+        Output time datatype is Timestamp.
+
+        ISO 8601 Extended Format (specifically ``YYYY-MM-DD HH:MM:SS+ZZ:ZZ``)
+    """
+
     df = df.copy()
 
     if "time" not in df.columns:
@@ -103,6 +130,15 @@ def delete_night_period(
         start: time = time(3,0), # 3:00 GMT -> 5:00 UTC+2
         end: time = time(18,0), # 18:00 GMT -> 20:00 UTC+2
 ) -> pd.DataFrame:
+    """
+    Cuts all rows within specified time range and deletes night period.
+
+    Note:
+        ``start`` and ``end`` times refer to the day period!
+
+        This function cuts time between ``end`` and ``start``!
+    """
+
     df_time_only = df['time'].dt.tz_convert(None).dt.time
 
     mask = df_time_only.between(start, end)
@@ -114,11 +150,24 @@ def delete_night_period(
 def check_if_target_frequency_is_lower_than_measurements(
         df: pd.DataFrame,
         target_timedelta: str = '1min'
-) -> bool:
+) -> tuple[pd.Timedelta, bool]:
+    """
+    Determines the frequency of data occurence in the DataFrame.
+
+    There are two cases of the function:
+
+    * target frequency is lower than measured data frequency - gives an information to use that data is already less
+      frequent than target frequency, return ``False``.
+
+    * target frequency is greater than measured data frequency - returns ``True``.
+    """
+
     if len(df.index) >= 2:
         measured_timedelta = df['time'][1] - df['time'][0] # all data has same timedelta
     else:
         raise ValueError(f"Not enough samples!")
+
+    target_freq = pd.to_timedelta(target_timedelta)
 
     if measured_timedelta:
         measured_freq = pd.to_timedelta(measured_timedelta)
@@ -126,15 +175,20 @@ def check_if_target_frequency_is_lower_than_measurements(
 
         if measured_freq > target_freq:
             print(f"[INFO] Data has already less frequent measurements: {measured_freq.total_seconds()}s > {target_freq.total_seconds()}s. Nothing to do.")
-            return True
+            target_freq = measured_freq
+            return target_freq, True
 
-    return False
+    return target_freq, False
 
 
 def average_measurements(
         df: pd.DataFrame,
-        target_timedelta: str = '1min',
+        target_timedelta: pd.Timedelta = '1min',
 ) -> pd.DataFrame:
+    """
+    Downsamples data to target frequency.
+    """
+
     df.set_index('time', inplace=True)
     df_resampled = df.resample(target_timedelta).mean()
     df_resampled = df_resampled.reset_index()
@@ -143,6 +197,14 @@ def average_measurements(
 
 
 def sanitize_filename(name: str) -> str:
+    """
+    Removes all characters after ``@``.
+
+    Replace special characters with underscore ``_``.
+
+    Replace multiple underscores ``___`` with single underscore ``_``.
+    """
+
     name = name.split("@")[-1]
     name = re.sub(r'[^a-zA-Z0-9_\-]', '_', name)
     name = re.sub(r'_+', '_', name)

@@ -3,33 +3,39 @@ import numpy as np
 import pvlib
 
 from typing import List
-from pvanalytics import system
 from pvanalytics.system import _peak_times # infer_orientation_daily_peak
 
 from pvtools.solar_domain.clearsky import get_solar_data_for_location_and_time
-from pvtools.config.params import ClearSkyParameters
+from pvtools.config.params import ClearSkyParameters, ModelData, ModelTimes
 
 
 def determine_system_azimuth_and_tilt(
-        clear_sky_parameters: ClearSkyParameters,
-        df: pd.DataFrame,
+        model_data: ModelData,
+        model_times: ModelTimes,
+        clearsky_params: ClearSkyParameters,
         sunny_mask: pd.Series,
-        sensor_names: List[str] = None,
-        sensor_name_ref: str = None,
-        tilts: np.ndarray = None,
-        azimuths: np.ndarray = None
-) -> List[float]:
+) -> tuple[float, float]:
+
+    """
+    Estimate array tilt and azimuth by matching measured peaks to simulated irradiance.
+    """
+
+    df = model_data.df.copy()
+    sensor_name_ref = model_data.sensor_name_ref
+    input_tilt = clearsky_params.surface_tilt
+    input_azimuth = clearsky_params.surface_azimuth
+
+    tilts = np.arange(input_tilt-10, input_tilt+10, 1)
+    azimuths = np.arange(input_azimuth-10, input_azimuth+10, 1)
+
     measured = pd.Series(df[sensor_name_ref].values, index=df['time'])
 
-    # candidate grid to search
-    if tilts is None:
-        tilts = np.arange(0, 10, 1)
-    if azimuths is None:
-        azimuths = np.arange(175, 185, 1) # 180 is south
+    (tus, times, solarpos, cs, airmass, dni_extra) = get_solar_data_for_location_and_time(
+        clearsky_params=clearsky_params,
+        model_times=model_times
+    )
 
-    tus, times, sol, cs = get_solar_data_for_location_and_time(clear_sky_parameters)
-
-    freq = pd.Timedelta(clear_sky_parameters.frequency)
+    freq = pd.Timedelta(model_times.frequency)
     measured = measured.reindex(times, method="nearest", tolerance=freq)
     sunny_mask = (sunny_mask.astype('boolean')
                   .reindex(times, method='nearest', tolerance=freq)
@@ -41,8 +47,8 @@ def determine_system_azimuth_and_tilt(
         sunny=sunny_mask,
         tilts=tilts,
         azimuths=azimuths,
-        solar_azimuth=sol['azimuth'],
-        solar_zenith=sol['apparent_zenith'],
+        solar_azimuth=solarpos['azimuth'],
+        solar_zenith=solarpos['apparent_zenith'],
         ghi=cs['ghi'],
         dhi=cs['dhi'],
         dni=cs['dni'],
@@ -64,7 +70,12 @@ def infer_orientation_daily_peak(
         dhi,
         dni
 ) -> List[float]:
-    peak_times = _peak_times(power_or_poa[sunny])
+
+    """
+    Select tilt and azimuth values that minimize squared error against modeled peak azimuths.
+    """
+
+    peak_times = _peak_times(power_or_poa[sunny]) #FIXME - function _peak_times() not always works correct. Test tilt=15 and azimuth=90
     azimuth_by_minute = solar_azimuth.resample('1min').interpolate(method='linear')
     modeled_azimuth = azimuth_by_minute[peak_times]
     best_azimuth = None
@@ -83,8 +94,8 @@ def infer_orientation_daily_peak(
                 dni=dni
             ).poa_global
             idx_daily_max = by_day(poa).idxmax()
-            poa_azimuths = azimuth_by_minute.reindex(idx_daily_max, method="nearest", tolerance="30s")
-            #poa_azimuths = azimuth_by_minute[by_day(poa).idxmax()] - this was originally in library. But it does not work!
+            #poa_azimuths = azimuth_by_minute.reindex(idx_daily_max, method="nearest", tolerance="30s")
+            poa_azimuths = azimuth_by_minute[by_day(poa).idxmax()] #- this was originally in library. But it does not work!
             filtered_azimuths = poa_azimuths[np.isin(
                 poa_azimuths.index.date,
                 modeled_azimuth.index.date
@@ -100,5 +111,9 @@ def infer_orientation_daily_peak(
 
 
 def by_day(data):
+
+    """
+    Group a time-indexed series by day preserving timezone information.
+    """
     return data.groupby(pd.to_datetime(data.index.date).tz_localize(data.index.tz)) # original code
     #return data.groupby(pd.Grouper(freq="D"))

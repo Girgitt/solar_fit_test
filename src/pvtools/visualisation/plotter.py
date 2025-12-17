@@ -1,27 +1,28 @@
-import os
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
-from typing import List, Tuple, Optional
+from typing import Optional
 from pathlib import Path
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from typing import Dict
 
-from pvtools.io_file.reader import load_true_and_predicted_data_for_all_methods
-from pvtools.io_file.writer import save_figure, save_predicted_data_figures
-from pvtools.preprocess.preprocess_data import sanitize_filename
+from pvtools.io_file.writer import save_figure
 
 
 def plot_from_dataframe(
     df: pd.DataFrame,
-    save_dir: Path=None,
-    filename: str=None,
+    save_dir: Path = None,
+    filename: str = None,
     sensor_names: list[str] = None,
-    sensor_name_ref: str=None,
-    show: bool=True,
+    sensor_name_ref: str = None,
+    show: bool = True,
     title: str = "Plot"
 ) -> tuple[Figure, Axes]:
+    """
+    Plot raw sensor data and optionally, if sensor reference is provided it's values on the same graph.
+    """
+
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
 
@@ -34,13 +35,19 @@ def plot_from_dataframe(
 
     # Plot 1: Raw input series over time
     fig, ax = plt.subplots(figsize=(9, 4))
-    ax.plot(x, df[sensor_name_ref], label="Power Reference (actual)", linewidth=0.9)
+
+    if sensor_name_ref is not None:
+        ax.plot(x, df[sensor_name_ref], label="Power Reference (actual)", linewidth=0.9)
+
     for sensor_col in sensor_names:
         ax.plot(x, df[sensor_col], label=f"Sensor: {sensor_col}", linewidth=0.9)
     ax.set_title(title)
     ax.set_xlabel("Time")
     ax.set_ylabel("Power (W/m²)")
-    ax.legend()
+    ax.legend(
+        loc="upper right",
+        fontsize=5
+    )
     ax.grid(True)
     fig.tight_layout()
 
@@ -54,11 +61,14 @@ def plot_from_dataframe(
 
 
 def subplot_predicted_data(
-        data: Dict[str, pd.DataFrame],
+        data: dict[str, pd.DataFrame],
         y_true: str,
         y_pred: str,
         calibration_method: str,
-) -> List[Tuple[str, str, Figure]]:
+) -> list[tuple[str, str, Figure]]:
+    """
+    Create comparison plots of true and predicted signals for each sensor.
+    """
 
     figures = []
 
@@ -88,47 +98,25 @@ def subplot_predicted_data(
     return figures
 
 
-def plot_predicted_data(
-        calibration_method_dir: Path,
-        show: bool = True,
-        save_dir: Path = None,
-) -> None:
-    all_data = load_true_and_predicted_data_for_all_methods(calibration_method_dir)
-
-    calibration_method_names = [name for name in os.listdir(calibration_method_dir)
-                                if os.path.isdir(os.path.join(calibration_method_dir, name))]
-
-    for calibration_method in calibration_method_names:
-        figures = subplot_predicted_data(
-            all_data[calibration_method],
-            y_true="y_true",
-            y_pred="y_pred",
-            calibration_method=calibration_method,
-        )
-
-        save_predicted_data_figures(
-            figures=figures,
-            save_dir=save_dir / calibration_method,
-        )
-
-        if not show:
-            for _, _, fig in figures:
-                plt.close(fig)
-
-    if show:
-        plt.show()
-
-
 def plot_clear_sky(
     cs: pd.DataFrame,
     save_dir: Optional[Path] = None,
     show: bool = True,
 ) -> Figure:
+    """
+    Plots clear sky irradiance DHI, GHI, DHI [W/m²]
+    """
+
     fig, ax = plt.subplots(figsize=(10, 4))
     cs.plot(ax=ax)
     ax.set_ylabel("Irradiance (W/m²)")
     ax.set_title("Clear‐sky irradiance (DNI, GHI, DHI)")
     ax.grid(True)
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=5
+    )
     fig.tight_layout()
 
     save_figure(fig, save_dir, "clear_sky_model.png")
@@ -143,11 +131,24 @@ def plot_poa_components(
     save_dir: Optional[Path] = None,
     show: bool = True,
 ) -> Figure:
+    """
+    Plots Plane-Of-Array irradiance in [W/m²]:
+
+    * ``poa global``
+    * ``poa direct``
+    * ``poa diffuse``
+    * ``poa ground diffuse``
+    """
+
     fig, ax = plt.subplots(figsize=(10, 4))
     poa[['poa_global', 'poa_direct', 'poa_diffuse', 'poa_ground_diffuse']].plot(ax=ax)
     ax.set_ylabel("Irradiance (W/m²)")
     ax.set_title("Plane‐of‐Array Irradiance (Perez model)")
-    ax.legend(title="")
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=5
+    )
     ax.grid(True)
     fig.tight_layout()
 
@@ -164,6 +165,10 @@ def plot_poa_vs_reference(
         save_dir: Optional[Path] = None,
         show: bool = True,
 ) -> Figure:
+    """
+    Plots Plane-Of-Array and reference sensor irradiance in [W/m²].
+    """
+
     if len(poa_global) == len(sensor_reference):
         sensor_copy = sensor_reference.copy()
         sensor_copy.index = poa_global.index
@@ -176,7 +181,11 @@ def plot_poa_vs_reference(
     df.plot(ax=ax, linewidth=0.9)
     ax.set_ylabel("Irradiance / Power (W/m²)")
     ax.set_title("POA Global vs Sensor Reference")
-    ax.legend(title="")
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=5
+    )
     ax.grid(True)
     fig.tight_layout()
 
@@ -190,15 +199,22 @@ def plot_poa_vs_reference(
 
 
 def plot_poa_reference_with_clearsky_periods(
-        poa_global: pd.Series,
-        sensor_reference: pd.Series,
+        poa_global: pd.DataFrame,
+        sensor_reference: pd.DataFrame,
         sunny: pd.Series,
         save_dir: Optional[Path] = None,
         show: bool = True
 ) -> Figure:
+    """
+    Plots Plane-Of-Array and reference sensor irradiance with marked detected sunny periods [W/m²].
+    """
+
     poa_global = poa_global.copy()
     sensor_reference = sensor_reference.copy()
     sunny = sunny.copy()
+
+    poa_global = poa_global.set_index("time")
+    sensor_reference = sensor_reference.set_index("time")
 
     fig = plot_poa_vs_reference(
         poa_global=poa_global,
@@ -207,14 +223,10 @@ def plot_poa_reference_with_clearsky_periods(
         show=False
     )
 
-    sensor_aligned = sensor_reference
-    sensor_aligned.index = poa_global.index
-    sunny_aligned = sunny.reindex(poa_global.index).fillna(False).astype(bool)
-
     ax = fig.axes[0]
     ax.scatter(
-        poa_global.index[sunny_aligned],
-        sensor_aligned[sunny_aligned],
+        sunny.index[sunny],
+        sensor_reference[sunny],
         s=12,
         zorder=5,
         label="Clear-sky samples"
@@ -222,6 +234,10 @@ def plot_poa_reference_with_clearsky_periods(
 
     ax.set_title("POA Global vs Sensor Reference (clear-sky highlighted)")
     ax.legend(title="")
+    ax.legend(
+        loc="upper right",
+        fontsize=5
+    )
     fig.tight_layout()
 
     if save_dir is not None:
@@ -231,3 +247,162 @@ def plot_poa_reference_with_clearsky_periods(
         fig.show()
 
     return fig
+
+
+def plot_sensors_calibrated_directly_to_poa(
+        result_df: pd.DataFrame,
+        title: str = "default plot",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+    """
+    Plots Plane-Of-Array, reference sensor and basic sensors directly calibrated to POA irradiance [W/m²].
+    """
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    ax.plot(result_df.index, result_df["poa_global"], label="poa global", linewidth=1.5)
+    ax.plot(result_df.index, result_df["sensor"], label="sensor", alpha=0.5)
+    ax.plot(result_df.index, result_df["sensor_cal"], label="sensor calibrated", linewidth=1.2)
+
+    # highlight clear-sky
+    clear_idx = result_df.index[result_df["clearsky_mask"]]
+    ax.scatter(clear_idx,
+               result_df.loc[clear_idx, "sensor"],
+               s=5,
+               color="green",
+               label="Clear-sky detected")
+
+    ax.set_title(title)
+    ax.set_ylabel("Irradiance W/m²")
+    ax.set_xlabel("Time")
+    ax.legend()
+    ax.grid()
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+
+def plot_frequency_histogram(
+        freqs,
+        fft_mag,
+        bins=100,
+        title: str = "Frequency Histogram of Irradiance Signal",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+    """
+    Plots frequency histrogram.
+    """
+
+    fig, ax = plt.figure(figsize=(12, 5))
+
+    fig.hist(freqs, weights=fft_mag, bins=bins, edgecolor='black')
+    fig.xlabel("Frequency (Hz)")
+    fig.ylabel("Magnitude (sum of FFT power)")
+    fig.title(title)
+    fig.grid()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+def plot_fft_spectrum(
+        freqs,
+        fft_mag,
+        max_freq=None,
+        title: str = "Frequency Spectrum (FFT)",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+
+    """
+    Plot FFT magnitude across frequencies with optional upper frequency limit.
+    """
+
+    fig, ax = plt.figure(figsize=(12, 5))
+
+    if max_freq:
+        mask = freqs <= max_freq
+        fig.plot(freqs[mask], fft_mag[mask])
+    else:
+        fig.plot(freqs, fft_mag)
+
+    fig.xlabel("Frequency (Hz)")
+    fig.ylabel("Magnitude")
+    fig.title(title)
+    fig.grid()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()
+
+def plot_universal(
+        result_df: pd.DataFrame,
+        data_series_names: list[str],
+        dict_series_description: dict[str, str],
+        mask: str = None,
+        title: str = "Default plot",
+        ylabel: str = "Irradiance W/m²",
+        xlabel: str = "Time",
+        save_dir: Optional[Path] = None,
+        filename: str = "default_filename",
+        show: bool = False,
+) -> None:
+    """
+    Universal plot for multiple combination data.
+
+    Note:
+        FutureFix - this function should replace all others plotting functions!
+    """
+
+    fig, ax = plt.subplots(figsize=(12,5))
+
+    for data in data_series_names:
+        ax.plot(
+            result_df["time"],
+            result_df[data],
+            label=dict_series_description[data],
+            linewidth=1.5,
+            zorder=1
+        )
+
+    # highlight clear-sky
+    if mask is not None:
+        clear_idx = result_df.index[result_df[mask]]
+        ax.scatter(
+            result_df.loc[clear_idx, "time"],
+            result_df.loc[clear_idx, "sensor"],
+            s=5,
+            color="red",
+            label="Clear-sky detected",
+            zorder=2
+        )
+
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    ax.legend(
+        title="",
+        loc="upper right",
+        fontsize=10
+    )
+    ax.grid(True)
+    plt.tight_layout()
+
+    if save_dir is not None:
+        save_figure(fig, save_dir, f"{filename}.png")
+
+    if show:
+        fig.show()

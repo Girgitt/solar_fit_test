@@ -16,7 +16,10 @@ def apply_mask_for_dataframe(
         save_dir: Path = None,
 ) -> pd.DataFrame:
 
-    # This part is just to save all found sunny/cloudy periods. It is not proceed later.
+    """
+    Filter a dataset to sunny or cloudy periods using precomputed boolean masks.
+    """
+
     df_data = load_dataframe_from_csv(Path(save_dir / "filtered" / f"{data_filename}.csv"))
     df_mask_all = load_dataframe_from_csv(Path(save_dir / "calculated_data" / data_filename /
                                            f"{sanitize_filename(sensor_name_ref)}_{period_type}_periods_all.csv"))
@@ -31,19 +34,5 @@ def apply_mask_for_dataframe(
         output_path = Path(save_dir / "filtered" / f"{period_type}_periods" / (data_filename + "_all.csv"))
         save_dataframe_to_csv(df_result_all, output_path, index=False, index_label="time")
 
-
-    # This part takes cutted short periods of time. Proceed later.
-    df_mask_cutted = load_dataframe_from_csv(Path(save_dir / "calculated_data" / data_filename /
-                                           f"{sanitize_filename(sensor_name_ref)}_{period_type}_periods_cutted_short.csv"))
-
-    df_mask_cutted["time"] = pd.to_datetime(df_mask_cutted["time"])
-    df_merged_cutted = df_data.merge(df_mask_cutted, on="time")
-    df_result_cutted = df_merged_cutted.loc[df_merged_cutted["if_sunny"], df_data.columns]
-
-    if save_dir is not None:
-        save_dir = Path(save_dir)
-        output_path = Path(save_dir / "filtered" / f"{period_type}_periods" / (data_filename + "_cutted.csv"))
-        save_dataframe_to_csv(df_result_cutted, output_path, index=False, index_label="time")
-
-    return df_result_cutted
+    return df_result_all
 

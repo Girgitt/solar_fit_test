@@ -7,10 +7,12 @@
 # ACTION: UPDATE (fit and save model) or EXECUTE (load and predict)
 # ----------------------------------------------------------------------------
 
-'''
-python src/main.py --action=update --model_id=25-09-04_08 --csv=./data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
-python ../src/main.py --action=update --model_id=25-09-04_08 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3
-'''
+
+#python ../src/main.py --action=update --model_id=test_update_1 --csv=../data/org/25-09-04_08.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./test_update_1
+#python ../src/main.py --action=execute --model_id=test_execute_1 --csv=../data/org/25-09-26__25-10-02.csv --calibration=linear --sensors 0 1 2 --start_time_hour 4 --start_time_minute 0 --end_time_hour 18 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir ./test_execute_1 --calibration_metrics_dir ../test_update_1/logs/25-09-04_08
+
+#python ../../src/main.py --action=update --model_id=test --csv=../../data/org/25-08-25__25-09-01.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 3 --start_time_minute 0 --end_time_hour 20 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./
+#python ../../src/main.py --action=execute --model_id=test --csv=../../data/org/25-08-25__25-09-01.csv --calibration=linear --sensors 0 1 2 --reference 3 --start_time_hour 3 --start_time_minute 0 --end_time_hour 20 --end_time_minute 0 --latitude 52.22977 --longtitude 21.01178 --timezone=Europe/Warsaw --altitude 170 --name=Warsaw --frequency=1min --albedo 0.25 --surface_tilt 0 --surface_azimuth 180 --project_dir=./ --calibration_metrics_dir ../update/logs/25-08-25_25-09-01
 
 import os
 import logging
@@ -21,16 +23,19 @@ import pandas as pd
 from pathlib import Path
 from datetime import time
 
-from pvtools.utils.utilities import initialize_dirs_for_base_dir, select_available_data_columns_to_process, \
-    print_available_data_columns, argument_parsing
+from pvtools.utils.utilities import initialize_dirs_for_base_dir, initialize_dirs_for_loading_dependencies, \
+    select_available_data_columns_to_process, print_available_data_columns, argument_parsing
 from pvtools.utils.update_function import update_function
 
 from pvtools.utils.execute_function import execute_function
-from pvtools.config.params import ModelParameters, ClearSkyParameters, ClearSkyCalculatedValues
+from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
 from pvtools.preprocess.preprocess_data import preprocess_data
 
 
 def get_logging_format():
+    """
+    Defines logging format for the whole project.
+    """
     return '%(asctime)s : %(levelname)s [%(processName)s-%(threadName)s %(name)s.%(funcName)s:%(lineno)d] %(message)s'
 
 
@@ -46,31 +51,53 @@ root_logger.addHandler(stream_handler)
 
 
 def main():
+    """
+    Initialize directories, classes, preprocess data.
+
+    Call one of two main behavior 'update' or 'execute'.
+
+    ``update`` - detecting clear sky, calculates calibration metrics for all calibration methods,
+    calculates Plane-Of-Array (POA), saves data to the files
+
+    ``execute`` - load saved metrics, use them to calculate calibrated data, plot and save data
+
+    Returns:
+    None
+    """
 
     parser = argparse.ArgumentParser()
     args = argument_parsing(parser)
-    target_frequency = '1min'
+    target_frequency = args.frequency
 
-    arg_data_dir = args.data_dir if args.data_dir else None
+    if args.action == "update" and args.reference is None:
+        raise AttributeError("Cannot update without reference sensor!")
 
-    if arg_data_dir is None:
-        data_dir = Path(os.getcwd())
+    arg_project_dir = args.project_dir if args.project_dir else None
+
+    if arg_project_dir is None:
+        project_dir = Path(os.getcwd()).resolve()
     else:
-        data_dir = Path(arg_data_dir)
+        project_dir = Path(arg_project_dir).resolve()
 
-    log_dir, plot_dir, data_dir = initialize_dirs_for_base_dir(data_dir)
+    log_dir, plot_dir, data_dir = initialize_dirs_for_base_dir(project_dir)
+
+    if args.calibration_metrics_dir is not None:
+        load_metrics_dir = initialize_dirs_for_loading_dependencies(args.calibration_metrics_dir)
+    else:
+        load_metrics_dir = None
 
     df = pd.read_csv(args.csv, parse_dates=["time"])
 
-    start_time = time(4, 0) # 4:00 GMT -> 6:00 UTC+2
-    end_time = time(17, 0) # 17:00 GMT -> 19:00 UTC+2
+    start_daytime = time(args.start_time_hour, args.start_time_minute) # 4:00 GMT -> 6:00 UTC+2
+    end_daytime = time(args.end_time_hour, args.end_time_minute) # 17:00 GMT -> 19:00 UTC+2
 
-    df_filtered = preprocess_data(
+    df_filtered, target_frequency = preprocess_data(
         df=df,
         target_timedelta=target_frequency, # available formats: 'xs' 'xmin' 'xh' 'xms' where x is a number
-        start_time=start_time,
-        end_time=end_time,
-        save_dir=Path(args.csv),
+        start_daytime=start_daytime,
+        end_daytime=end_daytime,
+        save_dir=Path(data_dir),
+        filename=Path(args.csv).stem,
     )
 
     data_columns = [col for col in df_filtered.columns if col != "time"]
@@ -83,33 +110,43 @@ def main():
         sensor_ref_chosen=args.reference
     )
 
-    model_parameters = ModelParameters(
+    model_data = ModelData(
         df=df_filtered,
-        df_time = df_filtered["time"],
-        args = args,
-        log_dir = log_dir,
-        data_dir = data_dir, # data/
-        filename= Path(args.csv).stem, # data/org/filename.csv
-        plot_dir = plot_dir,
-        sensor_names = sensor_names,
-        sensor_name_ref = sensor_name_ref
+        df_time=df_filtered["time"],
+        sensor_names=sensor_names,
+        sensor_name_ref=sensor_name_ref,
     )
 
-    clearsky_parameters = ClearSkyParameters(
-        start_time=model_parameters.df_time.iloc[0],
-        end_time=model_parameters.df_time.iloc[-1],
-        warsaw_lat=52.22977,
-        warsaw_lon=21.01178,
-        tz='Europe/Warsaw',
-        altitude=170,
-        name='Warsaw',
+    model_dirs = ModelDirectories(
+        project_dir=project_dir,
+        log_dir=log_dir,
+        data_dir=data_dir,
+        plot_dir=plot_dir,
+        filename=Path(args.csv).stem,
+        load_metrics_dir=load_metrics_dir,
+    )
+
+    model_times = ModelTimes(
+        start_time=model_data.df_time.iloc[0],
+        end_time=model_data.df_time.iloc[-1],
         frequency=target_frequency,
-        albedo=0.2,
-        surface_tilt=0,  # degrees from horizontal
-        surface_azimuth = 180,  # south-facing
+        divided_linear_regression_interval=args.divided_linear_regression_intervals,
+        start_daytime_cut=start_daytime,
+        end_daytime_cut=end_daytime,
     )
 
-    clearsky_calculated_values = ClearSkyCalculatedValues(
+    clearsky_params = ClearSkyParameters(
+        warsaw_lat=args.latitude,
+        warsaw_lon=args.longtitude,
+        tz=args.timezone,
+        altitude=args.altitude,
+        name=args.name,
+        albedo=args.albedo,
+        surface_tilt=args.surface_tilt,  # degrees from horizontal
+        surface_azimuth=args.surface_azimuth,  # south-facing
+    )
+
+    clearsky_cal_val = ClearSkyCalculatedValues(
         poa=pd.DataFrame(),
         clearsky_periods=pd.Series(),
         cloudy_periods=pd.Series()
@@ -117,17 +154,24 @@ def main():
 
     if args.action == "update":
         update_function(
-            model_parameters=model_parameters,
-            clear_sky_parameters=clearsky_parameters,
-            clearsky_calculated_values=clearsky_calculated_values,
-            start_time = start_time,
-            end_time = end_time
+            model_data=model_data,
+            model_dirs=model_dirs,
+            model_times=model_times,
+            clearsky_params=clearsky_params,
+            clearsky_cal_val=clearsky_cal_val,
         )
 
     elif args.action == "execute":
+        if model_dirs.load_metrics_dir is None:
+            raise AttributeError(f"Calibration metrics directory not found!")
+
         execute_function(
-            model_parameters=model_parameters,
-            clearsky_calculated_values=clearsky_calculated_values
+            model_data=model_data,
+            model_dirs=model_dirs,
+            model_times=model_times,
+            clearsky_params=clearsky_params,
+            clearsky_cal_val=clearsky_cal_val,
+            calibration_method=args.calibration
         )
 
 

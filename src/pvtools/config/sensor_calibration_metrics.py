@@ -4,7 +4,22 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
 class SensorCalibrationMetrics:
+    """
+    The class stores following metrics to evaluate model quality:
+
+    * ``MAE``: Mean Absolute Error - does not indicate whether the model overestimates or underestimates values
+    * ``MSE``: Mean Squeared Error - is particularly sensitive to large errors
+    * ``RMSE``: Root Mean Squared Erorr - same units as the predicted values
+    * ``R2``: correlation between two datasets
+    * ``MAPE``: Mean Absolute Percentage Error - especially useful when you want to assess the accuracy of
+      predictions in percentage
+    * ``Bias``: shows whether the model regularly over - or under-predicts
+    """
+
     def __init__(self, y_true: np.ndarray, y_pred:np.ndarray):
+        """
+        Prepare error metrics from true and predicted irradiance values.
+        """
         self.y_true: np.ndarray = np.array(y_true)
         self.y_pred: np.ndarray = np.array(y_pred)
 

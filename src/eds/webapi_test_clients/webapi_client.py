@@ -30,6 +30,9 @@ class ParamRequiredError(RuntimeError):
 
 
 def param(name, *args, **kwargs):
+    """
+    Access configuration values with optional positional or default fallbacks.
+    """
     if name not in config:
         if len(args):
             return args[0]
@@ -40,6 +43,9 @@ def param(name, *args, **kwargs):
 
 
 def create_time_period(prefix="", no=0):
+    """
+    Build a SOAP TimePeriod using configured timestamps or a recent default window.
+    """
     period = client.factory.create("TimePeriod")
     if prefix + "from" in config and len(config[prefix + "from"]) > no and \
             prefix + "till" in config and len(config[prefix + "till"]) > no:
@@ -52,12 +58,18 @@ def create_time_period(prefix="", no=0):
 
 
 def create_timestamp(date_str):
+    """
+    Convert an ISO-like string into the Timestamp structure expected by the client.
+    """
     ts = client.factory.create("Timestamp")
     ts.second = calendar.timegm(time.strptime(date_str, "%Y-%m-%dT%H:%M:%S"))
     return ts
 
 
 def create_struct(name, prefix="", no=0):
+    """
+    Populate a SOAP structure with matching configuration entries.
+    """
     struct = client.factory.create(name)
     for key in struct.__dict__:
         if prefix + key in config:
@@ -66,6 +78,9 @@ def create_struct(name, prefix="", no=0):
 
 
 def wait_for_request_execution(req_id):
+    """
+    Poll a request until completion, raising on failure states.
+    """
     st = time.time()
     while True:
         status = client.service.getRequestStatus(param('authString'), req_id)
@@ -80,46 +95,79 @@ def wait_for_request_execution(req_id):
 
 
 def getServerTime():
+    """
+    Request the server time through the authenticated SOAP client.
+    """
     return client.service.getServerTime(param('authString'))
 
 
 def login():
+    """
+    Authenticate using configured credentials.
+    """
     return client.service.login(param('user'), param('password'))
 
 
 def ping():
+    """
+    Check service availability for the current session.
+    """
     return client.service.ping(param('authString'))
 
 
 def logout():
+    """
+    Terminate the current authenticated session.
+    """
     return client.service.logout(param('authString'))
 
 
 def getSecurityGroups():
+    """
+    Fetch security group list for the authenticated user.
+    """
     return client.service.getSecurityGroups(param('authString'))
 
 
 def getUserSecurityGroups():
+    """
+    Retrieve security groups assigned to the current user.
+    """
     return client.service.getUserSecurityGroups(param('authString'))
 
 
 def getTechnologicalGroups():
+    """
+    Obtain technological groups available to the user.
+    """
     return client.service.getTechnologicalGroups(param('authString'))
 
 
 def getServerTime():
+    """
+    Duplicate helper returning server time.
+    """
     return client.service.getServerTime(param('authString'))
 
 
 def getServerStatus():
+    """
+    Query server status details.
+    """
     return client.service.getServerStatus(param('authString'))
 
 
 def getLicenseInfo():
+    """
+    Obtain license information from the server.
+    """
     return client.service.getLicenseInfo(param('authString'))
 
 
 def getPoints():
+    """
+    Retrieve points matching the provided filter options.
+    """
     return client.service.getPoints(param('authString'),
                                     create_struct("PointFilter"),
                                     param('order', None),
@@ -128,6 +176,9 @@ def getPoints():
 
 
 def getPointsWithCustomFilter():
+    """
+    Retrieve points using a named custom filter.
+    """
     return client.service.getPointsWithCustomFilter(param('authString'),
                                                     param('source'),
                                                     param("pointFilterName"),
@@ -137,10 +188,16 @@ def getPointsWithCustomFilter():
 
 
 def getPointsSources():
+    """
+    List available point sources.
+    """
     return client.service.getPointsSources(param('authString'))
 
 
 def getModifiedPoints():
+    """
+    Return points modified since the provided timestamp.
+    """
     timestamp = create_struct("Timestamp")
     return client.service.getModifiedPoints(param('authString'),
                                             param('startIdx', None),
@@ -150,6 +207,9 @@ def getModifiedPoints():
 
 
 def operatePoints():
+    """
+    Send new point values with associated quality metadata.
+    """
     point = client.factory.create("PointNewValue")
     point.id = create_struct("PointId")
     point.value = create_struct("PointValue")
@@ -158,6 +218,9 @@ def operatePoints():
 
 
 def publishPoints():
+    """
+    Publish new point values for a limited duration.
+    """
     point = client.factory.create("PointNewValue")
     point.id = create_struct("PointId")
     point.value = create_struct("PointValue")
@@ -169,11 +232,17 @@ def publishPoints():
 
 
 def unpublishPoints():
+    """
+    Cancel publication of the selected point.
+    """
     pointid = create_struct("PointId")
     return client.service.unpublishPoints(param('authString'), pointid)
 
 
 def getTrend():
+    """
+    Request and download trend data for the configured point.
+    """
     request = create_struct("TrendRequest")
     request.period = create_time_period()
     request.pixelCount = param('pixelCount', 100)
@@ -187,6 +256,9 @@ def getTrend():
 
 
 def getTrendGroups():
+    """
+    Download available trend group definitions to a local JSON file.
+    """
     response = client.service.getTrendGroups(param('authString'),
                                              param('configurationVersion', None))
     file_name = 'trend_groups-{}.json'.format(int(time.time() + 0.5))
@@ -199,6 +271,9 @@ def getTrendGroups():
 
 
 def getTabular():
+    """
+    Request tabular data for configured points and return the completed result.
+    """
     request = client.factory.create("TabularRequest")
     request.period = create_time_period()
     request.step.seconds = param('step', 60)
@@ -216,6 +291,9 @@ def getTabular():
 
 
 def getTabularCSV():
+    """
+    Request tabular data for configured points and print it in CSV format.
+    """
     request = client.factory.create("TabularRequest")
     request.period = create_time_period()
     request.step.seconds = param('step', 60)
@@ -253,6 +331,9 @@ def getTabularCSV():
 
 
 def getShade():
+    """
+    Request shade data for the configured point over the selected period.
+    """
     request = client.factory.create("ShadeSelector")
     request.pointId = create_struct("PointId")
     request.period = create_time_period()
@@ -262,6 +343,9 @@ def getShade():
 
 
 def writeShade():
+    """
+    Submit shade values for the configured point and period.
+    """
     shades = []
     shade = client.factory.create("Shade")
     shade.pointId = create_struct("PointId")
@@ -275,6 +359,9 @@ def writeShade():
 
 
 def clearShade():
+    """
+    Clear stored shade values for the specified point and period.
+    """
     request = client.factory.create("ShadesClearRequest")
     item = client.factory.create("ShadesClearRequestItem")
     item.pointId = create_struct("PointId")
@@ -285,6 +372,9 @@ def clearShade():
 
 
 def copyShade():
+    """
+    Copy shade settings between source and destination points.
+    """
     request = client.factory.create("ShadesCopyRequest")
     item = client.factory.create("ShadesCopyRequestItem")
     item.srcPointId = create_struct("PointId", "src.")
@@ -296,6 +386,9 @@ def copyShade():
 
 
 def getEvents():
+    """
+    Collect events within the configured time period.
+    """
     event_filter = create_struct("EventFilter")
     event_filter.period = create_time_period()
     req_id = client.service.requestEvents(param('authString'), event_filter)
@@ -304,12 +397,18 @@ def getEvents():
 
 
 def getReportsConfigs():
+    """
+    Retrieve report configurations filtered by the provided object filter.
+    """
     conf_filter = create_struct('ReportConfigFilter')
     conf_filter.objectFilter = create_struct('ObjectFilter')
     return client.service.getReportsConfigs(param('authString'), conf_filter)
 
 
 def createReportConfig():
+    """
+    Create a template report configuration with optional mask overrides.
+    """
     path = os.path.dirname(os.path.realpath(__file__))
     repConfig = create_struct('ReportConfigDefinition')
     repConfig.runDelay.seconds = 10
@@ -348,6 +447,9 @@ def createReportConfig():
 
 
 def alterReportConfig():
+    """
+    Update an existing report configuration with alternate output masks.
+    """
     path = os.path.dirname(os.path.realpath(__file__))
     repConfig = create_struct('ReportConfigDefinition')
     repConfig.runDelay.seconds = 10
@@ -381,11 +483,17 @@ def alterReportConfig():
 
 
 def deleteReportConfig():
+    """
+    Delete a report configuration identified in the parameters.
+    """
     return client.service.deleteReportConfig(
         param('authString'), param('configId'))
 
 
 def requestGlobalReport():
+    """
+    Submit a global report request and wait for completion.
+    """
     request = create_struct("GlobalReportRequest")
     request.dtRef.second = int(param('dtref', int(time.time())))
     req_id = client.service.requestGlobalReport(param('authString'), request)
@@ -393,6 +501,9 @@ def requestGlobalReport():
 
 
 def requestCustomReport():
+    """
+    Submit a custom report definition and return the generated output.
+    """
     request = create_struct('CustomReportRequest')
     rdf = create_struct('ReportDefinition')
     rdf.timeMode = param('timeMode', None)
@@ -429,6 +540,9 @@ def requestCustomReport():
 
 
 def createGlobalReport():
+    """
+    Build a report definition containing global report cells.
+    """
     rdf = create_struct('ReportDefinition')
     del rdf.timeMode
     del rdf.addressingType
@@ -453,12 +567,18 @@ def createGlobalReport():
 
 
 def cell(content):
+    """
+    Create a report definition cell with the given content string.
+    """
     cell = create_struct('ReportDefinitionCell')
     cell.content = content
     return cell
 
 
 def getObjectsSources():
+    """
+    Retrieve available object sources using the SOAP client.
+    """
     return client.service.getObjectsSources(param('authString'),
                                             create_struct(
                                                 "ObjectSourceFilter"),
@@ -468,6 +588,9 @@ def getObjectsSources():
 
 
 def getObject():
+    """
+    Download a binary object via HTTP using configured parameters.
+    """
     url = '%s/objects/%s/%s?authString=%s' \
           % (param('httpUrl'), param('source'), param('file'), param('authString'))
 
@@ -485,6 +608,9 @@ def getObject():
 
 
 def putObject():
+    """
+    Upload a binary object to the server via HTTP PUT.
+    """
     print('Uploading "%s" file  to "%s/%s"' % (param('file'), param('source'), param('file')))
 
     url = '%s/objects/%s/%s?authString=%s' \
@@ -519,6 +645,9 @@ def putObject():
 
 
 def delObject():
+    """
+    Delete an object resource via HTTP DELETE.
+    """
     url = '%s/objects/%s/%s?authString=%s' \
           % (param('httpUrl'), param('source'), param('file'), param('authString'))
 
@@ -537,6 +666,9 @@ def delObject():
 
 
 def getObjectsMetadata():
+    """
+    Retrieve metadata for objects that satisfy the provided filter.
+    """
     return client.service.getObjectsMetadata(param('authString'),
                                              create_struct("ObjectFilter"),
                                              param('order', None),
@@ -545,6 +677,9 @@ def getObjectsMetadata():
 
 
 def getObjectsSources():
+    """
+    List object sources available for retrieval or modification.
+    """
     return client.service.getObjectsSources(param('authString'),
                                             create_struct(
                                                 "ObjectSourceFilter"),
@@ -554,6 +689,9 @@ def getObjectsSources():
 
 
 def alterObject():
+    """
+    Update metadata attributes of a stored object.
+    """
     attrs = client.factory.create("AlterableObjectAttributes")
     attrs.name = param('newName', None)
     attrs.sg = param('newSG', None)
@@ -563,6 +701,9 @@ def alterObject():
 
 
 def alterObjectSource():
+    """
+    Modify metadata for an object source.
+    """
     attrs = client.factory.create("AlterableObjectSourceAttributes")
     attrs.desc = param('newDesc', None)
     attrs.sg = param('newSG', None)
@@ -573,7 +714,14 @@ def alterObjectSource():
 
 def runScript():
 
+    """
+    Run a server-side script, streaming stdin to it and printing outputs.
+    """
+
     def print_outputs(outputs):
+        """
+        Decode and display buffered script stdout and stderr.
+        """
         if outputs.output:
             sys.stdout.write(base64.b64decode(outputs.output))
             sys.stdout.flush()
@@ -603,6 +751,9 @@ def runScript():
 
 
 def getDiagram():
+    """
+    Open a diagram session and optionally adjust its viewport and resolution.
+    """
     refr = create_struct("TimeDuration")
     refr.seconds = param('refreshRate', default=3)
 
@@ -681,6 +832,9 @@ def getDiagram():
             available_diagrams = []
 
             def getRoleIdFileName(role, data, enforced_id=None):
+                """
+                Compose role, identifier and filename tuple from diagram metadata.
+                """
                 return (role,
                         enforced_id if enforced_id is not None else data.get(
                             'id', ""),
@@ -743,6 +897,9 @@ def getDiagram():
 
 
 def setDiagramEntryFieldValue():
+    """
+    Set a diagram entry field value, optionally targeting a specific window.
+    """
     optionalWindowId = param('windowId', None)
     if optionalWindowId:
         client.service.setDiagramEntryFieldValue(param('authString'),
@@ -760,6 +917,9 @@ def setDiagramEntryFieldValue():
 
 
 def clickDiagram():
+    """
+    Simulate a click action on a diagram area.
+    """
     optionalWindowId = param('windowId', None)
     if optionalWindowId:
         client.service.handleDiagramClick(param('authString'),
@@ -775,6 +935,9 @@ def clickDiagram():
 
 
 def lockWindowDiagram():
+    """
+    Lock or unlock a diagram window.
+    """
     client.service.lockWindowDiagram(param('authString'),
                                      param('url'),
                                      param('windowId'),
@@ -782,12 +945,18 @@ def lockWindowDiagram():
 
 
 def setActiveWindowDiagram():
+    """
+    Switch the active diagram window.
+    """
     client.service.setActiveWindowDiagram(param('authString'),
                                           param('url'),
                                           param('windowId'))
 
 
 def closeDiagram():
+    """
+    Close diagram sessions, optionally specifying role and window.
+    """
     optionalRole = param('role', None)
     optionalWindowId = param('windowId', None)
 
@@ -807,18 +976,30 @@ def closeDiagram():
 
 
 def dropRequest():
+    """
+    Cancel a pending request by its identifier.
+    """
     return client.service.dropRequest(param('authString'), param('requestId'))
 
 
 def getServerConfig():
+    """
+    Retrieve configuration details from the server.
+    """
     return client.service.getServerConfig(param('authString'))
 
 
 def getLicense():
+    """
+    Fetch license details for the current installation.
+    """
     return client.service.getLicense(param('authString'))
 
 
 def openWindowDiagram():
+    """
+    Open an additional diagram window with optional point group context.
+    """
     optionalPointGroup = param('pointGroup', None)
     if optionalPointGroup:
         client.service.openWindowDiagram(param('authString'),

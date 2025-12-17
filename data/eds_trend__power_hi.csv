@@ -1,4 +1,4 @@
-﻿time,power_reference.common@sensor_1:VALUE,power_hi.common@sensor_1:VALUE
+﻿time,power_reference.common@sensor_1_ref:VALUE,power_hi.common@sensor_1:VALUE
 2025-06-12 07:58:51,600.7333333333333,146.8835341365462
 2025-06-12 07:59:51,633.0553333333334,147.3654618473896
 2025-06-12 08:00:51,637.76,147.8473895582329

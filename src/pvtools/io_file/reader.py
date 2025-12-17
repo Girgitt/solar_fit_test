@@ -1,70 +1,68 @@
-import json
 import pandas as pd
+import json
+import csv
 
-from typing import Dict, Any, List, TypeAlias, Literal
+from typing import Dict, Any, List, TypeAlias, Literal, Optional
 from pathlib import Path
 
-from pvtools.config.params import DatatypeCoefficientsForMLPRegression, DatatypeCoefficientsForDividedLinearRegression
-from pvtools.calibration.validate_decision_tree import _validate_tree_structure
-from pvtools.config.params import ModelParameters
+from pvtools.config.params import DatatypeMLPRegressionParameters, DatatypeCoefficientsForDividedLinearRegression
+from pvtools.calibration.calibrate_to_reference.validate_tree import _validate_tree_structure
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
+
 def load_and_merge_calibrated_data_from_each_sensor(
         df: pd.DataFrame,
-        model_parameters: ModelParameters
+        sensor_names: list[str],
+        calibration_directory: Path,
+        sensor_name_ref: Optional[str] = None
 ) -> pd.DataFrame:
 
-    df = df.copy()
-    df = df.reset_index(drop=True)
+    """
+    Combine per-sensor calibration outputs into a single time-aligned dataframe.
+    """
 
-    def create_dataframe_from_csv(
-            calibration_name: str,
-            col: list = None,
-    ) -> list:
+    df = df.copy().reset_index(drop=True)
 
-        for s_name in model_parameters.sensor_names:
-            sanitized_name = sanitize_filename(s_name)
-            tmp_df = load_dataframe_from_csv(Path(directory / calibration_name /
-                                                  f"{sanitized_name}_all_true_vs_pred.csv"))
-            col.append(tmp_df['y_pred'].rename(sanitized_name))
+    merged_df = pd.DataFrame()
 
-        return col
+    for s_name in sensor_names:
+        sanitized_name = sanitize_filename(s_name)
+        csv_path = calibration_directory / f"{sanitized_name}_all_predicted.csv"
 
-    directory = Path(model_parameters.log_dir / model_parameters.filename)
+        if not csv_path.exists():
+            raise FileNotFoundError(f"[ERROR] File not found: {csv_path}")
 
-    col = []
-    df_calibrated = []
-    col.append(df["time"])
+        tmp_df = pd.read_csv(csv_path)
 
-    if model_parameters.args.calibration == "linear":
-        df_calibrated = create_dataframe_from_csv("linear_regression", col)
+        if "y_pred" not in tmp_df.columns or "time" not in tmp_df.columns:
+            raise KeyError(f"[ERROR] File {csv_path} must contain 'y_pred' and 'time' columns")
 
-    elif model_parameters.args.calibration == "fuzzy":
-        df_calibrated = create_dataframe_from_csv("fuzzy_regression", col)
+        tmp_df["time"] = pd.to_datetime(tmp_df["time"])
+        tmp_df.rename(columns={"y_pred": sanitized_name}, inplace=True)
 
-    elif model_parameters.args.calibration == "divided_linear":
-        df_calibrated = create_dataframe_from_csv("divided_linear_regression", col)
+        if merged_df.empty:
+            merged_df = tmp_df[["time", sanitized_name]]
+        else:
+            merged_df = pd.merge(merged_df, tmp_df[["time", sanitized_name]], on="time", how="outer")
 
-    elif model_parameters.args.calibration == "decision_tree":
-        df_calibrated = create_dataframe_from_csv("decision_tree_regression", col)
+    if sensor_name_ref is not None:
+        sanitized_ref = sanitize_filename(sensor_name_ref)
+        if sensor_name_ref not in df.columns:
+            raise KeyError(f"[ERROR] Reference sensor '{sensor_name_ref}' not found in original dataframe")
+        merged_df[sanitized_ref] = df[sensor_name_ref].values
 
-    elif model_parameters.args.calibration == "poly":
-        df_calibrated = create_dataframe_from_csv("polynominal_regression", col)
+    merged_df.sort_values(by="time", inplace=True)
+    merged_df.reset_index(drop=True, inplace=True)
 
-    elif model_parameters.args.calibration == "mlp":
-        df_calibrated = create_dataframe_from_csv("mlp_regression", col)
-
-    df_calibrated.append(df[model_parameters.sensor_name_ref].rename(
-        sanitize_filename(model_parameters.sensor_name_ref)))
-
-    result_df = pd.concat(df_calibrated, axis=1)
-
-    return result_df
-
+    return merged_df
 
 def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
+
+    """
+    Read a CSV file into a DataFrame, enforcing the ``.csv`` suffix.
+    """
 
     load_path = Path(load_path)
 
@@ -77,6 +75,10 @@ def load_dataframe_from_csv(load_path: Path = None) -> pd.DataFrame:
 
 
 def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) -> Dict[str, Dict[str, pd.DataFrame]]:
+
+    """
+    Load true versus predicted datasets for every calibration method from disk.
+    """
 
     all_data = {}
 
@@ -92,7 +94,10 @@ def load_true_and_predicted_data_for_all_methods(calibration_method_dirs: Path) 
     return all_data
 
 
-def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
+def linear_regression_load_parameters(calibration_method_dir: Path) -> dict[str, float]:
+    """
+    Loads Linear Regression coefficients from .json file and returns dictionary of name and its value.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -111,7 +116,13 @@ def linear_regression_load_parameters(calibration_method_dir: Path) -> Dict[str,
     return params
 
 
-def divided_linear_regression_load_parameters(calibration_method_dir: Path) -> List[DatatypeCoefficientsForDividedLinearRegression]:
+def divided_linear_regression_load_parameters(
+        calibration_method_dir: Path
+) -> List[DatatypeCoefficientsForDividedLinearRegression]:
+    """
+    Loads Divided Linear Regression coefficients from .json file and returns list of
+    DatatypeCoefficientsForDividedLinearRegression.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -131,7 +142,10 @@ def divided_linear_regression_load_parameters(calibration_method_dir: Path) -> L
     return params
 
 
-def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, float]:
+def polynominal_regression_load_parameters(calibration_method_dir: Path) -> dict[str, float]:
+    """
+    Loads Polynominal Regression coefficients from .json file and returns dictionary of name and its value.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -150,7 +164,10 @@ def polynominal_regression_load_parameters(calibration_method_dir: Path) -> Dict
     return params
 
 
-def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Dict[str, Any]:
+def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> dict[str, Any]:
+    """
+    Loads Decision Tree Regression coefficients from .json file and returns dictionary of name and its value (Any).
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -170,7 +187,10 @@ def decision_tree_regression_load_parameters(calibration_method_dir: Path) -> Di
     return params["params"]
 
 
-def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsForMLPRegression:
+def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeMLPRegressionParameters:
+    """
+    Loads Multi Layer Perceptron coefficients from .json file and returns the DatatypeMLPRegressionParameters.
+    """
 
     with open(calibration_method_dir, 'r') as f:
         data = json.load(f)
@@ -179,7 +199,7 @@ def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsFor
     if coeffs not in data or not data[coeffs]:
         raise ValueError(f"JSON file does not contain {coeffs} list.")
 
-    coeff_params = data[coeffs]
+    coeff_params = data.get(coeffs)
 
     required_keys = ["layer_1_weights", "layer_1_biases", "layer_2_weights", "layer_2_biases", "output_weights", "output_biases"]
     for key in required_keys:
@@ -190,13 +210,36 @@ def mlp_load_parameters(calibration_method_dir: Path) -> DatatypeCoefficientsFor
     if scalers not in data or not data[scalers]:
         raise ValueError(f"JSON file does not contain {scalers} list.")
 
-    scaler_params = data[scalers]
+    scaler_params = data.get(scalers)
 
     required_keys = ["x_scaler_mean", "x_scaler_scale", "y_scaler_mean", "y_scaler_scale", "activation"]
     for key in required_keys:
         if key not in scaler_params:
             raise ValueError(f"Missing key '{key}' in {scalers}")
 
-    params = {coeffs: coeff_params, scalers: scaler_params}
+    params: DatatypeMLPRegressionParameters = {
+        "coefficients": coeff_params,
+        "scalers": scaler_params
+    }
 
     return params
+
+
+def load_str_dict_from_csv(load_path: Path = None) -> dict[str, str]:
+
+    """
+    Restore a string-to-string mapping saved as a CSV with ``key`` and ``value`` columns.
+    """
+
+    load_path = Path(load_path)
+
+    if load_path.suffix == "":
+        load_path = load_path.with_suffix(".csv")
+    elif load_path.suffix.lower() != ".csv":
+        raise ValueError(f"Expected a .csv file, got '{load_path.suffix}' in path: {load_path}")
+
+    with load_path.open(mode='r', newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        result = {row['key']: row['value'] for row in reader}
+
+    return result

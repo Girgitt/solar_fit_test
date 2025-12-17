@@ -1,4 +1,7 @@
 def _validate_tree_structure(node: dict) -> None:
+    """
+    Confirm that each serialized tree node carries the required attributes.
+    """
     if "value" in node:
         return  # it's a leaf, that's fine
 
@@ -13,6 +16,9 @@ def _validate_tree_structure(node: dict) -> None:
 
 
 def _traverse_tree(node: dict, x_val: float) -> float:
+    """
+    Follow the serialized tree for a single feature value to reach a leaf.
+    """
     if "value" in node:
         return node["value"]
 

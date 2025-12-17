@@ -1,0 +1,310 @@
+import pandas as pd
+import logging
+
+from pathlib import Path
+
+from pvtools.calibration.calibrate_to_reference.calibrate_linear_regression import (calibrate_by_linear_regression,
+                                                                                    calibrate_by_fuzzy_linear_regression)
+from pvtools.calibration.calibrate_to_reference.calibrate_divided_regression import (calibrate_by_divided_linear_regression,
+                                                                                     calibrate_by_divided_linear_regression_mean)
+from pvtools.calibration.calibrate_to_reference.calibrate_polynominal_regression import calibrate_by_polynominal_regression
+from pvtools.calibration.calibrate_to_reference.calibrate_decision_tree import calibrate_by_decision_tree_regression
+from pvtools.calibration.calibrate_to_reference.calibrate_mlp import calibrate_by_mlp_regression
+from pvtools.calibration.calibrate_to_poa.ransac import ransac_pipeline
+from pvtools.calibration.calibrate_to_poa.clearsky_utils import (frequency_mask,
+                                                                 two_medians_mask, create_derivative_df,
+                                                                 create_relative_derivative_mask_df,
+                                                                 determine_envelope_of_signal_peaks,
+                                                                 compute_gain_factor)
+from pvtools.config.params import ModelData, ModelDirectories, ClearSkyCalculatedValues, ModelTimes
+from pvtools.io_file.writer import save_dataframe_to_csv, save_str_dict_to_csv
+
+log = logging.getLogger(__name__)
+
+
+def calibrate_to_reference(
+        clearsky_cal_val: ClearSkyCalculatedValues,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
+        period_flag: bool,
+        calibration_method: str
+) -> None:
+    """
+    General function to call calibration method specified in input parameters. It applies only to calibration to
+    reference sensor. Below is a full acceptable calibration methods list:
+
+    * ``linear regression``
+    * ``fuzzy linear regression``
+    * ``divided linear regression``
+    * ``mean divided linear regression``
+    * ``polynomial regression``
+    * ``decision tree regression``
+    * ``multi layer perceptron``
+    """
+
+    if calibration_method == "linear":
+        calibrate_by_linear_regression(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            period_flag=period_flag
+        )
+
+    elif calibration_method == "fuzzy":
+        calibrate_by_fuzzy_linear_regression(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            clearsky_cal_val=clearsky_cal_val,
+            period_flag=period_flag
+        )
+
+    elif calibration_method == "divided":
+        calibrate_by_divided_linear_regression(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            period_flag=period_flag
+        )
+
+    elif calibration_method == "divided_mean":
+        calibrate_by_divided_linear_regression_mean(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            model_times=model_times,
+            period_flag=period_flag
+        )
+
+    elif calibration_method == "poly":
+        calibrate_by_polynominal_regression(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            period_flag=period_flag
+        )
+
+    elif calibration_method == "decision_tree":
+        calibrate_by_decision_tree_regression(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            period_flag=period_flag
+        )
+
+    elif calibration_method == "mlp":
+        calibrate_by_mlp_regression(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            period_flag=period_flag
+        )
+    else:
+        raise ValueError(f"Unsupported calibration method: {calibration_method}")
+
+
+def calibrate_directly_to_poa(
+        model_data: ModelData,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+        model_dirs: ModelDirectories
+) -> None:
+    """
+    General function to call calibration method directly from basic, raw sensor to POA. Function follows the steps:
+
+    1. First approach - compute masks and use them to get sensor calibrates values
+    2. Second approach - compute envelope and amplification factor
+    """
+
+    for sensor_name in model_data.sensor_names:
+
+        df_combined = compute_mask_method(
+            model_data=model_data,
+            clearsky_cal_val=clearsky_cal_val,
+            sensor_name=sensor_name
+        )
+
+        evenelope, gain_factor = compute_amplifying_signal_envelope_method(
+            model_data=model_data,
+            clearsky_cal_val=clearsky_cal_val,
+            sensor_name=sensor_name
+        )
+
+        sensor_gain = pd.Series(
+            data=df_combined["sensor"] * gain_factor,
+            index=df_combined.index,
+            name="sensor_gain"
+        )
+
+        evenelope_gain = pd.Series(
+            data=evenelope * gain_factor,
+            index=evenelope.index,
+            name="evenelope_gain"
+        )
+
+        sensor_ref = model_data.df[model_data.sensor_name_ref]
+        sensor_ref = sensor_ref.reset_index(drop=True)
+
+        df_combined = pd.concat(
+            [df_combined, sensor_gain, evenelope, evenelope_gain, sensor_ref],
+            axis=1
+        )
+
+        dict_series_description = {
+            "time": "time",
+            "sensor": "sensor",
+            "sensor_smooth": "sensor smooth",
+            "sensor_d_dt": "sensor derivative",
+            "poa_global": "poa global",
+            "poa_global_d_dt": "poa global derivative",
+            "frequency_mask": "frequency mask",
+            "two_medians_mask": "two medainas mask",
+            "derivative_mask": "derivative mask",
+            "ransac_freq_mask_calibration": "RANSAC frequency mask calibration",
+            "ransac_two_medians_mask_calibration": "RANSAC two medainas mask calibration",
+            "ransac_derivative_mask_calibration": "RANSAC derivative mask calibration",
+            "sensor_gain": "sensor scaled by evenelope factor",
+            "evenelope": "evenelope",
+            "evenelope_gain": "evenelope scaled",
+            f"{model_data.sensor_name_ref}": "sensor reference",
+        }
+
+        log.debug(f"saving combined df for direct calibration to POA: {df_combined}")
+        log.debug(f"saving dictionary for combined df: {dict_series_description}")
+
+        output_dir = Path(model_dirs.data_dir / "calculated_data" / model_dirs.filename / "direct_calibration_to_poa")
+        file_stem = sensor_name
+
+        df_combined_dir = output_dir / f"{file_stem}_df.csv"
+        log.debug(f"DataFrame saving directory: {df_combined_dir}")
+        save_dataframe_to_csv(
+            df=df_combined,
+            output_path=df_combined_dir,
+        )
+
+        dict_series_description_dir = output_dir / f"{file_stem}_dict.csv"
+        log.debug(f"Dictionary saving directory: {dict_series_description_dir}")
+        save_str_dict_to_csv(
+            dict_=dict_series_description,
+            output_path=dict_series_description_dir,
+        )
+
+
+def compute_mask_method(
+        model_data: ModelData,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+        sensor_name: str
+) -> pd.DataFrame:
+    """
+    Calls different approaches to compute clear sky period. Then use all masks to compute calibration parameters of
+    RANSAC Linear Regression.
+
+    Below is the list of used methods:
+
+    * ``frequency mask``
+    * ``two medainas mask``
+    * ``relative derivative mask``
+    """
+
+    df_frequency_mask = frequency_mask(
+        sensor=model_data.df[sensor_name],
+        poa_global=clearsky_cal_val.poa["poa_global"],
+        time=model_data.df["time"],
+        sampling_sec=60,
+        low_freq_max=0.002,
+        window_sec=14400,  # 4hrs
+        thershold=0.80
+    )
+
+    df_two_medians_mask = two_medians_mask(
+        sensor=model_data.df[sensor_name],
+        poa_global=clearsky_cal_val.poa["poa_global"],
+        time=model_data.df["time"],
+        short_window="30min",
+        long_window="4h",
+        rel_threshold=0.05,
+        min_run_length=10
+    )
+
+    df_derivative = create_derivative_df(
+        sensor=model_data.df[sensor_name],
+        poa_global=clearsky_cal_val.poa["poa_global"],
+        time=model_data.df["time"],
+        window_length=240,
+        polyorder=1,
+        delta=1.0
+    )
+
+    df_relative_derivative_mask = create_relative_derivative_mask_df(
+        sensor=model_data.df[sensor_name],
+        poa_global=clearsky_cal_val.poa["poa_global"],
+        time=model_data.df["time"],
+        window_length=240,
+        polyorder=1,
+        delta=1.0
+    )
+
+    ransac_freq_mask = ransac_pipeline(
+        sensor=df_frequency_mask["sensor"],
+        poa_global=df_frequency_mask["poa_global"],
+        clearsky_mask=df_frequency_mask["mask"]
+    )
+
+    ransac_two_medians_mask = ransac_pipeline(
+        sensor=df_two_medians_mask["sensor"],
+        poa_global=df_two_medians_mask["poa_global"],
+        clearsky_mask=df_two_medians_mask["mask"]
+    )
+
+    ransac_relative_derivative_mask = ransac_pipeline(
+        sensor=df_relative_derivative_mask["sensor"],
+        poa_global=df_relative_derivative_mask["poa_global"],
+        clearsky_mask=df_relative_derivative_mask["mask"]
+    )
+
+    return_dfs_v2 = pd.DataFrame({
+        "time": model_data.df["time"],
+        "sensor": model_data.df[sensor_name],
+        "poa_global": clearsky_cal_val.poa["poa_global"],
+        "frequency_mask": df_frequency_mask["mask"],
+        "two_medians_mask": df_two_medians_mask["mask"],
+        "sensor_smooth": df_derivative["sensor_smooth"],
+        "sensor_d_dt": df_derivative["sensor_d_dt"],
+        "poa_global_d_dt": df_derivative["poa_global_d_dt"],
+        "derivative_mask": df_relative_derivative_mask["mask"],
+        "ransac_freq_mask_calibration": ransac_freq_mask["sensor_cal"],
+        "ransac_two_medians_mask_calibration": ransac_two_medians_mask["sensor_cal"],
+        "ransac_derivative_mask_calibration": ransac_relative_derivative_mask["sensor_cal"],
+    })
+
+    return return_dfs_v2
+
+
+def compute_amplifying_signal_envelope_method(
+        model_data: ModelData,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+        sensor_name: str
+) -> tuple[pd.Series, float]:
+    """
+    First determines envelope of the basic, raw sensor data. Then based on calculated envelope and POA global computes
+    gain factor. Return envelope and gain factor.
+    """
+
+    evenelope, sensor_smooth = determine_envelope_of_signal_peaks(
+        sensor=model_data.df[sensor_name],
+        poa_global=clearsky_cal_val.poa["poa_global"],
+        time=model_data.df["time"],
+        smooth_window=30,
+        polyorder=3,
+        minimum_disatnce_between_peaks=10,
+        smoothing_factor=2000
+    )
+
+    evenelope = pd.Series(
+        data=evenelope,
+        index=model_data.df[sensor_name].index,
+        name="evenelope"
+    )
+
+    gain_factor = compute_gain_factor(
+        envelope=evenelope,
+        poa_global=clearsky_cal_val.poa["poa_global"],
+        poa_min=20.0,
+        env_min=2.0,
+        use_median=False,
+    )
+
+    return evenelope, gain_factor

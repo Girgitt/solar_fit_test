@@ -1,23 +1,31 @@
-import numpy as np
 import pandas as pd
 import json
+import csv
+import logging
 
 from pathlib import Path
 from matplotlib.figure import Figure
-from typing import List, Tuple, Optional
+from typing import Optional, Any
 
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 
 required_metric_fields = ["mse", "mae", "rmse", "r2", "mape", "max_error", "bias"]
 
+log = logging.getLogger(__name__)
+
 
 def save_metrics_to_json(
         metrics: SensorCalibrationMetrics,
         samples_count: int,
-        coefficients_list: list[dict] = None,
+        coefficients_list: Any = None,
         filename_path: Path = None,
         scalers_list: list[dict] = None
 ) -> None:
+
+    """
+    Serialize model metrics, coefficients and scalers to a JSON file.
+    """
+
     for attr in required_metric_fields:
         if not hasattr(metrics, attr):
             raise TypeError(f"metrics must have '{attr}' attribute")
@@ -50,23 +58,33 @@ def save_metrics_to_json(
 
 
 def save_true_and_predicted_data_to_csv(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    output_path: Path,
-    index: np.ndarray = None,
-    time: np.ndarray = None,
+        y_pred: pd.Series,
+        output_path: Path,
+        y_true: pd.Series = None,
+        index: pd.Series = None,
+        time: pd.Series = None
 ) -> None:
-    columns = {"y_true": y_true, "y_pred": y_pred}
+
+    """
+    Store predicted values with optional ground truth, indices and timestamps.
+    """
+
+    if y_true is not None:
+        columns = pd.DataFrame({"y_true": y_true, "y_pred": y_pred})
+    else:
+        columns = pd.DataFrame({"y_pred": y_pred})
 
     if index is not None:
         columns["index"] = index # NOTE: index added on purpose, need for identyfing test/train split!
     if time is not None:
         columns["time"] = time
 
-    df_out = pd.DataFrame(columns)
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    df_out.to_csv(output_path, index=False)
+
+    if index is None and time is None:
+        columns.to_csv(output_path, index=True)
+    else:
+        columns.to_csv(output_path, index=False)
 
 
 def save_dataframe_to_csv(
@@ -75,6 +93,11 @@ def save_dataframe_to_csv(
         index: Optional[bool] = False,
         index_label: Optional[str] = None
 ) -> None:
+
+    """
+    Write a dataframe to CSV, ensuring parent directories exist.
+    """
+
     if output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(
@@ -89,27 +112,55 @@ def save_figure(
         save_dir: Path=None,
         filename: str=None,
 ) -> None:
+
+    """
+    Persist a matplotlib figure to disk at high resolution.
+    """
+
     if save_dir is not None:
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
         output_path = save_dir / filename
 
-    print(f"[DEBUG] Saving: {output_path}")
+    log.debug(f"Saving: {output_path}")
     try:
         fig.savefig(output_path, dpi=300)
-        print(f"[SUCCESS] Saved: {output_path}")
+        log.info(f"Success saved: {output_path}")
     except Exception as e:
-        print(f"[ERROR] Failed to save {output_path}: {e}")
+        log.error(f"Failed to save {output_path}: {e}")
 
 
 def save_predicted_data_figures(
-        figures: List[Tuple[str, str, Figure]],
+        figures: list[tuple[str, str, Figure]],
         save_dir: Path=None,
 ) -> None:
-    print(f"[INFO] Saving figures to: {save_dir} (type: {type(save_dir)})")
+
+    """
+    Save a collection of prediction figures grouped by sensor and method.
+    """
+
+    log.info(f"Saving figures to: {save_dir} (type: {type(save_dir)})")
 
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     for sensor_name, calibration_method, fig in figures:
         save_figure(fig, save_dir, f"{sensor_name}.png")
+
+
+def save_str_dict_to_csv(
+        dict_: dict[str, str],
+        output_path: Path
+) -> None:
+
+    """
+    Save a dictionary of string pairs as a two-column CSV file.
+    """
+
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open(mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['key', 'value'])
+            for key, value in dict_.items():
+                writer.writerow([key, value])

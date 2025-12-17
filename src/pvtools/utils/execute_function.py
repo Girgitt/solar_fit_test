@@ -1,173 +1,260 @@
 import pandas as pd
-import numpy as np
+import logging
 
-from pathlib import Path
 from typing import TypeAlias, Literal
-
-from pvtools.calibration.calibrate import calibrate_by_linear_regression, calibrate_by_divided_linear_regression, \
-    calibrate_by_polynominal_regression, calibrate_by_decision_tree_regression, calibrate_by_mlp_regression, \
-    calibrate_by_fuzzy_linear_regression
-from pvtools.config.params import ModelParameters, ClearSkyCalculatedValues
-from pvtools.visualisation.plotter import plot_from_dataframe, plot_predicted_data, plot_poa_vs_reference, \
-    plot_poa_reference_with_clearsky_periods
-from pvtools.io_file.reader import load_dataframe_from_csv
-from pvtools.utils.utilities import load_filtered_and_calculated_data_needed_for_execute_function, sanitize_filename, \
-    create_calibrated_dataframe
+from pathlib import Path
+from pvtools.calibration.execute_calibration import calibrate_to_reference, calibrate_directly_to_poa
+from pvtools.config.params import ModelData, ModelDirectories, ClearSkyParameters, ClearSkyCalculatedValues, ModelTimes
+from pvtools.visualisation.execute_plotting import plot_calibrated_to_reference, plot_calibrated_to_poa
+from pvtools.utils.utilities import (load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected,
+                                     load_filtered_and_calculated_data_needed_for_execute_function_periods_detected,
+                                     create_calibrated_dataframe, check_if_calibration_method_available,
+                                     check_if_sunny_cloudy_periods_exists, create_dataframe_with_sensor_values_and_poa)
 from pvtools.postprocess.postprocess_data import postprocess_data, merge_sunny_and_cloudy_calibrated_dataframes
+from pvtools.solar_domain.clearsky import clear_sky, detect_clearsky_periods, detect_clearsky_periods_v2
+from pvtools.solar_domain.determine_orientation import determine_system_azimuth_and_tilt
+from pvtools.utils.apply_mask_for_dataframe import apply_mask_for_dataframe
+from pvtools.preprocess.preprocess_data import delete_night_period
+from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components, plot_poa_reference_with_clearsky_periods
+from pvtools.io_file.reader import load_dataframe_from_csv, load_str_dict_from_csv
+
+log = logging.getLogger("calibrate")
 
 Period_type: TypeAlias = Literal['sunny', 'cloudy']
 
+
 def execute_function(
-        model_parameters: ModelParameters,
-        clearsky_calculated_values: ClearSkyCalculatedValues
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
+        clearsky_params: ClearSkyParameters,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+        calibration_method: str = "linear"
 ) -> None:
-    [df, df_sunny, df_cloudy, poa, clearsky_periods, cloudy_periods] = (
-        load_filtered_and_calculated_data_needed_for_execute_function(model_parameters))
+    """
+    For time of data from sensors first calculate corresponding POA values. Delete defined in input parameters night
+    period (during night values are 0 W/m2, useless data).
 
-    model_parameters.df = df
-    clearsky_calculated_values.poa = poa
-    clearsky_calculated_values.clearsky_periods = clearsky_periods
-    clearsky_calculated_values.cloudy_periods = cloudy_periods
+    There are two main behaviours of the function depending on the presence of reference sensor. Using defined input
+    parameter for calibration metrics directory program follows the steps:
 
-    df_cutted_short_periods = merge_sunny_and_cloudy_calibrated_dataframes(
-        df_sunny=df_sunny,
-        df_cloudy=df_cloudy
+    * Sensor reference passed:
+
+        * Periods in metrics directory found. Calibrate determined clear sky with clear sky metrics and cloudy sky
+         with cloudy sky metrics.
+        * Periods in metrics directory NOT found. Calibrate all data with all-data metrics (not separate metrics for
+         sunny and cloudy periods).
+
+    * Sensor reference not passed:
+
+        * Determine clear sky based on POA and basic sensor data. Used only when no reference passed (less accurate).
+    """
+
+    #FIXME - the priority needs to be checked! Probably there is a bug with order!
+    # In docstring is the target behaviour.
+    # load_filtered_and_calculated_data_needed_for_execute_function_periods_detected - NOT USED!!!
+
+    poa, cs = clear_sky(
+        clearsky_params=clearsky_params,
+        model_dirs=model_dirs,
+        model_times=model_times
     )
 
-    calibrate(
-        df=df_cutted_short_periods,
-        poa=poa,
-        model_parameters=model_parameters
+    poa = delete_night_period(
+        df=poa,
+        start=model_times.start_daytime_cut,
+        end=model_times.end_daytime_cut,
+    )
+
+    filename = model_dirs.filename
+    save_dir_plot = model_dirs.plot_dir / filename
+
+    plot_clear_sky(cs, save_dir=save_dir_plot, show=False)
+    plot_poa_components(poa, save_dir=save_dir_plot, show=False)
+
+    clearsky_cal_val.poa = poa
+    clearsky_periods = None
+    cloudy_periods = None
+    period_flag=False
+
+    if model_data.sensor_name_ref is not None:
+        clearsky_periods, cloudy_periods, df_cutted_short_periods = run_full_clearsky_data_pipeline(
+            model_data=model_data,
+            model_dirs=model_dirs,
+            clearsky_cal_val=clearsky_cal_val
+        )
+
+        #model_data.df = df_cutted_short_periods
+        period_flag=True
+
+        plot_poa_reference_with_clearsky_periods(
+            poa_global=poa[["time", "poa_global"]],
+            sensor_reference=model_data.df[["time", model_data.sensor_name_ref]],
+            sunny=clearsky_periods,
+            save_dir=save_dir_plot,
+            show=False
+        )
+
+    else:
+        df = load_filtered_and_calculated_data_needed_for_execute_function_no_periods_detected(
+            data_dir=model_dirs.data_dir,
+            filename=model_dirs.filename,
+        )
+
+        model_data.df = df
+
+    clearsky_cal_val.clearsky_periods = clearsky_periods
+    clearsky_cal_val.cloudy_periods = cloudy_periods
+    clearsky_cal_val.poa = poa
+
+    model_data.df["if_sunny"] = model_data.df["time"].map(clearsky_periods)
+
+    surface_tilt = clearsky_params.surface_tilt
+
+    #FIXME - funkcja determine_system_azimuth_and_tilt potrzebuje sensora referencyjnego (nie zawsze podany)
+    '''
+    if surface_tilt != 0:
+        clearsky_params.surface_tilt, clearsky_params.surface_azimuth = determine_system_azimuth_and_tilt(
+            model_data=model_data,
+            model_times=model_times,
+            clearsky_params=clearsky_params,
+            sunny_mask=clearsky_periods
+        )
+    '''
+
+    calibration_directory = check_if_calibration_method_available(
+        log_dir=model_dirs.log_dir,
+        filename=model_dirs.filename,
+        calibration_method=calibration_method
+    )
+
+    calibrate_to_reference(
+        clearsky_cal_val=clearsky_cal_val,
+        model_data=model_data,
+        model_dirs=model_dirs,
+        model_times=model_times,
+        period_flag=period_flag,
+        calibration_method=calibration_method
+    )
+
+    calibrate_directly_to_poa(
+        model_data=model_data,
+        clearsky_cal_val=clearsky_cal_val,
+        model_dirs=model_dirs
     )
 
     df_calibrated = create_calibrated_dataframe(
-        df=df_cutted_short_periods,
-        model_parameters=model_parameters
+        model_parameters=model_data,
+        model_directories=model_dirs,
+        calibration_directory=calibration_directory
     )
 
-    postprocess_df = postprocess_data(
+    df_postprocess = postprocess_data(
         df=df_calibrated,
-        model_parameters=model_parameters,
-        clearsky_df=clearsky_calculated_values.poa,
-        poa_global_name='poa_global'
+        sensor_names=model_data.sensor_names,
+        data_dir=model_dirs.data_dir,
+        filename=model_dirs.filename,
+        clearsky_df=clearsky_cal_val.poa,
+        poa_global_name='poa_global',
+        calibration_method=calibration_method
     )
 
-    model_parameters.df = postprocess_df
+    model_data.df = df_postprocess
 
-    plot(
-        df=postprocess_df,
-        model_parameters=model_parameters,
-        clearsky_calculated_values=clearsky_calculated_values
+    [df_org,
+     df_postprocess_calibrated_sensor_data_with_poa_global,
+     df_calibrated_sensor_data_with_poa_global,
+     df_org_sensor_data_with_poa_global] = (
+        create_dataframe_with_sensor_values_and_poa(
+            df_postprocess=df_postprocess,
+            df_calibrated=df_calibrated,
+            sensor_names=model_data.sensor_names,
+            poa = clearsky_cal_val.poa,
+            data_dir=model_dirs.data_dir,
+            filename=model_dirs.filename
+    ))
+
+    list_of_dataframes = [
+        df_postprocess,
+        df_org,
+        df_postprocess_calibrated_sensor_data_with_poa_global,
+        df_calibrated_sensor_data_with_poa_global,
+        df_org_sensor_data_with_poa_global
+    ]
+
+    plot_calibrated_to_reference(
+        dataframes=list_of_dataframes,
+        model_data=model_data,
+        model_dirs=model_dirs,
+        clearsky_cal_val=clearsky_cal_val,
+        calibration_method=calibration_method
     )
 
+    load_path = Path(model_dirs.data_dir / "calculated_data" / model_dirs.filename / "direct_calibration_to_poa")
 
-def calibrate(
-        df: pd.DataFrame,
-        poa: pd.DataFrame,
-        model_parameters: ModelParameters
-) -> None:
+    for sensor_name in model_data.sensor_names:
+        df_direct_calibration_to_poa = load_dataframe_from_csv(Path(load_path / f"{sensor_name}_df"))
+        dict_direct_calibration_to_poa = load_str_dict_from_csv(Path(load_path / f"{sensor_name}_dict"))
 
-    calibrate_by_linear_regression(
-        df=df,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        log_dir=model_parameters.log_dir,
-        folder_data_name=model_parameters.filename
+        df_direct_calibration_to_poa["time"] = pd.to_datetime(df_direct_calibration_to_poa["time"])
+
+        plot_calibrated_to_poa(
+            df=df_direct_calibration_to_poa,
+            dict_=dict_direct_calibration_to_poa,
+            model_dirs=model_dirs,
+            model_data=model_data,
+            sensor_name=sensor_name,
+        )
+
+
+
+def run_full_clearsky_data_pipeline(
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        clearsky_cal_val: ClearSkyCalculatedValues,
+) -> list[pd.DataFrame]:
+    '''
+    clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods(
+        poa=clearsky_cal_val.poa,
+        df=model_data.df,
+        sensor_name_ref=model_data.sensor_name_ref,
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
+    )
+    '''
+
+    clearsky_periods_all, cloudy_periods_all = detect_clearsky_periods_v2(
+        measured_ref=model_data.df[model_data.sensor_name_ref],
+        clearsky=clearsky_cal_val.poa["poa_global"],  # cs["ghi"],
+        times=model_data.df["time"],
+        sensor_name_ref=model_data.sensor_name_ref,
+        save_dir=model_dirs.data_dir,
+        filename=model_dirs.filename
     )
 
-    calibrate_by_fuzzy_linear_regression(
-        df=df,
-        poa=poa,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        log_dir=model_parameters.log_dir,
-        folder_data_name=model_parameters.filename
+    df_sunny_periods_cutted_short = apply_mask_for_dataframe(
+        data_filename=model_dirs.filename,
+        sensor_name_ref=model_data.sensor_name_ref,
+        period_type="sunny",
+        save_dir=model_dirs.data_dir
     )
 
-    calibrate_by_divided_linear_regression(
-        df=df,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        log_dir=model_parameters.log_dir,
-        folder_data_name=model_parameters.filename
+    df_cloudy_periods_cutted_short = apply_mask_for_dataframe(
+        data_filename=model_dirs.filename,
+        sensor_name_ref=model_data.sensor_name_ref,
+        period_type="cloudy",
+        save_dir=model_dirs.data_dir
     )
 
-    calibrate_by_polynominal_regression(
-        df=df,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        log_dir=model_parameters.log_dir,
-        folder_data_name=model_parameters.filename
+    df_cutted_short_periods = merge_sunny_and_cloudy_calibrated_dataframes(
+        df_sunny=df_sunny_periods_cutted_short,
+        df_cloudy=df_cloudy_periods_cutted_short
     )
 
-    calibrate_by_decision_tree_regression(
-        df=df,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        log_dir=model_parameters.log_dir,
-        folder_data_name=model_parameters.filename
-    )
+    return_dfs = [
+        clearsky_periods_all,
+        cloudy_periods_all,
+        df_cutted_short_periods
+    ]
 
-    calibrate_by_mlp_regression(
-        df=df,
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        log_dir=model_parameters.log_dir,
-        folder_data_name=model_parameters.filename
-    )
-
-
-def plot(
-        df: pd.DataFrame,
-        model_parameters: ModelParameters,
-        clearsky_calculated_values: ClearSkyCalculatedValues,
-) -> None:
-
-    df_org = load_dataframe_from_csv(Path(model_parameters.data_dir / "filtered" / f"{model_parameters.filename}.csv"))
-    df_org.columns = [sanitize_filename(name) for name in df_org.columns]
-
-    df_filtered = load_dataframe_from_csv(Path(model_parameters.data_dir /
-                                               "filtered" / "calibrated" /
-                                               model_parameters.filename /
-                                               f"{model_parameters.args.calibration}.csv"))
-
-    plot_from_dataframe(
-        df=df_org,
-        save_dir=model_parameters.plot_dir / model_parameters.filename,
-        filename="org_series_vs_time.png",
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        show=True,
-        title="Original series vs. time"
-    )
-
-    plot_from_dataframe(
-        df=df_filtered,
-        save_dir=model_parameters.plot_dir / model_parameters.filename,
-        filename=f"predicted_series_vs_time_{model_parameters.args.calibration}.png",
-        sensor_names=model_parameters.sensor_names,
-        sensor_name_ref=model_parameters.sensor_name_ref,
-        show=True,
-        title="Predicted series vs. time"
-    )
-
-    plot_predicted_data(
-        calibration_method_dir=model_parameters.log_dir / model_parameters.filename,
-        show=False,
-        save_dir=model_parameters.plot_dir / model_parameters.filename,
-    )
-
-    plot_poa_vs_reference(
-        poa_global=clearsky_calculated_values.poa['poa_global'],
-        sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
-        save_dir=model_parameters.plot_dir / model_parameters.filename,
-        show=True,
-    )
-
-    plot_poa_reference_with_clearsky_periods(
-        poa_global=clearsky_calculated_values.poa['poa_global'],
-        sensor_reference=model_parameters.df[model_parameters.sensor_name_ref],
-        sunny=clearsky_calculated_values.clearsky_periods['if_sunny'],
-        save_dir=model_parameters.plot_dir / model_parameters.filename,
-        show=True,
-    )
+    return return_dfs

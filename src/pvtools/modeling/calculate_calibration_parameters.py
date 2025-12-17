@@ -1,6 +1,11 @@
 import inspect
+import statistics
+from collections import defaultdict
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
+import logging
 
 from pathlib import Path
 from typing import Dict, Any
@@ -12,20 +17,14 @@ from sklearn.neural_network import MLPRegressor
 from sklearn.tree import _tree
 from typing import TypeAlias, Literal
 
+from pvtools.config.params import ModelData, ModelDirectories, ModelTimes
 from pvtools.config.sensor_calibration_metrics import SensorCalibrationMetrics
 from pvtools.io_file.writer import save_metrics_to_json, save_true_and_predicted_data_to_csv
 from pvtools.preprocess.preprocess_data import sanitize_filename
 
-'''
-MAE does not indicate whether the model overestimates or underestimates values
-MSE is particularly sensitive to large errors
-RMSE same units as the predicted values
-R2 correlation between two datasets
-MAPE especially useful when you want to assess the accuracy of predictions in percentage
-Bias shows whether the model regularly over- or under-predicts
-'''
+log = logging.getLogger("calculate_calibration_parameters")
 
-Period_type: TypeAlias = Literal['sunny', 'cloudy']
+Period_type: TypeAlias = Literal['sunny', 'cloudy', 'all']
 
 my_test_size=0.3
 my_random_state=42
@@ -34,13 +33,24 @@ my_random_state=42
 def linear_regression(
         df: pd.DataFrame,
         period: Period_type,
-        log_dir: Path,
-        data_filename: Path,
-        sensor_names: list[str] = None,
-        sensor_name_ref: str = None,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
 ) -> None:
+    """
+    Calculates Linear Regression coefficients.
+
+    Saves coefficients ``a``, ``b`` and :class:`Sensor Calibration Metrics
+    <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+    Saves predicted and true values of the test dataset to .csv file.
+    """
 
     df = df.copy()
+
+    log_dir = model_dirs.log_dir
+    filename = model_dirs.filename
+    sensor_names = model_data.sensor_names
+    sensor_name_ref = model_data.sensor_name_ref
 
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
@@ -70,26 +80,41 @@ def linear_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename).stem)
+        filename = sanitize_filename(Path(filename).stem)
 
-        json_metrics_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
+        json_metrics_filename = Path(log_dir) / filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_metrics_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        csv_filename = Path(log_dir) / filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def divided_linear_regression(
         df: pd.DataFrame,
         period: Period_type,
-        log_dir: Path,
-        data_filename: Path,
-        sensor_names: list[str] = None,
-        sensor_name_ref: str = None,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
 ) -> None:
+    """
+        Calculates Divided Linear Regression coefficients.
+
+        Saves coefficients ``a``, ``b``, ``hour`` and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+    """
+
     df = df.copy()
-    df["hour"] = df["time"].dt.floor("h")
+
+    log_dir = model_dirs.log_dir
+    filename = model_dirs.filename
+    sensor_names = model_data.sensor_names
+    sensor_name_ref = model_data.sensor_name_ref
+
     min_samples = 10
+    freq = model_times.divided_linear_regression_interval
+    df["interval"] = df["time"].dt.floor(freq)
 
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
@@ -98,24 +123,23 @@ def divided_linear_regression(
         metrics_list = []
         coefficients_list = []
 
-        time_test_all_hours = []
-        y_test_all_hours = []
-        y_pred_all_hours = []
-        idx_test_all_hours = []
+        time_test_all = []
+        y_test_all = []
+        y_pred_all = []
+        idx_test_all = []
 
-        for idx, (hour, group) in enumerate(df.groupby("hour")):
+        for idx, (interval_start, group) in enumerate(df.groupby("interval")):
             n = len(group)
 
-            # skip too-small groups
             if n < min_samples:
-                print(f"[INFO] Skipping hour {hour}: only {n} samples (< min_samples={min_samples})")
+                log.info(f"Skipping interval_start {interval_start}: only {n} samples (min={min_samples})")
                 continue
 
-            time = group["time"]
             x = group[sensor_col].values.reshape(-1, 1)
             y = group[sensor_name_ref].values
-
             indices = group.index.values
+            time = group["time"]
+
             x_train, x_test, y_train, y_test, idx_train, idx_test = train_test_split(
                 x, y, indices, test_size=my_test_size, random_state=my_random_state
             )
@@ -126,49 +150,72 @@ def divided_linear_regression(
             model_hour.fit(x_train, y_train)
             y_pred = model_hour.predict(x_test)
 
-            time_test_all_hours.append(time_test)
-            y_test_all_hours.append(y_test)
-            y_pred_all_hours.append(y_pred)
-            idx_test_all_hours.append(idx_test)
+            time_test_all.append(time_test)
+            y_test_all.append(y_test)
+            y_pred_all.append(y_pred)
+            idx_test_all.append(idx_test)
 
             metrics = SensorCalibrationMetrics(y_test, y_pred)
             metrics_list.append(metrics)
 
             coefficients_list.append({
-                "hour": hour.isoformat(),
+                "hour": interval_start.isoformat(),
                 "a": float(model_hour.coef_[0]),
                 "b": float(model_hour.intercept_)
             })
 
-        time_test_all_hours = np.concat(time_test_all_hours)
-        y_test_all_hours = np.concatenate(y_test_all_hours)
-        y_pred_all_hours = np.concatenate(y_pred_all_hours)
-        idx_test_all_hours = np.concatenate(idx_test_all_hours)
+        time_test_all = pd.concat(time_test_all)
+        y_test_all = np.concatenate(y_test_all)
+        y_pred_all = np.concatenate(y_pred_all)
+        idx_test_all = np.concatenate(idx_test_all)
 
         y_true_all = np.concatenate([m.y_true for m in metrics_list])
         y_pred_all = np.concatenate([m.y_pred for m in metrics_list])
         avg_metrics = SensorCalibrationMetrics(y_true_all, y_pred_all)
 
+        y_pred_all = pd.Series(y_pred_all)
+        y_test_all = pd.Series(y_test_all)
+        idx_test_all = pd.Series(idx_test_all)
+        time_test_all = pd.Series(time_test_all)
+
+        coefficients_mean = mean_coefficients_by_time(coefficients_list)
+
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
+        filename = sanitize_filename(Path(filename).stem)
+        json_filename = Path(log_dir) / filename / function_name  / period / f"{column_name}.json"
         save_metrics_to_json(avg_metrics, len(x), coefficients_list, json_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(
-            y_test_all_hours, y_pred_all_hours, csv_filename, idx_test_all_hours, time_test_all_hours)
+        # MEAN VALUES ARE FOR TESTING
+        json_filename_mean = Path(log_dir) / filename / f"{function_name}_mean" / period / f"{column_name}.json"
+        save_metrics_to_json(avg_metrics, len(x), coefficients_mean, json_filename_mean)
+
+        csv_filename = Path(log_dir) / filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
+        save_true_and_predicted_data_to_csv(y_pred_all, csv_filename, y_test_all, idx_test_all, time_test_all)
 
 
 def polynominal_regression(
         df: pd.DataFrame,
         period: Period_type,
-        log_dir: Path,
-        data_filename: Path,
-        sensor_names: list[str] = None,
-        sensor_name_ref: str = None,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
 ) -> None:
+    """
+        Calculates Polynominal Regression coefficients.
+
+        Depending on degree of the model, saves coefficients ``a``, ``b`` etc.. and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+    """
+
     df = df.copy()
+
+    log_dir = model_dirs.log_dir
+    filename = model_dirs.filename
+    sensor_names = model_data.sensor_names
+    sensor_name_ref = model_data.sensor_name_ref
+
     coefficients = []
 
     if sensor_names is None:
@@ -205,23 +252,35 @@ def polynominal_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
+        filename = sanitize_filename(Path(filename).stem)
+        json_filename = Path(log_dir) / filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        csv_filename = Path(log_dir) / filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def decision_tree_regression(
         df: pd.DataFrame,
         period: Period_type,
-        log_dir: Path,
-        data_filename: Path,
-        sensor_names: list[str] = None,
-        sensor_name_ref: str = None,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
 ) -> None:
+    """
+        Calculates Decision Tree Regression coefficients.
+
+        Saves tree rules coefficients and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+    """
+
     df = df.copy()
+
+    log_dir = model_dirs.log_dir
+    filename = model_dirs.filename
+    sensor_names = model_data.sensor_names
+    sensor_name_ref = model_data.sensor_name_ref
 
     if sensor_names is None:
         raise ValueError("Parameter 'sensor_names' must be a list of column names.")
@@ -250,23 +309,36 @@ def decision_tree_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
+        filename = sanitize_filename(Path(filename).stem)
+        json_filename = Path(log_dir) / filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        csv_filename = Path(log_dir) / filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def mlp_regression(
         df: pd.DataFrame,
         period: Period_type,
-        log_dir: Path,
-        data_filename: Path,
-        sensor_names: list[str] = None,
-        sensor_name_ref: str = None,
+        model_data: ModelData,
+        model_dirs: ModelDirectories,
 ) -> None:
+    """
+        Calculates Multi Layer Perceptron coefficients.
+
+        Saves weights and biases for every layer and :class:`Sensor Calibration Metrics
+        <pvtools.config.sensor_calibration_metrics.SensorCalibrationMetrics>` to the .json file.
+
+        Saves predicted and true values of the test dataset to .csv file.
+        """
+
     df = df.copy()
+
+    log_dir = model_dirs.log_dir
+    filename = model_dirs.filename
+    sensor_names = model_data.sensor_names
+    sensor_name_ref = model_data.sensor_name_ref
+
     coefficients = []
 
     if sensor_names is None:
@@ -332,21 +404,27 @@ def mlp_regression(
 
         function_name = inspect.currentframe().f_code.co_name
         column_name = sanitize_filename(sensor_col)
-        data_filename = sanitize_filename(Path(data_filename).stem)
-        json_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}.json"
+        filename = sanitize_filename(Path(filename).stem)
+        json_filename = Path(log_dir) / filename / function_name / period / f"{column_name}.json"
         save_metrics_to_json(metrics, len(x), coefficients, json_filename, scalers)
 
-        csv_filename = Path(log_dir) / data_filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
-        save_true_and_predicted_data_to_csv(y_test, y_pred, csv_filename, idx_test, time_test)
+        csv_filename = Path(log_dir) / filename / function_name / period / f"{column_name}_test_true_vs_pred.csv"
+        save_true_and_predicted_data_to_csv(y_pred, csv_filename, y_test, idx_test, time_test)
 
 
 def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
+    """
+    Convert a trained decision tree into a nested dictionary of thresholds and leaf values.
+    """
     tree_ = model.tree_
     feature = tree_.feature
     threshold = tree_.threshold
     value = tree_.value
 
     def recurse(node: int) -> Dict[str, Any]:
+        """
+        Walk through tree nodes recursively to capture split rules and outputs.
+        """
         if tree_.feature[node] != _tree.TREE_UNDEFINED:
             return {
                 "feature": int(feature[node]),
@@ -360,3 +438,30 @@ def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
             }
 
     return recurse(0)
+
+def mean_coefficients_by_time(
+        coeffs_list: list[dict]
+) -> list[dict]:
+
+    """
+    Aggregate linear coefficients by time of day and report their averages.
+    """
+
+    grouped = defaultdict(lambda: {"a": [], "b": []})
+
+    for item in coeffs_list:
+        time_of_day = datetime.fromisoformat(item["hour"]).strftime("%H:%M")
+        grouped[time_of_day]["a"].append(item["a"])
+        grouped[time_of_day]["b"].append(item["b"])
+
+    mean_result = [
+        {
+            "hour": time,
+            "a": statistics.mean(values["a"]),
+            "b": statistics.mean(values["b"]),
+            "count_days": len(values["a"]),
+        }
+        for time, values in sorted(grouped.items())
+    ]
+
+    return mean_result

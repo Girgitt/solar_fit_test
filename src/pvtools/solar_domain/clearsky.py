@@ -5,93 +5,151 @@ import pvlib
 from itertools import product
 from pathlib import Path
 from typing import Optional
-from pvlib import clearsky, atmosphere, solarposition, irradiance
-from pvlib.location import Location
-from pvlib.iotools import read_tmy3
-from pvlib.clearsky import detect_clearsky
-from pvanalytics.features.clearsky import reno
-from datetime import time
 
-from pvtools.visualisation.plotter import plot_clear_sky, plot_poa_components
-from pvtools.config.params import ClearSkyParameters, SolarDataForLocationAndTime
+from pandas import DatetimeIndex
+from pvlib import irradiance
+from pvlib.location import Location
+from pvlib.clearsky import detect_clearsky, simplified_solis
+from pvlib_mod.clearsky_mod import detect_clearsky_mod
+
+from pvtools.config.params import ClearSkyParameters, ModelTimes, ModelDirectories
 from pvtools.preprocess.preprocess_data import sanitize_filename
 from pvtools.io_file.writer import save_dataframe_to_csv
-from pvtools.preprocess.preprocess_data import delete_night_period
 
 
 def clear_sky(
-        clearsky_parameters: ClearSkyParameters,
-        show: bool = False,
-        start_time: time = time(4, 0), # 4:00 GMT -> 6:00 UTC+2
-        end_time: time = time(17, 0), # 17:00 GMT -> 19:00 UTC+2
-        save_dir_plot: Path = None,
-        save_dir: Path = None,
-        filename: str = None
-) -> pd.DataFrame:
-    tus, times, sol, cs = get_solar_data_for_location_and_time(clearsky_parameters)
+        clearsky_params: ClearSkyParameters,
+        model_dirs: ModelDirectories,
+        model_times: ModelTimes,
+) -> list[pd.DataFrame]:
+    """
+    Using external library ``pvlib`` calculates DataFrame of Plane-Of-Array (POA) and DataFrame of clear sky.
+
+    Returns: **poa**, **cs**
+
+        * **poa** (DataFrame) - contains following columns:
+
+            * ``time`` : Timestamps
+            * ``poa_global`` : Total in-plane irradiance [Wm⁻²]
+            * ``poa_direct`` : Total in-plane beam irradiance [Wm⁻²]
+            * ``poa_diffuse`` : Total in-plane diffuse irradiance [Wm⁻²]
+            * ``poa_sky_diffuse`` : In-plane diffuse irradiance from sky [Wm⁻²]
+            * ``poa_ground_diffuse`` : In-plane diffuse irradiance from ground [Wm⁻²]
+
+
+        * **cs** (DataFrame) - contains following columns:
+
+            * ``dni`` : Direct Normal Irradiance [Wm⁻²]
+            * ``dhi`` : Diffuse Horizontal Irradiance [Wm⁻²]
+            * ``ghi`` : Global Horizontal Irradiance [Wm⁻²]
+
+    There is math forumla to describe dependencies of ``cs`` values:
+
+    GHI = DNI × cos(θ) + DHI
+
+    where:
+        θ is the solar zenith angle
+    """
+
+    filename = model_dirs.filename
+    save_dir = model_dirs.data_dir
+
+    (tus, times, solarpos, cs, airmass, dni_extra) = get_solar_data_for_location_and_time(clearsky_params, model_times)
 
     dni = cs['dni']
     dhi = cs['dhi']
     ghi = cs['ghi']
 
-    dni_extra = irradiance.get_extra_radiation(times)
-    solarpos = solarposition.get_solarposition(times, clearsky_parameters.warsaw_lat, clearsky_parameters.warsaw_lon)
-
     # panel orientation
-    surface_tilt = clearsky_parameters.surface_tilt
-    surface_azimuth = clearsky_parameters.surface_azimuth
+    surface_tilt = clearsky_params.surface_tilt
+    surface_azimuth = clearsky_params.surface_azimuth
 
     # get POA
     poa = irradiance.get_total_irradiance(
-        surface_tilt,
-        surface_azimuth,
-        solarpos['zenith'],
-        solarpos['azimuth'],
+        surface_tilt=surface_tilt,
+        surface_azimuth=surface_azimuth,
+        solar_zenith=solarpos['zenith'],
+        solar_azimuth=solarpos['azimuth'],
         dni=dni,
         ghi=ghi,
         dhi=dhi,
         dni_extra=dni_extra,
-        albedo=clearsky_parameters.albedo,  # ground reflectance for ground‐reflected component
-        model='perez'  # you can choose 'isotropic', 'haydavies', 'dirint', etc.
+        airmass=airmass,
+        albedo=clearsky_params.albedo,
+        model='perez-driesse'
     )
 
     poa = poa.rename_axis('time').reset_index()
-    poa_filtered = delete_night_period(
-        df=poa,
-        start=start_time,
-        end=end_time
-    )
-
-    plot_clear_sky(cs, save_dir=save_dir_plot, show=show)
-    plot_poa_components(poa_filtered, save_dir=save_dir_plot, show=show)
+    poa = pd.DataFrame(poa)
 
     if save_dir is not None:
         save_dir = Path(save_dir)
         output_path = save_dir / "calculated_data" / filename / ("poa_values" + ".csv")
-        save_dataframe_to_csv(poa_filtered, output_path, index=False)
+        save_dataframe_to_csv(poa, output_path, index=False)
 
-    return poa_filtered
+    return [poa, cs]
 
 
-def get_solar_data_for_location_and_time(clear_sky_parameters: ClearSkyParameters) -> SolarDataForLocationAndTime:
+def get_solar_data_for_location_and_time(
+        clearsky_params: ClearSkyParameters,
+        model_times: ModelTimes
+) -> tuple[Location, DatetimeIndex, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+
+    Args:
+        clearsky_params:
+        model_times:
+
+    Returns:
+
+    """
+
     tus = Location(
-        latitude=clear_sky_parameters.warsaw_lat,
-        longitude=clear_sky_parameters.warsaw_lon,
-        tz=clear_sky_parameters.tz,
-        altitude=clear_sky_parameters.altitude,
-        name=clear_sky_parameters.name
+        latitude=clearsky_params.warsaw_lat,
+        longitude=clearsky_params.warsaw_lon,
+        tz=clearsky_params.tz,
+        altitude=clearsky_params.altitude,
+        name=clearsky_params.name
     )
 
     times = pd.date_range(
-        start=clear_sky_parameters.start_time,
-        end=clear_sky_parameters.end_time,
-        freq=clear_sky_parameters.frequency
+        start=model_times.start_time,
+        end=model_times.end_time,
+        freq=model_times.frequency
     )
 
-    sol = pvlib.solarposition.get_solarposition(times, clear_sky_parameters.warsaw_lat, clear_sky_parameters.warsaw_lon)
-    cs = tus.get_clearsky(times)
+    solpos = pvlib.solarposition.get_solarposition(
+        time=times,
+        latitude=clearsky_params.warsaw_lat,
+        longitude=clearsky_params.warsaw_lon,
+        altitude=clearsky_params.altitude,
+        method='pyephem', #'nrel_numba'
+    )
 
-    return tus, times, sol, cs
+    apparent_zenith = solpos['apparent_zenith']
+    airmass = pvlib.atmosphere.get_relative_airmass(apparent_zenith)
+
+    apparent_elevation = solpos['apparent_elevation']
+    aod700 = 0.1
+    precipitable_water = 1.5 #FIXME This parameters shouldn't be hard-coded. Wait for response to download data!
+    pressure = pvlib.atmosphere.alt2pres(clearsky_params.altitude)
+
+    #FIXME - variables should be input variables. Hard coded for testing
+    dni_extra = pvlib.irradiance.get_extra_radiation(
+        datetime_or_doy=times,
+        solar_constant=1366.1,
+        method='pyephem', #'nrel'
+        )
+
+    cs = simplified_solis(
+        apparent_elevation=apparent_elevation,
+        aod700=aod700,
+        precipitable_water=precipitable_water,
+        pressure=pressure,
+        dni_extra=dni_extra
+    )
+
+    return tus, times, solpos, cs, airmass, dni_extra
 
 
 def detect_clearsky_periods(
@@ -101,6 +159,11 @@ def detect_clearsky_periods(
         save_dir: Optional[Path] = None,
         filename: str = None,
 ) -> [pd.Series, pd.Series]:
+
+    """
+    Derive sunny and cloudy masks by comparing measured irradiance to POA reference data.
+    """
+
     df = df.copy()
     poa = poa.copy()
 
@@ -140,7 +203,7 @@ def detect_clearsky_periods(
         mask = detect_clearsky(
             sub['measured'],
             sub['poa_global'],
-            window_length=4,
+            window_length=10, #before 4
             mean_diff=100,
             max_diff=125,
         )
@@ -191,8 +254,56 @@ def detect_clearsky_periods(
 
     return sunny_mask, cloudy_mask
 
+def detect_clearsky_periods_v2(
+        measured_ref: pd.Series,
+        clearsky: pd.Series,
+        times: pd.Series,
+        sensor_name_ref: str = None,
+        save_dir: Optional[Path] = None,
+        filename: str = None,
+) -> [pd.Series, pd.Series]:
+
+    """
+    Detect clear-sky samples using the modified pvlib routine and export masks if requested.
+    """
+
+    measured_ref.index = times
+    clearsky.index = times
+
+    clear, comp, alpha = detect_clearsky_mod(
+        measured=measured_ref,
+        clearsky=clearsky,
+        window_length=7,
+        mean_diff=200,
+        max_diff=300,
+        lower_line_length=3,
+        upper_line_length=20,
+        var_diff=0.01,
+        slope_dev=30,
+        max_iterations=20,
+        return_components=True
+    )
+
+    clear.name = 'if_sunny'
+    cloudy = ~clear
+
+    if save_dir is not None:
+        save_dir = Path(save_dir)
+        s_name = sanitize_filename(sensor_name_ref)
+        output_path_sunny = save_dir / "calculated_data" / filename / (s_name + "_sunny_periods_all" + ".csv")
+        save_dataframe_to_csv(clear, output_path_sunny, index=True)
+
+        output_path_cloudy = save_dir / "calculated_data" / filename / (s_name + "_cloudy_periods_all" + ".csv")
+        save_dataframe_to_csv(cloudy, output_path_cloudy, index=True)
+
+    return clear, cloudy
+
 
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
+
+    """
+    Search a grid of thresholds to find a clear-sky mask with strong correlation and coverage.
+    """
     poa_global_ref = pair['poa_global'].quantile(0.95)
     mean_percentage_grid = [0.08, 0.09, 0.10] #[0.06, 0.07, 0.08]
     max_percentage_grid = [0.12, 0.15] #[0.10, 0.12]
@@ -233,6 +344,9 @@ def calculate_my_own_mask(
         ratio: float = 0.90, # percentage
         time_period: int = 10 # minutes
 ) -> pd.Series:
+    """
+    Mark periods where measurements stay within a tolerance band for a minimum duration.
+    """
     diff = (pair["measured"] - pair["poa_global"]).abs()
     tolerance = (1.0 - ratio) * pair["poa_global"]
     base = diff.le(tolerance) & diff.notna() & tolerance.gt(0)
@@ -243,6 +357,10 @@ def calculate_my_own_mask(
     return mask.astype(bool)
 
 def detect_sunny_cloudy_intervals(s: pd.Series) -> pd.DataFrame:
+
+    """
+    Convert a boolean series into start and end timestamps for contiguous true intervals.
+    """
 
     groups = (s != s.shift()).cumsum()
     true_groups = s[s].groupby(groups)
@@ -266,7 +384,11 @@ def delete_short_periods(
         sunny_intervals: pd.DataFrame,
         cloudy_intervals: pd.DataFrame,
         min_length: int
-) -> [pd.Series, pd.Series]:
+) -> [pd.DataFrame, pd.DataFrame]:
+
+    """
+    Remove sunny or cloudy stretches shorter than the specified length threshold.
+    """
 
     sunny_mask_filtered = []
     cloudy_mask_filtered = []
@@ -283,7 +405,13 @@ def delete_short_periods(
             end_time = row["end"]
             cloudy_mask_filtered.append(cloudy_mask.loc[start_time:end_time])
 
-    sunny_mask_combined  =pd.concat(sunny_mask_filtered)
-    cloudy_mask_combined = pd.concat(cloudy_mask_filtered)
+    sunny_mask_combined = pd.DataFrame()
+    cloudy_mask_combined = pd.DataFrame()
+
+    if sunny_mask_filtered:
+        sunny_mask_combined = pd.concat(sunny_mask_filtered)
+
+    if cloudy_mask_filtered:
+        cloudy_mask_combined = pd.concat(cloudy_mask_filtered)
 
     return sunny_mask_combined, cloudy_mask_combined
