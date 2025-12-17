@@ -16,6 +16,10 @@ def determine_system_azimuth_and_tilt(
         sunny_mask: pd.Series,
 ) -> tuple[float, float]:
 
+    """
+    Estimate array tilt and azimuth by matching measured peaks to simulated irradiance.
+    """
+
     df = model_data.df.copy()
     sensor_name_ref = model_data.sensor_name_ref
     input_tilt = clearsky_params.surface_tilt
@@ -67,6 +71,10 @@ def infer_orientation_daily_peak(
         dni
 ) -> List[float]:
 
+    """
+    Select tilt and azimuth values that minimize squared error against modeled peak azimuths.
+    """
+
     peak_times = _peak_times(power_or_poa[sunny]) #FIXME - function _peak_times() not always works correct. Test tilt=15 and azimuth=90
     azimuth_by_minute = solar_azimuth.resample('1min').interpolate(method='linear')
     modeled_azimuth = azimuth_by_minute[peak_times]
@@ -103,5 +111,9 @@ def infer_orientation_daily_peak(
 
 
 def by_day(data):
+
+    """
+    Group a time-indexed series by day preserving timezone information.
+    """
     return data.groupby(pd.to_datetime(data.index.date).tz_localize(data.index.tz)) # original code
     #return data.groupby(pd.Grouper(freq="D"))

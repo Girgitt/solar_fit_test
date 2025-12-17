@@ -254,6 +254,10 @@ def load_filtered_and_calculated_data_needed_for_execute_function_no_periods_det
 
 def check_if_sunny_cloudy_periods_exists(data_dir: Path) -> bool:
 
+    """
+    Verify whether sunny and cloudy period directories are present in the data folder.
+    """
+
     check_dir_sunny = Path(data_dir / "filtered" / "sunny_periods")
     check_dir_cloudy = Path(data_dir / "filtered" / "cloudy_periods")
 

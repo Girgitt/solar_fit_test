@@ -413,12 +413,18 @@ def mlp_regression(
 
 
 def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
+    """
+    Convert a trained decision tree into a nested dictionary of thresholds and leaf values.
+    """
     tree_ = model.tree_
     feature = tree_.feature
     threshold = tree_.threshold
     value = tree_.value
 
     def recurse(node: int) -> Dict[str, Any]:
+        """
+        Walk through tree nodes recursively to capture split rules and outputs.
+        """
         if tree_.feature[node] != _tree.TREE_UNDEFINED:
             return {
                 "feature": int(feature[node]),
@@ -436,6 +442,10 @@ def export_tree_as_rules(model: DecisionTreeRegressor) -> Dict[str, Any]:
 def mean_coefficients_by_time(
         coeffs_list: list[dict]
 ) -> list[dict]:
+
+    """
+    Aggregate linear coefficients by time of day and report their averages.
+    """
 
     grouped = defaultdict(lambda: {"a": [], "b": []})
 

@@ -16,6 +16,10 @@ def apply_mask_for_dataframe(
         save_dir: Path = None,
 ) -> pd.DataFrame:
 
+    """
+    Filter a dataset to sunny or cloudy periods using precomputed boolean masks.
+    """
+
     df_data = load_dataframe_from_csv(Path(save_dir / "filtered" / f"{data_filename}.csv"))
     df_mask_all = load_dataframe_from_csv(Path(save_dir / "calculated_data" / data_filename /
                                            f"{sanitize_filename(sensor_name_ref)}_{period_type}_periods_all.csv"))

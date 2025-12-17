@@ -160,6 +160,10 @@ def detect_clearsky_periods(
         filename: str = None,
 ) -> [pd.Series, pd.Series]:
 
+    """
+    Derive sunny and cloudy masks by comparing measured irradiance to POA reference data.
+    """
+
     df = df.copy()
     poa = poa.copy()
 
@@ -259,6 +263,10 @@ def detect_clearsky_periods_v2(
         filename: str = None,
 ) -> [pd.Series, pd.Series]:
 
+    """
+    Detect clear-sky samples using the modified pvlib routine and export masks if requested.
+    """
+
     measured_ref.index = times
     clearsky.index = times
 
@@ -292,6 +300,10 @@ def detect_clearsky_periods_v2(
 
 
 def calculate_adaptive_best_mask(pair: pd.DataFrame) -> pd.DataFrame:
+
+    """
+    Search a grid of thresholds to find a clear-sky mask with strong correlation and coverage.
+    """
     poa_global_ref = pair['poa_global'].quantile(0.95)
     mean_percentage_grid = [0.08, 0.09, 0.10] #[0.06, 0.07, 0.08]
     max_percentage_grid = [0.12, 0.15] #[0.10, 0.12]
@@ -332,6 +344,9 @@ def calculate_my_own_mask(
         ratio: float = 0.90, # percentage
         time_period: int = 10 # minutes
 ) -> pd.Series:
+    """
+    Mark periods where measurements stay within a tolerance band for a minimum duration.
+    """
     diff = (pair["measured"] - pair["poa_global"]).abs()
     tolerance = (1.0 - ratio) * pair["poa_global"]
     base = diff.le(tolerance) & diff.notna() & tolerance.gt(0)
@@ -342,6 +357,10 @@ def calculate_my_own_mask(
     return mask.astype(bool)
 
 def detect_sunny_cloudy_intervals(s: pd.Series) -> pd.DataFrame:
+
+    """
+    Convert a boolean series into start and end timestamps for contiguous true intervals.
+    """
 
     groups = (s != s.shift()).cumsum()
     true_groups = s[s].groupby(groups)
@@ -366,6 +385,10 @@ def delete_short_periods(
         cloudy_intervals: pd.DataFrame,
         min_length: int
 ) -> [pd.DataFrame, pd.DataFrame]:
+
+    """
+    Remove sunny or cloudy stretches shorter than the specified length threshold.
+    """
 
     sunny_mask_filtered = []
     cloudy_mask_filtered = []

@@ -7,6 +7,10 @@ def _get_sample_intervals_mod(
         win_length: int
 ) -> [float, int]:
 
+    """
+    Estimate sampling interval and window length in samples for uneven time indices.
+    """
+
     deltas = np.diff(times.values) / np.timedelta64(1, "m")
 
     if len(deltas) == 0:

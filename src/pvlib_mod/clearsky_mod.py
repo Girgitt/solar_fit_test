@@ -25,6 +25,10 @@ def detect_clearsky_mod(measured: pd.Series,
                     return_components: bool = False
                     ):
 
+    """
+    Modified clear-sky detection that supports uneven sampling and extended limits.
+    """
+
     times = pd.to_datetime(times)
 
     if times is None:

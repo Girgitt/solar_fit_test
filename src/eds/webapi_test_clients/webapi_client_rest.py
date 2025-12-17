@@ -39,6 +39,9 @@ group.add_argument(
 class Client:
 
     def __init__(self, args, params):
+        """
+        Initialize REST client session with authentication and default options.
+        """
         self.args = args
         self.params = params
         self.api = args.host + '/api/v1/'
@@ -53,6 +56,9 @@ class Client:
         self._floatPrecision = args.floatPrecision
 
     def run(self, endpoint, verbose=True):
+        """
+        Execute a named client method or raw GET endpoint with retry handling.
+        """
         reapetCounter = 0
         while reapetCounter < self.maxRepeats:
             reapetCounter += 1
@@ -81,12 +87,18 @@ class Client:
                 self.params = self._origParams.copy()
 
     def authenticate(self):
+        """
+        Request a session token using username and password.
+        """
         data = OrderedDict()
         data['username'] = self.args.user
         data['password'] = self.args.password
         return self.session.post(self.api + 'authenticate', json=data, verify=self.verify)
 
     def login(self):
+        """
+        Perform application login and store the returned bearer token.
+        """
         data = OrderedDict()
         data['username'] = self.args.user
         data['password'] = self.args.password
@@ -97,12 +109,21 @@ class Client:
         return res
 
     def logout(self):
+        """
+        Terminate the current REST session.
+        """
         return self.session.post(self.api + 'logout', verify=self.verify)
 
     def ping(self):
+        """
+        Check service availability via a simple GET request.
+        """
         return self.session.get(self.api + 'ping', verify=self.verify)
 
     def objects(self):
+        """
+        Create, update, or delete objects depending on the HTTP method.
+        """
         if self.args.method == 'POST':
             data = [self.params]
             return self.session.post(self.api + 'objects', json=data, verify=self.verify)
@@ -114,6 +135,9 @@ class Client:
             return self.session.delete(self.api + 'objects', json=data, verify=self.verify)
 
     def objects_query(self):
+        """
+        Query objects with pagination and optional filters.
+        """
         data = {
             'order': self.params.pop('order', []),
             'page': self.params.pop('page', 1),
@@ -143,6 +167,9 @@ class Client:
         return self.session.post(self.api + 'objects/query', json=data, verify=self.verify)
 
     def objects_sources(self):
+        """
+        Create, update or delete object sources based on the chosen HTTP method.
+        """
         if self.args.method == 'POST':
             data = [self.params]
             return self.session.post(self.api + 'objects/sources', json=data, verify=self.verify)
@@ -154,6 +181,9 @@ class Client:
             return self.session.delete(self.api + 'objects/sources', json=data, verify=self.verify)
 
     def objects_sources_query(self):
+        """
+        Query object sources with ordering, paging and optional filters.
+        """
         data = {
             'order': self.params.pop('order', []),
             'page': self.params.pop('page', 1),
@@ -165,6 +195,9 @@ class Client:
         return self.session.post(self.api + 'objects/sources/query', json=data, verify=self.verify)
 
     def points_operate(self):
+        """
+        Operate on points by submitting value and quality changes.
+        """
         data = {
             'sid': self.params.pop('sid', 0),
             'iess': self.params.pop('iess', ''),
@@ -178,6 +211,9 @@ class Client:
         return self.session.post(self.api + 'points/operate', json=[data], verify=self.verify)
 
     def points_query(self):
+        """
+        Query points using GET or POST depending on the configured method.
+        """
         if self.args.method == 'get':
             data = {
                 'source': self.params.pop('source', ''),
@@ -216,6 +252,9 @@ class Client:
         return self.session.post(self.api + 'points/query', json=data, verify=self.verify)
 
     def points_export(self):
+        """
+        Export point definitions using GET or POST depending on arguments.
+        """
         if self.args.method == 'get':
             data = OrderedDict()
             data['iess'] = self.params.pop('iess','')
@@ -246,6 +285,9 @@ class Client:
         return self.session.post(self.api + 'points/export', json=data, verify=self.verify)
 
     def points_publish(self):
+        """
+        Publish point values and metadata to subscribers.
+        """
         data = {
             'sid': self.params.pop('sid', 0),
             'iess': self.params.pop('iess', ''),
@@ -265,6 +307,9 @@ class Client:
         return self.session.post(self.api + 'points/publish', json=[data], verify=self.verify)
 
     def points_unpublish(self):
+        """
+        Unpublish previously shared point data.
+        """
         data = {
             'sid': self.params.pop('sid', 0),
             'iess': self.params.pop('iess', ''),
@@ -274,9 +319,15 @@ class Client:
         return self.session.post(self.api + 'points/unpublish', json=[data], verify=self.verify)
 
     def points_sources(self):
+        """
+        List available sources for points.
+        """
         return self.session.get(self.api + 'points/sources', verify=self.verify)
 
     def requests(self):
+        """
+        Fetch or delete requests based on the HTTP method.
+        """
         if self.args.method == 'GET':
             ids = ','.join(map(str, self.params.pop('id', [])))
             return self.session.get(self.api + 'requests?id=' + ids, verify=self.verify)
@@ -285,6 +336,9 @@ class Client:
             return self.session.delete(self.api + 'requests', json=data, verify=self.verify)
 
     def events_read(self):
+        """
+        Submit an event read request and fetch results once processed.
+        """
         fields = self.params.pop('fields', None)
         data = {
             'filter': {
@@ -310,6 +364,9 @@ class Client:
         log_request(res)
 
     def trend(self):
+        """
+        Request trend data for one or multiple points and wait for completion.
+        """
         data = []
         items_params = {
             'period': {
@@ -337,6 +394,9 @@ class Client:
         self._wait_for_request_execution(data['id'], get_chunks)
 
     def trend_tabular(self):
+        """
+        Request tabular trend data for given points.
+        """
         items_params = {}
         if 'shadePriority' in self.params:
             items_params['shadePriority'] = self.params['shadePriority']
@@ -369,9 +429,15 @@ class Client:
         self._wait_for_request_execution(data['id'], get_chunks)
 
     def trend_groups(self):
+        """
+        Retrieve available trend group configurations.
+        """
         return self.session.get(self.api + 'trend/groups', verify=self.verify)
 
     def events(self):
+        """
+        Create events for specified points.
+        """
         data = self.params
         if 'sid' in self.params:
             data['pointId'] = {'sid': self.params.pop('sid')}
@@ -380,6 +446,9 @@ class Client:
         return self.session.post(self.api + 'events', json=[self.params], verify=self.verify)
 
     def report_configs_query(self):
+        """
+        Query report configurations with pagination and filtering options.
+        """
         data = {
             'page': self.params.pop('page', 1),
             'pagesize': self.params.pop('pagesize', 5),
@@ -419,6 +488,9 @@ class Client:
         return self.session.post(self.api + 'report/configs/query', json=data, verify=self.verify)
 
     def report_configs(self):
+        """
+        Create, update, or delete report configurations.
+        """
         if self.args.method == 'POST':
             data = [{
                 'sourceId': self.params.pop('sourceId'),
@@ -437,6 +509,9 @@ class Client:
             return self.session.delete(self.api + 'report/configs', json=data, verify=self.verify)
 
     def report_custom(self):
+        """
+        Execute a custom report job and retrieve its output.
+        """
         data = {
             'rdf': {
                 'localTime': self.params.get('localTime', True),
@@ -459,6 +534,9 @@ class Client:
         log_request(res)
 
     def report_global(self):
+        """
+        Generate a global report using supplied definition details.
+        """
         data = {
             'sourceId': self.params['sourceId'],
             'file': self.params['file'],
@@ -479,6 +557,9 @@ class Client:
         log_request(res)
 
     def report_global_run(self):
+        """
+        Run a stored global report configuration.
+        """
         data = {
             'configId': self.params['configId'],
             'dtRef': self.params.get('dtRef', int(time.time()))
@@ -489,6 +570,9 @@ class Client:
         self._wait_for_request_execution(data['id'])
 
     def shades_points(self):
+        """
+        Query points that have shade data available.
+        """
         data = {
             'order': self.params.pop('order', []),
             'page': self.params.pop('page', 1),
@@ -499,6 +583,9 @@ class Client:
         return self.session.post(self.api + 'shades/points', json=data, verify=self.verify)
 
     def shades_read(self):
+        """
+        Request shade values for given points and retrieve results.
+        """
         data = []
         items_params = {
             'period': {
@@ -524,6 +611,9 @@ class Client:
         log_request(res)
 
     def shades_write(self):
+        """
+        Write shade values for specified points over a period.
+        """
         data = {
             'period': {
                 'from': self.params.get('from', int(time.time()) - 600),
@@ -543,6 +633,9 @@ class Client:
         self._wait_for_request_execution(data['id'])
 
     def shades_clear(self):
+        """
+        Clear shade values for specified points within a period.
+        """
         data = {
             'period': {
                 'from': self.params.get('from', int(time.time()) - 600),
@@ -560,6 +653,9 @@ class Client:
         self._wait_for_request_execution(data['id'])
 
     def shades_copy(self):
+        """
+        Copy shade values from a source point to a destination point.
+        """
         data = {
             'period': {
                 'from': self.params.get('from', int(time.time()) - 600),
@@ -582,18 +678,33 @@ class Client:
         self._wait_for_request_execution(data['id'])
 
     def tg(self):
+        """
+        Retrieve technological groups list.
+        """
         return self.session.get(self.api + 'tg', verify=self.verify)
 
     def sg(self):
+        """
+        Retrieve security groups list.
+        """
         return self.session.get(self.api + 'sg', verify=self.verify)
 
     def user_sg(self):
+        """
+        Fetch security groups assigned to the current user.
+        """
         return self.session.get(self.api + 'user/sg', verify=self.verify)
 
     def user_profile(self):
+        """
+        Fetch profile information for the authenticated user.
+        """
         return self.session.get(self.api + 'user/profile', verify=self.verify)
 
     def users_query(self):
+        """
+        Query users with pagination and optional filters.
+        """
         data = {
             'order': self.params.pop('order', []),
             'page': self.params.pop('page', 1),
@@ -605,33 +716,54 @@ class Client:
         return self.session.post(self.api + 'users/query', json=data, verify=self.verify)
 
     def status(self):
+        """
+        Retrieve service status information.
+        """
         return self.session.get(self.api + 'status', verify=self.verify)
 
     def license(self):
+        """
+        Retrieve license details from the REST API.
+        """
         return self.session.get(self.api + 'license', verify=self.verify)
 
     def diagram_open(self):
+        """
+        Open a diagram via REST using provided parameters.
+        """
         return self.session.post(self.api + 'diagram/open', json=self.params, verify=self.verify)
 
     def diagram_close(self):
+        """
+        Close an open diagram session identified by UUID.
+        """
         uuid = self.params.pop('uuid', None)
         if uuid:
             return self.session.post(self.api + uuid + "/close", json=self.params, verify=self.verify)
         raise Exception("UUID is required to close diagram")
 
     def diagram_resize(self):
+        """
+        Resize an existing diagram session.
+        """
         uuid = self.params.pop('uuid', None)
         if uuid:
             return self.session.post(self.api + uuid + "/resize", json=self.params, verify=self.verify)
         raise Exception("UUID is required to resize diagram")
 
     def diagram_viewport(self):
+        """
+        Update the viewport of an open diagram session.
+        """
         uuid = self.params.pop('uuid', None)
         if uuid:
             return self.session.post(self.api + uuid + "/viewport", json=self.params, verify=self.verify)
         raise Exception("UUID is required to set diagram viewport")
 
     def _wait_for_request_execution(self, req_id, get_chunks=None):
+        """
+        Poll a request until it finishes, optionally streaming intermediate chunks.
+        """
         progress = 0
         st = time.time()
         while True:
@@ -655,6 +787,9 @@ class Client:
         print('req_id = {}, executed in: {:.3f} s\n'.format(req_id, time.time() - st))
 
     def _is_expected_result(self, res):
+        """
+        Validate that a response matches the expected count when provided.
+        """
         expectedMatchCount = self.args.expectedMatchCount
         if expectedMatchCount is None:
             return True
@@ -675,13 +810,22 @@ class Client:
 
 
 def merge(dict1, dict2):
+    """
+    Merge two dictionaries preserving items order.
+    """
     return dict(list(dict1.items()) + list(dict2.items()))  # python 2 compatible syntax
 
 def getSortedStringFromDictionary(dictionary):
+     """
+     Convert a dictionary to a reproducibly sorted string representation.
+     """
      return ('{' + ', '.join("'" + k + "': '" + v + "'" for k, v in
          sorted(dictionary.items(), key=lambda x: x[0], reverse=False)) + '}')
 
 def print_json_pretty(inputJson, floatPrecisionCall=None):
+    """
+    Pretty print JSON content preserving key order.
+    """
     return json.dumps(json.loads(inputJson, object_pairs_hook=OrderedDict, parse_float=floatPrecisionCall),
                       ensure_ascii=False,
                       indent=4,
@@ -689,6 +833,9 @@ def print_json_pretty(inputJson, floatPrecisionCall=None):
                       sort_keys=True)
 
 def log_request(res, verbose=True, cookies=True, pretty_print=True, floatPrecision=None):
+    """
+    Log REST request and response details with optional pretty-printed bodies.
+    """
     floatPrecisionCall = None
     if floatPrecision:
         floatPrecisionCall = lambda numf: round(float(numf), floatPrecision)
@@ -716,6 +863,9 @@ def log_request(res, verbose=True, cookies=True, pretty_print=True, floatPrecisi
 
 
 def read_extra_params(extra_args):
+    """
+    Parse additional CLI parameters into a dictionary.
+    """
     params = {}
     for extra in extra_args:
         if '=' not in extra:
@@ -741,6 +891,9 @@ def read_extra_params(extra_args):
 
 
 def read_value(val):
+    """
+    Convert a string argument into an appropriate Python type.
+    """
     if val.startswith('"') and val.endswith('"'):
         return val[1:-1]
     if val=="false" or val=="False":
@@ -757,6 +910,9 @@ def read_value(val):
 
 
 def get_time_shift_value(time_str):
+    """
+    Interpret CURRENT_TIME expressions and return offset seconds.
+    """
     if time_str == "CURRENT_TIME":
         return 0
 
@@ -768,6 +924,9 @@ def get_time_shift_value(time_str):
 
 
 def is_valid_response(response):
+    """
+    Determine whether an HTTP response is valid for further processing.
+    """
     if response.status_code == 500:
         return False
 
