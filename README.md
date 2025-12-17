@@ -1,3 +1,6 @@
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://Girgitt.github.io/solar_fit_test/)
+
+
 ## Table of contents
 
 * [About](#-about)
@@ -117,6 +120,10 @@ For all possibilities refer to: https://pandas.pydata.org/docs/user_guide/timese
 ## 📚 Documentation
 
 ![General overview of the project](diagrams/project_block_scheme_v3.svg "Project overview")
+
+
+📘 Full documentation is available at  
+[HTML Documentation](https://Girgitt.github.io/solar_fit_test/)
 
 
 ## 🖥️ Usage
