@@ -127,6 +127,21 @@ def decision_tree_regression_use_calibration_values(
         params_sunny: dict,
         params_cloudy: dict | None = None,
 ) -> pd.Series:
+    """
+    Do a calculation of Decision Tree Regression using calibration values.
+
+    .. math::
+
+        \\hat{y}(x) =
+        \\begin{cases}
+        c_1, & x \\le \\tau_1 \\\\
+        c_2, & \\tau_1 < x \\le \\tau_2 \\\\
+        \\vdots & \\\\
+        c_K, & x > \\tau_{K-1}
+        \\end{cases}
+
+    where thresholds :math:`\\tau_i` and constants :math:`c_i` are learned from data.
+    """
 
     if params_cloudy is not None:
         if_sunny_col = "if_sunny"

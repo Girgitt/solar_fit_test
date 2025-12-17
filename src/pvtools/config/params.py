@@ -8,15 +8,13 @@ from typing import TypedDict
 from pandas import Timedelta
 
 
-@dataclass
 class ModelData:
     df: pd.DataFrame
-    df_time: pd.DataFrame
+    df_time: pd.Series
     sensor_names: list[str]
     sensor_name_ref: str
 
 
-@dataclass
 class ModelDirectories:
     project_dir: Path
     log_dir: Path
@@ -25,7 +23,7 @@ class ModelDirectories:
     filename: str
     load_metrics_dir: Path
 
-@dataclass
+
 class ModelTimes:
     start_time: pd.Timestamp
     end_time: pd.Timestamp
@@ -35,7 +33,6 @@ class ModelTimes:
     end_daytime_cut: time
 
 
-@dataclass
 class ClearSkyParameters:
     warsaw_lat: float
     warsaw_lon: float
@@ -47,7 +44,6 @@ class ClearSkyParameters:
     surface_azimuth: int # 180 - south facing
 
 
-@dataclass
 class ClearSkyCalculatedValues:
     poa: pd.DataFrame
     clearsky_periods: pd.Series
