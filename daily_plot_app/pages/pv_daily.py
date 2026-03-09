@@ -37,12 +37,20 @@ IRRADIANCE_BY_PANEL: Dict[str, str] = {
     "sensors/mppt_20": "sensors/irr_B_S/watt_dav",
     "sensors/mppt_21": "sensors/irr_B_S/watt_dav",
     "sensors/mppt_22": "sensors/irr_B_S/watt_dav",
+    "sensors/mppt_31": "sensors/irr_C_S/watt_dav",
+    "sensors/mppt_32": "sensors/irr_C_S/watt_dav",
+    "sensors/mppt_33": "sensors/irr_C_S/watt_dav",
+    "sensors/mppt_34": "sensors/irr_C_S/watt_dav",
+    "sensors/mppt_35": "sensors/irr_C_S/watt_dav",
+    "sensors/mppt_36": "sensors/irr_C_S/watt_dav",
+    "sensors/mppt_37": "sensors/irr_C_S/watt_dav",
+    "sensors/mppt_38": "sensors/irr_C_S/watt_dav",
     # add the rest
 }
 
 IRRADIANCE_GROUP_RULES = [
     (range(10, 22), "sensors/irr_B_S/watt_dav"),
-    # (range(20, 30), "sensors/irr_C_E/watt_dav"),
+    (range(30, 40), "sensors/irr_C_S/watt_dav"),
 ]
 
 # -----------------------------------------------------------------------------
