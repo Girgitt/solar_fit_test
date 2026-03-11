@@ -440,7 +440,7 @@ def build_figure(df: pd.DataFrame, panel_prefix: str, panel_day: date) -> go.Fig
 
     if df["irr"].notna().any():
         fig.add_trace(
-            go.Scatter(x=t, y=df["irr"], mode="lines", name="Irradiance"),
+            go.Scatter(x=t, y=df["irr"], mode="lines", name="Irradiance", line=dict(width=1, color="firebrick")),
             row=1, col=1, secondary_y=True
         )
 
