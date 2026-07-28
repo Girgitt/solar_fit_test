@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -30,6 +31,7 @@ DEFAULT_LOOKBACK_DAYS = 14
 DEFAULT_IRR_TOL = 25.0
 MIN_HISTORY_SAMPLES = 8
 HTTP_TIMEOUT_SEC = 10
+APP_TIMEZONE = ZoneInfo(os.getenv("PV_TIMEZONE", "Europe/Warsaw"))
 
 # Map panel -> irradiance tag used for comparison band
 IRRADIANCE_BY_PANEL: Dict[str, str] = {
@@ -101,6 +103,39 @@ def ch_query_df(sql: str) -> pd.DataFrame:
     return df
 
 
+def local_day_bounds(start_day: date, range_days: int):
+    start_local = datetime.combine(start_day, datetime.min.time(), tzinfo=APP_TIMEZONE)
+    end_local = start_local + timedelta(days=range_days)
+    start_ts = int(start_local.timestamp())
+    end_ts = int(end_local.timestamp())
+    start_utc_date = start_local.astimezone(timezone.utc).date()
+    end_utc_date_exclusive = end_local.astimezone(timezone.utc).date() + timedelta(days=1)
+    return start_ts, end_ts, start_utc_date, end_utc_date_exclusive
+
+
+def fetch_tag_id_map(tags: List[str]) -> Dict[int, str]:
+    if not tags:
+        return {}
+
+    tags_sql = ", ".join(q(t) for t in tags)
+    sql = f"""
+    SELECT ids, tag
+    FROM tags_registry
+    WHERE tag IN ({tags_sql})
+    """
+    df = ch_query_df(sql)
+    if df.empty:
+        return {}
+
+    out: Dict[int, str] = {}
+    for row in df.to_dict("records"):
+        try:
+            out[int(row["ids"])] = str(row["tag"])
+        except Exception:
+            pass
+    return out
+
+
 # -----------------------------------------------------------------------------
 # Tag / panel discovery
 # -----------------------------------------------------------------------------
@@ -161,20 +196,19 @@ def fetch_aggregated_tags(
     if not tags:
         return pd.DataFrame(columns=["tag", "ts", "dt", "avg_val"])
 
-    tags_sql = ", ".join(q(t) for t in tags)
-    start_day_str = start_day.isoformat()
+    id_to_tag = fetch_tag_id_map(tags)
+    if not id_to_tag:
+        return pd.DataFrame(columns=["tag", "ts", "dt", "avg_val"])
+
+    ids_sql = ", ".join(str(i) for i in sorted(id_to_tag))
+    start_ts, end_ts, start_utc_date, end_utc_date_exclusive = local_day_bounds(start_day, range_days)
 
     sql = f"""
     WITH
-        {int(step_sec)} AS step,
-        toDate({q(start_day_str)}) AS target_date,
-        {int(range_days)} AS range_days,
-        toUInt32(toUnixTimestamp(target_date)) AS ts_from,
-        toUInt32(toUnixTimestamp(target_date + range_days)) AS ts_to
+        {int(step_sec)} AS step
     SELECT
-        tr.tag,
+        agg.ids,
         agg.bucket_ts AS ts,
-        toDateTime(agg.bucket_ts) AS dt,
         agg.avg_val
     FROM
     (
@@ -183,27 +217,31 @@ def fetch_aggregated_tags(
             intDiv(dl.ts, step) * step AS bucket_ts,
             avg(dl.val) AS avg_val
         FROM all_archives AS dl
-        INNER JOIN
-        (
-            SELECT ids
-            FROM tags_registry
-            WHERE tag IN ({tags_sql})
-        ) AS f
-            ON dl.ids = f.ids
         WHERE
-            dl.ts >= ts_from
-            AND dl.ts < ts_to
-            AND dl.d >= target_date
-            AND dl.d < (target_date + range_days)
+            dl.ids IN ({ids_sql})
+            AND dl.ts >= {start_ts}
+            AND dl.ts < {end_ts}
+            AND dl.d >= toDate({q(start_utc_date.isoformat())})
+            AND dl.d < toDate({q(end_utc_date_exclusive.isoformat())})
         GROUP BY
             dl.ids,
             bucket_ts
     ) AS agg
-    LEFT JOIN tags_registry AS tr
-        ON agg.ids = tr.ids
-    ORDER BY tr.tag, ts
+    ORDER BY ids, ts
     """
-    return ch_query_df(sql)
+    df = ch_query_df(sql)
+    if df.empty:
+        return pd.DataFrame(columns=["tag", "ts", "dt", "avg_val"])
+
+    df["ids"] = df["ids"].astype(int)
+    df["tag"] = df["ids"].map(id_to_tag)
+    df["dt"] = (
+        pd.to_datetime(df["ts"].astype(int), unit="s", utc=True)
+        .dt.tz_convert(APP_TIMEZONE)
+        .dt.tz_localize(None)
+    )
+    df = df[["tag", "ts", "dt", "avg_val"]].sort_values(["tag", "ts"]).reset_index(drop=True)
+    return df
 
 
 def fetch_day_panel_data(panel_prefix: str, panel_day: date, step_sec: int) -> pd.DataFrame:
@@ -241,7 +279,7 @@ def fetch_day_panel_data(panel_prefix: str, panel_day: date, step_sec: int) -> p
         if c not in piv.columns:
             piv[c] = np.nan
 
-    base_ts = int(datetime.combine(panel_day, datetime.min.time()).timestamp())
+    base_ts, _end_ts, _start_utc_date, _end_utc_date_exclusive = local_day_bounds(panel_day, 1)
     piv["bucket_idx"] = ((piv["ts"].astype(int) - base_ts) // step_sec).astype(int)
 
     return piv[["ts", "dt", "bucket_idx", "pv_power", "pv_v", "pv_i", "irr"]]
